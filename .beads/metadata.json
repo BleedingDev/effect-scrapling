@@ -2,5 +2,6 @@
   "database": "dolt",
   "backend": "dolt",
   "dolt_mode": "server",
-  "dolt_database": "bd"
+  "dolt_database": "bd",
+  "jsonl_export": "issues.jsonl"
 }
