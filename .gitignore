@@ -2,3 +2,6 @@
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Nested upstream reference repo (not part of this project history)
+/Scrapling/
