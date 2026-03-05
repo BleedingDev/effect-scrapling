@@ -6,6 +6,8 @@ Reference repositories:
 
 Operations runbook:
 - `docs/runbooks/guardrail-parity-operations.md`
+- `docs/runbooks/strict-typescript-posture.md`
+- `docs/runbooks/lint-format-policy.md`
 
 ## Implemented in this repository
 
@@ -18,7 +20,7 @@ Operations runbook:
 | Ultracite checks | Implemented | `package.json` scripts `ultracite`, `check` |
 | Type-safety bypass ban | Implemented | `scripts/guardrails/type-safety-bypass-check.ts`, script `lint:typesafety` |
 | Effect v4 dependency policy | Implemented | `scripts/guardrails/effect-v4-policy.ts` (v4-only `effect` ranges + denylist scan across manifests and `bun.lock`) |
-| Strict TS posture | Implemented | `tsconfig.guardrails.json` (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, strict checks) |
+| Strict TS posture | Implemented | `scripts/guardrails/strict-ts-posture.ts`, `tsconfig.base.json`, `tsconfig.guardrails.json` (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, strict checks) |
 | CI guardrail enforcement | Implemented | `.github/workflows/build-sfe.yml` steps `Guardrails` + `Nx workspace checks` |
 | Semver release policy | Implemented | `scripts/validate-version.ts`, script `check:semver` |
 
@@ -38,6 +40,8 @@ Run before bead closure:
 bun run ultracite
 bun run oxlint
 bun run oxfmt
+bun run scripts/guardrails/strict-ts-posture.ts
+bun run typecheck
 bun test
 bun run build
 bun run nx:show-projects
