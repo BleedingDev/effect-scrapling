@@ -1,9 +1,6 @@
 #!/usr/bin/env bun
 
 import { spawnSync } from "node:child_process";
-import { constants as fsConstants } from "node:fs";
-import { access } from "node:fs/promises";
-import { resolve } from "node:path";
 import process from "node:process";
 import { printPreflightReport, runPreflightBootstrap } from "./preflight-bootstrap";
 
@@ -27,6 +24,12 @@ type GateResult = {
 };
 
 const READINESS_GATES: readonly GateStep[] = [
+  {
+    id: "dependencies:frozen-lockfile",
+    command: ["bun", "install", "--frozen-lockfile"],
+    action:
+      "Resolve dependency or lockfile drift, then rerun `bun install --frozen-lockfile` before doctor.",
+  },
   {
     id: "ultracite",
     command: ["bun", "run", "ultracite"],
@@ -127,15 +130,6 @@ function limitOutput(output: string, maxLines = 120): string {
   return `${visible.join("\n")}\n... (${remaining} additional lines omitted)`;
 }
 
-async function hasNodeModulesDirectory(): Promise<boolean> {
-  try {
-    await access(resolve(process.cwd(), "node_modules"), fsConstants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function printGateStart(step: GateStep): void {
   console.log(`RUN  ${step.id}: ${formatCommand(step.command)}`);
 }
@@ -164,13 +158,6 @@ export async function runBootstrapDoctor(): Promise<boolean> {
     console.error("Bootstrap doctor failed because preflight checks did not pass.");
     return false;
   }
-
-  if (!(await hasNodeModulesDirectory())) {
-    console.error("FAIL dependencies");
-    console.error("  Action: Run `bun install --frozen-lockfile` before running bootstrap doctor.");
-    return false;
-  }
-  console.log("PASS dependencies: node_modules directory is present.");
 
   for (const step of READINESS_GATES) {
     printGateStart(step);

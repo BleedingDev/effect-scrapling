@@ -125,7 +125,7 @@ describe("lint and format policy verification", () => {
     await withTemporaryFixtureFile(
       API_SOURCE_ROOT,
       "__lint-policy-oxlint-",
-      'import { reportProjectHealth } from "@effect-scrapling/ci-tooling";\n\nexport const lintPolicyViolationFixture = reportProjectHealth;\n',
+      'import { projectHealthSummary } from "@effect-scrapling/ci-tooling";\n\nexport const lintPolicyViolationFixture = projectHealthSummary;\n',
       (fixturePathRelative) => {
         const result = runCommand(["bunx", "--bun", "oxlint", fixturePathRelative]);
         expect(result.status).toBe(1);

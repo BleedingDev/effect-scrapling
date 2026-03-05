@@ -121,7 +121,7 @@ describe("nx workspace graph and boundary verification", () => {
 
       await writeFile(
         fixtureFilePath,
-        'import { reportProjectHealth } from "@effect-scrapling/ci-tooling";\n\nexport const illegalBoundaryFixture = reportProjectHealth;\n',
+        'import { projectHealthSummary } from "@effect-scrapling/ci-tooling";\n\nexport const illegalBoundaryFixture = projectHealthSummary;\n',
         "utf8",
       );
 

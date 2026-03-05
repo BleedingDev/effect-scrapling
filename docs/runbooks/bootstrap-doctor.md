@@ -28,12 +28,14 @@ This checks:
 
 ```bash
 bun install --frozen-lockfile
+# Optional: needed only for browser-mode workflows.
 bun run browser:install
 ```
 
 `bun install --frozen-lockfile` is required for deterministic dependency resolution.
 
 `browser:install` installs Chromium for Playwright browser-mode usage.
+It is not required for the core lint/type/test/build readiness gates.
 
 ### 3) Doctor
 
@@ -43,8 +45,9 @@ bun run scripts/bootstrap-doctor.ts
 
 This runs:
 1. Preflight again (to detect drift between bootstrap and doctor)
-2. Dependency presence check (`node_modules`)
+2. Frozen dependency install verification (`bun install --frozen-lockfile`)
 3. Required readiness gates in fixed order:
+   - `dependencies:frozen-lockfile`
    - `ultracite`
    - `oxlint`
    - `oxfmt`
@@ -68,7 +71,7 @@ Preflight passed (5/5 checks).
 Doctor success ends with:
 
 ```text
-Bootstrap doctor passed (11 readiness gates).
+Bootstrap doctor passed (12 readiness gates).
 ```
 
 Failures are deterministic and action-oriented. Each failed check/gate prints:
@@ -90,11 +93,12 @@ Failures are deterministic and action-oriented. Each failed check/gate prints:
 - The command was executed outside repository root.
 - Change into the repo root and re-run preflight/doctor.
 
-### `FAIL dependencies`
+### `FAIL dependencies:frozen-lockfile`
 
-- `node_modules` is missing.
+- Lockfile and installed dependency graph are out of sync.
 - Run:
   - `bun install --frozen-lockfile`
+- If it still fails, restore `package.json` / `bun.lock` consistency first.
 - Then re-run doctor.
 
 ### Any readiness gate fails

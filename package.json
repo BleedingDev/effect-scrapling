@@ -8,12 +8,12 @@
     "bun": ">=1.3.10"
   },
   "scripts": {
-    "nx": "nx",
-    "nx:show-projects": "nx show projects",
-    "nx:graph": "nx graph --file=tmp/nx-graph.json",
-    "nx:lint": "nx run-many -t lint --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
-    "nx:typecheck": "nx run-many -t typecheck --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
-    "nx:build": "nx run-many -t build --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
+    "nx": "bunx --bun nx",
+    "nx:show-projects": "bunx --bun nx show projects",
+    "nx:graph": "bunx --bun nx graph --file=tmp/nx-graph.json",
+    "nx:lint": "bunx --bun nx run-many -t lint --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
+    "nx:typecheck": "bunx --bun nx run-many -t typecheck --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
+    "nx:build": "bunx --bun nx run-many -t build --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
     "cli": "bun run src/standalone.ts",
     "standalone": "bun run src/standalone.ts",
     "api": "bun run src/api.ts",
@@ -48,6 +48,7 @@
     "playwright": "^1.52.0"
   },
   "devDependencies": {
+    "@effect-scrapling/ci-tooling": "file:tools/ci",
     "@effect-native/bun-test": "file:vendor/effect-native-bun-test",
     "@effect/language-service": "^0.75.1",
     "@nx/eslint-plugin": "22.5.4",

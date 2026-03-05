@@ -4,6 +4,7 @@
     "appsDir": "apps",
     "libsDir": "libs"
   },
+  "plugins": ["@effect-scrapling/ci-tooling"],
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [

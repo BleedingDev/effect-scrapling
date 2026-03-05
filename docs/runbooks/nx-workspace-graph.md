@@ -64,6 +64,24 @@ Quick sanity check on graph nodes:
 jq -r '.graph.nodes | keys[]' tmp/nx-graph.json
 ```
 
+### 3) Scaffold a compliant Effect module
+
+Use the compliant module generator through Bun-based Nx:
+
+```bash
+bunx --bun nx g @effect-scrapling/ci-tooling:compliant-module \
+  --project=foundation-core \
+  --name=my-module \
+  --directory=generated-modules \
+  --no-interactive
+```
+
+Expected behavior:
+
+- Command exits `0`.
+- Generates schema, errors, tag, layer, effect, and test files in deterministic shape.
+- Generated files are lint/type/test compatible with repository guardrails.
+
 ## How To Verify Boundary Rule Enforcement
 
 Use a temporary illegal import from an app (`type:app`) to a tool (`type:tool`). This must fail.
@@ -71,9 +89,9 @@ Use a temporary illegal import from an app (`type:app`) to a tool (`type:tool`).
 ```bash
 fixture="apps/api/src/__nx-boundary-fixture.ts"
 cat > "$fixture" <<'EOF'
-import { reportProjectHealth } from "@effect-scrapling/ci-tooling";
+import { projectHealthSummary } from "@effect-scrapling/ci-tooling";
 
-export const illegalBoundaryFixture = reportProjectHealth;
+export const illegalBoundaryFixture = projectHealthSummary;
 EOF
 
 bunx --bun oxlint "$fixture"

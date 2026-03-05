@@ -85,7 +85,7 @@ function runGenerator(moduleName: string): CommandResult {
     "--bun",
     "nx",
     "g",
-    "./tools/ci/generators.json:compliant-module",
+    "@effect-scrapling/ci-tooling:compliant-module",
     `--project=foundation-core`,
     `--name=${moduleName}`,
     `--directory=${MODULE_DIRECTORY_NAME}`,

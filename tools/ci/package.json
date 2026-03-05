@@ -1,0 +1,12 @@
+{
+  "name": "@effect-scrapling/ci-tooling",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "main": "./src/project-health.ts",
+  "exports": {
+    ".": "./src/project-health.ts",
+    "./generators.json": "./generators.json"
+  },
+  "generators": "./generators.json"
+}

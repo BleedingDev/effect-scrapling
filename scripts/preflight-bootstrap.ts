@@ -29,6 +29,17 @@ const REQUIRED_PACKAGE_SCRIPTS = [
 ] as const;
 
 type Semver = readonly [major: number, minor: number, patch: number];
+type ComparisonOperator = "<" | "<=" | "=" | ">" | ">=";
+
+type SemverConstraint = {
+  readonly operator: ComparisonOperator;
+  readonly version: Semver;
+};
+
+type ParsedConstraintVersion = {
+  readonly version: Semver;
+  readonly segments: 1 | 2 | 3;
+};
 
 type PackageJson = {
   readonly engines?: {
@@ -115,17 +126,191 @@ function formatSemver(version: Semver): string {
   return `${version[0]}.${version[1]}.${version[2]}`;
 }
 
-function parseMinimumBunVersion(constraint: string): Semver | undefined {
-  const match = /^\s*>=\s*(\d+\.\d+\.\d+)\s*$/u.exec(constraint);
+function parseConstraintVersionDetailed(value: string): ParsedConstraintVersion | undefined {
+  const match = /^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/u.exec(value.trim());
   if (!match) {
     return undefined;
   }
 
-  const minimumVersion = match[1];
-  if (!minimumVersion) {
+  const majorText = match[1];
+  if (!majorText) {
     return undefined;
   }
-  return parseSemver(minimumVersion);
+
+  const minorText = match[2];
+  const patchText = match[3];
+
+  const segments = patchText ? 3 : minorText ? 2 : 1;
+
+  return {
+    version: [
+      Number.parseInt(majorText, 10),
+      Number.parseInt(minorText ?? "0", 10),
+      Number.parseInt(patchText ?? "0", 10),
+    ],
+    segments,
+  };
+}
+
+function parseConstraintVersion(value: string): Semver | undefined {
+  return parseConstraintVersionDetailed(value)?.version;
+}
+
+function nextCaretUpperBound(version: Semver, segments: 1 | 2 | 3): Semver {
+  if (segments === 1) {
+    return [version[0] + 1, 0, 0];
+  }
+  if (version[0] > 0) {
+    return [version[0] + 1, 0, 0];
+  }
+  if (version[1] > 0) {
+    return [0, version[1] + 1, 0];
+  }
+  return [0, 0, version[2] + 1];
+}
+
+function nextTildeUpperBound(version: Semver, segments: 1 | 2 | 3): Semver {
+  if (segments === 1) {
+    return [version[0] + 1, 0, 0];
+  }
+  return [version[0], version[1] + 1, 0];
+}
+
+function parseConstraintToken(token: string): readonly SemverConstraint[] | undefined {
+  const trimmed = token.trim();
+  if (trimmed.length === 0 || trimmed === "*" || /^x$/iu.test(trimmed)) {
+    return [];
+  }
+
+  if (trimmed.startsWith("^")) {
+    const parsedBase = parseConstraintVersionDetailed(trimmed.slice(1));
+    if (!parsedBase) {
+      return undefined;
+    }
+    return [
+      { operator: ">=", version: parsedBase.version },
+      { operator: "<", version: nextCaretUpperBound(parsedBase.version, parsedBase.segments) },
+    ];
+  }
+
+  if (trimmed.startsWith("~")) {
+    const parsedBase = parseConstraintVersionDetailed(trimmed.slice(1));
+    if (!parsedBase) {
+      return undefined;
+    }
+    return [
+      { operator: ">=", version: parsedBase.version },
+      { operator: "<", version: nextTildeUpperBound(parsedBase.version, parsedBase.segments) },
+    ];
+  }
+
+  const comparatorMatch = /^(>=|<=|>|<|=)?\s*(\d+(?:\.\d+){0,2})$/u.exec(trimmed);
+  if (!comparatorMatch) {
+    return undefined;
+  }
+
+  const comparator = comparatorMatch[1] as ComparisonOperator | undefined;
+  const versionText = comparatorMatch[2];
+  if (!versionText) {
+    return undefined;
+  }
+
+  const parsedVersion = parseConstraintVersion(versionText);
+  if (!parsedVersion) {
+    return undefined;
+  }
+
+  return [{ operator: comparator ?? "=", version: parsedVersion }];
+}
+
+function parseConstraintClause(clause: string): readonly SemverConstraint[] | undefined {
+  const normalizedClause = clause.trim().replace(/,/gu, " ");
+  if (normalizedClause.length === 0) {
+    return [];
+  }
+
+  const hyphenMatch = /^(\d+(?:\.\d+){0,2})\s*-\s*(\d+(?:\.\d+){0,2})$/u.exec(normalizedClause);
+  if (hyphenMatch) {
+    const lower = hyphenMatch[1];
+    const upper = hyphenMatch[2];
+    if (!lower || !upper) {
+      return undefined;
+    }
+    const lowerVersion = parseConstraintVersion(lower);
+    const upperVersion = parseConstraintVersion(upper);
+    if (!lowerVersion || !upperVersion) {
+      return undefined;
+    }
+    return [
+      { operator: ">=", version: lowerVersion },
+      { operator: "<=", version: upperVersion },
+    ];
+  }
+
+  const tokenPattern =
+    /(?:[~^]\s*\d+(?:\.\d+){0,2})|(?:(?:>=|<=|>|<|=)\s*\d+(?:\.\d+){0,2})|(?:\d+(?:\.\d+){0,2})|(?:\*)|(?:x)/giu;
+  const tokens = [...normalizedClause.matchAll(tokenPattern)].map((match) =>
+    match[0].replace(/\s+/gu, ""),
+  );
+  const leftover = normalizedClause.replace(tokenPattern, " ").replace(/\s+/gu, "");
+  if (leftover.length > 0) {
+    return undefined;
+  }
+
+  const constraints: SemverConstraint[] = [];
+  for (const token of tokens) {
+    if (token.length === 0) {
+      return undefined;
+    }
+    const parsed = parseConstraintToken(token);
+    if (!parsed) {
+      return undefined;
+    }
+    constraints.push(...parsed);
+  }
+  return constraints;
+}
+
+function parseBunConstraint(
+  constraint: string,
+): readonly (readonly SemverConstraint[])[] | undefined {
+  const clauses = constraint
+    .split("||")
+    .map((clause) => clause.trim())
+    .filter((clause) => clause.length > 0);
+  if (clauses.length === 0) {
+    return undefined;
+  }
+
+  const parsedClauses: SemverConstraint[][] = [];
+  for (const clause of clauses) {
+    const parsedClause = parseConstraintClause(clause);
+    if (!parsedClause) {
+      return undefined;
+    }
+    parsedClauses.push([...parsedClause]);
+  }
+  return parsedClauses;
+}
+
+function satisfiesConstraint(version: Semver, constraint: SemverConstraint): boolean {
+  const comparison = compareSemver(version, constraint.version);
+  switch (constraint.operator) {
+    case "<":
+      return comparison < 0;
+    case "<=":
+      return comparison <= 0;
+    case "=":
+      return comparison === 0;
+    case ">":
+      return comparison > 0;
+    case ">=":
+      return comparison >= 0;
+  }
+}
+
+function formatConstraint(constraint: string): string {
+  return constraint.replace(/\s+/gu, " ").trim();
 }
 
 async function readPackageJson(): Promise<PackageJson | undefined> {
@@ -254,32 +439,36 @@ function checkBunVersion(pkg: PackageJson | undefined): PreflightCheck {
     };
   }
 
-  const minimum = parseMinimumBunVersion(engineConstraint);
-  if (!minimum) {
+  const parsedConstraint = parseBunConstraint(engineConstraint);
+  if (!parsedConstraint) {
     return {
       id: "bun-version",
       ok: false,
       summary: "Unsupported Bun engine constraint format in package.json.",
       details: `engines.bun = "${engineConstraint}"`,
-      action: "Use a >=x.y.z Bun engine constraint so bootstrap tooling can validate it.",
+      action:
+        "Use semver comparators supported by npm-style ranges (for example: >=1.3.10, >=1.3.10 <2.0.0, ^1.3.10, ~1.3.10).",
     };
   }
 
-  if (compareSemver(installed, minimum) < 0) {
+  const constraintSatisfied = parsedConstraint.some((clause) =>
+    clause.every((comparator) => satisfiesConstraint(installed, comparator)),
+  );
+  if (!constraintSatisfied) {
     return {
       id: "bun-version",
       ok: false,
-      summary: "Installed Bun version does not satisfy workspace minimum.",
-      details: `Detected Bun ${formatSemver(installed)}, required >= ${formatSemver(minimum)}`,
-      action: `Upgrade Bun to >= ${formatSemver(minimum)} and re-run preflight.`,
+      summary: "Installed Bun version does not satisfy workspace engine constraint.",
+      details: `Detected Bun ${formatSemver(installed)}, required ${formatConstraint(engineConstraint)}`,
+      action: "Install a Bun version matching package.json#engines.bun and re-run preflight.",
     };
   }
 
   return {
     id: "bun-version",
     ok: true,
-    summary: "Bun runtime version satisfies workspace requirement.",
-    details: `Detected Bun ${formatSemver(installed)}, required >= ${formatSemver(minimum)}`,
+    summary: "Bun runtime version satisfies workspace engine constraint.",
+    details: `Detected Bun ${formatSemver(installed)}, required ${formatConstraint(engineConstraint)}`,
   };
 }
 
