@@ -16,6 +16,7 @@ Use this repo directly as your tracker workspace.
 
 ### Prerequisites
 
+- `bun >= 1.3.10`
 - `bd` CLI
 - `br` CLI
 - `jq`
