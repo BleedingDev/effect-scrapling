@@ -14,6 +14,7 @@ Reference repositories:
 | Oxfmt policy | Implemented | `.oxfmtrc.json`, `package.json` scripts `format`, `format:check`, `oxfmt` |
 | Ultracite checks | Implemented | `package.json` scripts `ultracite`, `check` |
 | Type-safety bypass ban | Implemented | `scripts/guardrails/type-safety-bypass-check.ts`, script `lint:typesafety` |
+| Effect v4 dependency policy | Implemented | `scripts/guardrails/effect-v4-policy.ts` (v4-only `effect` ranges + denylist scan across manifests and `bun.lock`) |
 | Strict TS posture | Implemented | `tsconfig.guardrails.json` (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, strict checks) |
 | CI guardrail enforcement | Implemented | `.github/workflows/build-sfe.yml` steps `Guardrails` + `Nx workspace checks` |
 | Semver release policy | Implemented | `scripts/validate-version.ts`, script `check:semver` |
