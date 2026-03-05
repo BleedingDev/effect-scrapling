@@ -1,0 +1,10 @@
+{
+  "$schema": "../../node_modules/nx/schemas/nx-plugin.schema.json",
+  "generators": {
+    "compliant-module": {
+      "factory": "./src/generators/compliant-module/generator",
+      "schema": "./src/generators/compliant-module/schema.json",
+      "description": "Scaffold a strict Effect v4 module with schema, tag, layer, effect, and test files."
+    }
+  }
+}
