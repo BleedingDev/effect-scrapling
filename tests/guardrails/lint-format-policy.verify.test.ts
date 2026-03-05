@@ -50,17 +50,24 @@ async function withTemporaryFixtureFile(
 }
 
 describe("lint and format policy verification", () => {
-  it("passes clean-repository policy commands", () => {
-    const commands: readonly (readonly [string, ...string[]])[] = [
-      ["bun", "run", "ultracite"],
-      ["bun", "run", "oxlint"],
-      ["bun", "run", "oxfmt"],
-    ];
+  it("passes lint and format policy commands on a clean fixture", async () => {
+    await withTemporaryFixtureFile(
+      GUARDRAILS_TEST_ROOT,
+      "__lint-policy-clean-",
+      "export const lintFormatPolicyCleanFixture = { value: 1 };\n",
+      (fixturePathRelative) => {
+        const commands: readonly (readonly [string, ...string[]])[] = [
+          ["bunx", "--bun", "ultracite", "check", fixturePathRelative],
+          ["bunx", "--bun", "oxlint", fixturePathRelative],
+          ["bunx", "--bun", "oxfmt", "--check", fixturePathRelative],
+        ];
 
-    for (const command of commands) {
-      const result = runCommand(command);
-      expect(result.status).toBe(0);
-    }
+        for (const command of commands) {
+          const result = runCommand(command);
+          expect(result.status).toBe(0);
+        }
+      },
+    );
   });
 
   it("fails ultracite policy on an unformatted fixture", async () => {
