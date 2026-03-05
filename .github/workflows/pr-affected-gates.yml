@@ -1,0 +1,86 @@
+name: pr-affected-gates
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-affected-gates-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate-matrix:
+    name: gate / ${{ matrix.gate.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gate:
+          - name: ultracite
+            command: bun run ultracite
+          - name: oxlint
+            command: bun run oxlint
+          - name: oxfmt
+            command: bun run oxfmt
+          - name: affected-lint
+            command: bun run nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+          - name: affected-test
+            command: bun run nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+          - name: affected-typecheck
+            command: bun run nx affected -t typecheck --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+          - name: affected-build
+            command: bun run nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: bun install --frozen-lockfile
+
+      - name: Resolve affected range
+        id: range
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Run gate
+        env:
+          NX_BASE: ${{ steps.range.outputs.base }}
+          NX_HEAD: ${{ steps.range.outputs.head }}
+        run: ${{ matrix.gate.command }}
+
+  pr-gates-status:
+    name: pr-gates-status
+    if: always()
+    runs-on: ubuntu-latest
+    needs:
+      - gate-matrix
+    steps:
+      - name: Enforce deterministic status
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "gate-matrix result: ${{ needs.gate-matrix.result }}"
+          if [[ "${{ needs.gate-matrix.result }}" != "success" ]]; then
+            exit 1
+          fi
