@@ -3,6 +3,9 @@
 .dolt/
 *.db
 dist/
+node_modules/
+bun.lockb
+bun.lock
 
 # Nested upstream reference repo (not part of this project history)
 /Scrapling/

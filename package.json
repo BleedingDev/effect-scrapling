@@ -1,13 +1,14 @@
 {
-  "name": "effect-scrapling-tooling",
+  "name": "effect-scrapling",
   "private": true,
   "type": "module",
   "version": "0.0.1",
-  "description": "Standalone/API executable surfaces for effect-scrapling",
+  "description": "EffectTS + Bun scraping SDK, API, and CLI",
   "engines": {
     "bun": ">=1.3.10"
   },
   "scripts": {
+    "cli": "bun run src/standalone.ts",
     "standalone": "bun run src/standalone.ts",
     "api": "bun run src/api.ts",
     "check:semver": "bun scripts/validate-version.mjs",
@@ -15,5 +16,9 @@
     "check:release": "bun run check:semver && bun run check:publint",
     "build:sfe:standalone": "bun build --compile src/standalone.ts --outfile dist/effect-scrapling",
     "build:sfe:api": "bun build --compile src/api.ts --outfile dist/effect-scrapling-api"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "effect": "^3.19.19"
   }
 }

@@ -1,103 +1,193 @@
 #!/usr/bin/env bun
 
-type CommandResult = {
-  ok: boolean;
-  stdout: string;
-  stderr: string;
-  exitCode: number;
+import { Effect } from "effect";
+import { ExtractionError, InvalidInputError, NetworkError } from "./sdk/errors";
+import { accessPreview, extractRun, runDoctor } from "./sdk/scraper";
+
+type ParsedArgs = {
+  readonly positionals: string[];
+  readonly options: Record<string, string | boolean>;
 };
 
-function runCommand(cmd: string[], cwd = process.cwd()): CommandResult {
-  const proc = Bun.spawnSync(cmd, {
-    cwd,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  return {
-    ok: proc.exitCode === 0,
-    stdout: proc.stdout.toString("utf8"),
-    stderr: proc.stderr.toString("utf8"),
-    exitCode: proc.exitCode,
-  };
-}
-
 function usage(): void {
-  console.log(`effect-scrapling
+  console.log(`effect-scrapling (EffectTS + Bun)
 
 Usage:
-  effect-scrapling help
-  effect-scrapling status
-  effect-scrapling sync
   effect-scrapling doctor
+  effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"]
+  effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all] [--limit <n>] [--timeout-ms <ms>] [--user-agent "<ua>"]
+
+Examples:
+  effect-scrapling access preview --url "https://example.com"
+  effect-scrapling extract run --url "https://example.com" --selector "h1"
+  effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10
 `);
 }
 
-function readCount(tool: "bd" | "br"): number {
-  const args = tool === "bd" ? [tool, "--allow-stale", "--json", "count"] : [tool, "--json", "count"];
-  const result = runCommand(args);
-  if (!result.ok) {
-    throw new Error(`${tool} count failed: ${result.stderr || result.stdout}`.trim());
+function parseArgs(args: string[]): ParsedArgs {
+  const positionals: string[] = [];
+  const options: Record<string, string | boolean> = {};
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+
+    if (!arg.startsWith("--")) {
+      positionals.push(arg);
+      continue;
+    }
+
+    const stripped = arg.slice(2);
+    if (stripped.includes("=")) {
+      const [key, value] = stripped.split("=", 2);
+      options[key] = value;
+      continue;
+    }
+
+    const next = args[i + 1];
+    if (typeof next === "string" && !next.startsWith("--")) {
+      options[stripped] = next;
+      i += 1;
+      continue;
+    }
+
+    options[stripped] = true;
   }
-  const parsed = JSON.parse(result.stdout) as { count: number };
-  return parsed.count;
+
+  return { positionals, options };
 }
 
-function printStatus(): void {
-  const bdCount = readCount("bd");
-  const brCount = readCount("br");
-  const payload = {
-    ok: true,
-    bdCount,
-    brCount,
-    parity: bdCount === brCount,
-  };
+function parsePositiveInt(name: string, value: string | boolean | undefined): number | undefined {
+  if (value === undefined || typeof value === "boolean") {
+    return undefined;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Option --${name} must be a positive integer`);
+  }
+  return parsed;
+}
+
+function printJson(payload: unknown): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
-function runSync(): void {
-  const result = runCommand(["scripts/beads-stabilize.sh"]);
-  if (!result.ok) {
-    if (result.stdout) process.stdout.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
-    process.exit(result.exitCode || 1);
+function printError(error: unknown): never {
+  if (error instanceof InvalidInputError) {
+    printJson({
+      ok: false,
+      code: error._tag,
+      message: error.message,
+      details: error.details ?? null,
+    });
+    process.exit(2);
   }
-  if (result.stdout) process.stdout.write(result.stdout);
-}
 
-function runDoctor(): void {
-  const bd = runCommand(["bd", "--allow-stale", "doctor"]);
-  const br = runCommand(["br", "doctor"]);
-
-  if (bd.stdout) process.stdout.write(bd.stdout);
-  if (bd.stderr) process.stderr.write(bd.stderr);
-  if (br.stdout) process.stdout.write(br.stdout);
-  if (br.stderr) process.stderr.write(br.stderr);
-
-  if (!bd.ok || !br.ok) {
+  if (error instanceof NetworkError || error instanceof ExtractionError) {
+    printJson({
+      ok: false,
+      code: error._tag,
+      message: error.message,
+      details: error.details ?? null,
+    });
     process.exit(1);
   }
+
+  printJson({
+    ok: false,
+    code: "UnknownError",
+    message: String(error),
+  });
+  process.exit(1);
 }
 
-const command = process.argv[2] ?? "help";
+async function main(): Promise<void> {
+  const parsed = parseArgs(process.argv.slice(2));
+  const [command, subcommand, action] = parsed.positionals;
 
-switch (command) {
-  case "help":
-  case "--help":
-  case "-h":
+  if (!command || command === "help" || command === "--help" || command === "-h") {
     usage();
-    break;
-  case "status":
-    printStatus();
-    break;
-  case "sync":
-    runSync();
-    break;
-  case "doctor":
-    runDoctor();
-    break;
-  default:
-    console.error(`Unknown command: ${command}`);
-    usage();
-    process.exit(2);
+    return;
+  }
+
+  if (command === "doctor") {
+    const doctor = await Effect.runPromise(runDoctor());
+    printJson({
+      ok: doctor.ok,
+      command: "doctor",
+      data: doctor,
+      warnings: doctor.ok ? [] : ["One or more runtime checks failed"],
+    });
+    process.exit(doctor.ok ? 0 : 1);
+  }
+
+  if (command === "access" && subcommand === "preview") {
+    const timeoutMs = parsePositiveInt("timeout-ms", parsed.options["timeout-ms"]);
+    const url = parsed.options.url;
+    const userAgent = parsed.options["user-agent"];
+    if (typeof url !== "string") {
+      throw new Error("Missing required option: --url");
+    }
+    const result = await Effect.runPromise(
+      accessPreview({
+        url,
+        timeoutMs,
+        userAgent: typeof userAgent === "string" ? userAgent : undefined,
+      })
+    );
+    printJson(result);
+    return;
+  }
+
+  if (command === "extract" && subcommand === "run") {
+    const timeoutMs = parsePositiveInt("timeout-ms", parsed.options["timeout-ms"]);
+    const limit = parsePositiveInt("limit", parsed.options.limit);
+    const url = parsed.options.url;
+    const selector = parsed.options.selector;
+    const attr = parsed.options.attr;
+    const userAgent = parsed.options["user-agent"];
+    if (typeof url !== "string") {
+      throw new Error("Missing required option: --url");
+    }
+
+    const result = await Effect.runPromise(
+      extractRun({
+        url,
+        selector: typeof selector === "string" ? selector : undefined,
+        attr: typeof attr === "string" ? attr : undefined,
+        all: parsed.options.all === true,
+        limit,
+        timeoutMs,
+        userAgent: typeof userAgent === "string" ? userAgent : undefined,
+      })
+    );
+    printJson(result);
+    return;
+  }
+
+  if (command === "scrape") {
+    const timeoutMs = parsePositiveInt("timeout-ms", parsed.options["timeout-ms"]);
+    const limit = parsePositiveInt("limit", parsed.options.limit);
+    const url = parsed.options.url;
+    const selector = parsed.options.selector;
+    const attr = parsed.options.attr;
+    if (typeof url !== "string") {
+      throw new Error("Missing required option: --url");
+    }
+    const result = await Effect.runPromise(
+      extractRun({
+        url,
+        selector: typeof selector === "string" ? selector : undefined,
+        attr: typeof attr === "string" ? attr : undefined,
+        all: parsed.options.all === true,
+        limit,
+        timeoutMs,
+      })
+    );
+    printJson(result);
+    return;
+  }
+
+  throw new Error(`Unknown command: ${[command, subcommand, action].filter(Boolean).join(" ")}`);
 }
+
+main().catch(printError);
