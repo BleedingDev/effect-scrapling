@@ -3,19 +3,10 @@
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 
-const SOURCE_ROOTS = ["src", "tests", "apps", "libs", "tools", "scripts"] as const;
+const DEFAULT_SOURCE_ROOTS = ["src", "tests", "apps", "libs", "tools", "scripts"] as const;
 const ROOT_AGENTS_FILE = "AGENTS.md";
 
-const TEXT_EXTENSIONS = new Set([
-  ".ts",
-  ".tsx",
-  ".mts",
-  ".cts",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-]);
+const TEXT_EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
 
 const IGNORED_DIRS = new Set([
   "node_modules",
@@ -27,8 +18,9 @@ const IGNORED_DIRS = new Set([
   ".nx",
   ".idea",
   ".vscode",
-  "Scrapling",
 ]);
+
+const AGENTS_SCAN_IGNORED_DIRS = new Set([".git", "node_modules", "dist"]);
 
 const EXCLUDED_PATTERN_FILES = new Set([
   "scripts/guardrails/type-safety-bypass-check.ts",
@@ -38,14 +30,16 @@ const EXCLUDED_PATTERN_FILES = new Set([
 const FORBIDDEN_LINE_PATTERNS = [
   { id: "@ts-ignore", pattern: /@ts-ignore\b/u },
   { id: "@ts-nocheck", pattern: /@ts-nocheck\b/u },
-  { id: "as unknown as", pattern: /\bas\s+unknown\s+as\b/u },
+  { id: "@ts-expect-error", pattern: /@ts-expect-error\b/u },
+  { id: "as unknown as", pattern: /\bas\s+unknown\b[\s)\]]*\bas\b/u },
   { id: "governance-audit-ignore", pattern: /\bgovernance-audit-ignore\b/iu },
   { id: "governance-bypass", pattern: /\bgovernance-bypass\b/iu },
   { id: "guardrail-bypass", pattern: /\bguardrail-bypass\b/iu },
   { id: "skip-governance-check", pattern: /\bskip-governance-check\b/iu },
 ] as const;
 
-const BLANKET_DISABLE_PATTERN = /\b(?:eslint|oxlint)-disable\b(?!-(?:next-line|line))/u;
+const BLANKET_DISABLE_COMMENT_PATTERN =
+  /(?:\/\/|\/\*+|\*)\s*(?:eslint|oxlint)-disable\b(?!-(?:next-line|line))/iu;
 
 type Violation = {
   check: string;
@@ -60,7 +54,11 @@ function toRepoPath(absolutePath: string): string {
   return relative(process.cwd(), absolutePath).replace(/\\/gu, "/");
 }
 
-async function walkFiles(rootDir: string, fileFilter: EntryFilter): Promise<string[]> {
+async function walkFiles(
+  rootDir: string,
+  fileFilter: EntryFilter,
+  ignoredDirs = IGNORED_DIRS,
+): Promise<string[]> {
   const discovered: string[] = [];
   const pending: string[] = [rootDir];
 
@@ -82,7 +80,7 @@ async function walkFiles(rootDir: string, fileFilter: EntryFilter): Promise<stri
       const fullPath = join(current, entry.name);
 
       if (entry.isDirectory()) {
-        if (!IGNORED_DIRS.has(entry.name)) {
+        if (!ignoredDirs.has(entry.name)) {
           pending.push(fullPath);
         }
         continue;
@@ -98,10 +96,36 @@ async function walkFiles(rootDir: string, fileFilter: EntryFilter): Promise<stri
   return discovered;
 }
 
-async function collectSourceFiles(): Promise<string[]> {
+async function resolveSourceRoots(): Promise<string[]> {
+  const roots = new Set<string>();
+
+  for (const root of DEFAULT_SOURCE_ROOTS) {
+    try {
+      const [entry] = await readdir(root, { withFileTypes: true });
+      if (entry !== undefined || root.length > 0) {
+        roots.add(root);
+      }
+    } catch {
+      // Ignore missing default roots.
+    }
+  }
+
+  const topLevelEntries = await readdir(".", { withFileTypes: true });
+  topLevelEntries.sort((left, right) => left.name.localeCompare(right.name));
+
+  for (const entry of topLevelEntries) {
+    if (entry.isDirectory() && !IGNORED_DIRS.has(entry.name) && !entry.name.startsWith(".")) {
+      roots.add(entry.name);
+    }
+  }
+
+  return [...roots].sort((left, right) => left.localeCompare(right));
+}
+
+async function collectSourceFiles(roots: readonly string[]): Promise<string[]> {
   const files: string[] = [];
 
-  for (const root of SOURCE_ROOTS) {
+  for (const root of roots) {
     for (const absolutePath of await walkFiles(root, (entryName) =>
       TEXT_EXTENSIONS.has(extname(entryName)),
     )) {
@@ -117,12 +141,16 @@ async function collectSourceFiles(): Promise<string[]> {
 }
 
 async function findNonRootAgentsFiles(): Promise<string[]> {
-  const allAgents = await walkFiles(".", (entryName) => entryName === "AGENTS.md");
+  const allAgents = await walkFiles(
+    ".",
+    (entryName) => entryName.toLowerCase() === ROOT_AGENTS_FILE.toLowerCase(),
+    AGENTS_SCAN_IGNORED_DIRS,
+  );
   const nonRootAgents: string[] = [];
 
   for (const absolutePath of allAgents) {
     const repoPath = toRepoPath(absolutePath);
-    if (repoPath !== ROOT_AGENTS_FILE) {
+    if (repoPath.toLowerCase() !== ROOT_AGENTS_FILE.toLowerCase()) {
       nonRootAgents.push(repoPath);
     }
   }
@@ -147,7 +175,7 @@ function detectLineViolations(filePath: string, source: string): Violation[] {
       }
     }
 
-    if (BLANKET_DISABLE_PATTERN.test(line)) {
+    if (BLANKET_DISABLE_COMMENT_PATTERN.test(line)) {
       violations.push({
         check: "blanket-disable",
         file: filePath,
@@ -162,8 +190,9 @@ function detectLineViolations(filePath: string, source: string): Violation[] {
 
 async function main(): Promise<void> {
   const violations: Violation[] = [];
+  const sourceRoots = await resolveSourceRoots();
 
-  for (const sourceFile of await collectSourceFiles()) {
+  for (const sourceFile of await collectSourceFiles(sourceRoots)) {
     const repoPath = toRepoPath(sourceFile);
     const contents = await readFile(sourceFile, "utf8");
     violations.push(...detectLineViolations(repoPath, contents));
@@ -196,14 +225,15 @@ async function main(): Promise<void> {
     for (const violation of violations) {
       const location =
         violation.line === undefined ? `${violation.file}` : `${violation.file}:${violation.line}`;
-      const content = violation.content && violation.content.length > 0 ? ` ${violation.content}` : "";
+      const content =
+        violation.content && violation.content.length > 0 ? ` ${violation.content}` : "";
       console.error(`- ${location} [${violation.check}]${content}`);
     }
     process.exit(1);
   }
 
   console.log(
-    `Governance audit passed (${SOURCE_ROOTS.join(", ")}); no forbidden patterns or non-root AGENTS.md files found.`,
+    `Governance audit passed (${sourceRoots.join(", ")}); no forbidden patterns or non-root AGENTS.md files found.`,
   );
 }
 

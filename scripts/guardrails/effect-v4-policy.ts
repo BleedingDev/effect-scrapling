@@ -11,15 +11,7 @@ const DEPENDENCY_SECTIONS = [
   "optionalDependencies",
 ] as const;
 
-const IGNORED_DIRS = new Set([
-  "node_modules",
-  "dist",
-  ".git",
-  ".nx",
-  ".beads",
-  "tmp",
-  "Scrapling",
-]);
+const IGNORED_DIRS = new Set(["node_modules", "dist", ".git", ".nx", ".beads", "tmp", "Scrapling"]);
 
 // Legacy / compatibility-era Effect package split that must not be introduced.
 const DISALLOWED_EFFECT_PACKAGES = [
@@ -167,9 +159,7 @@ async function discoverPackageJsonFiles(rootDir: string): Promise<string[]> {
       continue;
     }
 
-    entries.sort((left, right) =>
-      String(left.name).localeCompare(String(right.name)),
-    );
+    entries.sort((left, right) => String(left.name).localeCompare(String(right.name)));
 
     for (const entry of entries) {
       const entryName = String(entry.name);
@@ -192,7 +182,9 @@ async function discoverPackageJsonFiles(rootDir: string): Promise<string[]> {
   return discovered;
 }
 
-async function scanManifestPolicyViolations(packageJsonPaths: string[]): Promise<PolicyViolation[]> {
+async function scanManifestPolicyViolations(
+  packageJsonPaths: string[],
+): Promise<PolicyViolation[]> {
   const violations: PolicyViolation[] = [];
 
   for (const manifestPath of packageJsonPaths) {
@@ -218,7 +210,9 @@ async function scanManifestPolicyViolations(packageJsonPaths: string[]): Promise
     }
 
     for (const section of DEPENDENCY_SECTIONS) {
-      const sectionEntries = asDependencyEntries((parsedManifest as Record<string, unknown>)[section]);
+      const sectionEntries = asDependencyEntries(
+        (parsedManifest as Record<string, unknown>)[section],
+      );
       for (const [dependencyName, specifier] of sectionEntries) {
         violations.push(
           ...findDeniedDependencies(dependencyName, specifier, relativeManifestPath, section),
@@ -233,9 +227,7 @@ async function scanManifestPolicyViolations(packageJsonPaths: string[]): Promise
 function scanLockfilePolicyViolations(lockfileContents: string): PolicyViolation[] {
   const violations: PolicyViolation[] = [];
 
-  const resolvedEffectEntries = lockfileContents.matchAll(
-    /"effect"\s*:\s*\[\s*"effect@([^"]+)"/gu,
-  );
+  const resolvedEffectEntries = lockfileContents.matchAll(/"effect"\s*:\s*\[\s*"effect@([^"]+)"/gu);
 
   for (const entry of resolvedEffectEntries) {
     const resolvedVersion = entry[1]?.trim();

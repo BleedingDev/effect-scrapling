@@ -4,18 +4,25 @@ import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 
 const INCLUDED_ROOTS = ["src", "tests", "apps", "libs", "tools", "scripts"] as const;
-const SELF_PATH = "scripts/guardrails/type-safety-bypass-check.ts";
+const EXCLUDED_FILES = new Set([
+  "scripts/guardrails/type-safety-bypass-check.ts",
+  "scripts/guardrails/governance-audit.ts",
+]);
 const EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
 const IGNORED_DIRS = new Set(["node_modules", "dist", ".git", ".nx", ".beads", "tmp", "Scrapling"]);
 
 const CHECKS = [
   { id: "@ts-ignore", pattern: /@ts-ignore\b/u },
   { id: "@ts-nocheck", pattern: /@ts-nocheck\b/u },
+  { id: "@ts-expect-error", pattern: /@ts-expect-error\b/u },
   { id: "eslint-disable", pattern: /eslint-disable\b/u },
   { id: "as any", pattern: /\bas\s+any\b/u },
-  { id: "as unknown as", pattern: /\bas\s+unknown\s+as\b/u },
+  { id: "generic<any>", pattern: /\b[A-Za-z_$][\w$]*\s*<[^>\n]*\bany\b[^>\n]*>/u },
+  { id: "standalone-any", pattern: /^\s*any(?:\[\])?\s*(?:[>,|&)]|$)/u },
+  { id: "union-or-intersection-any", pattern: /(?:\||&)\s*any\b/u },
+  { id: "as unknown as", pattern: /\bas\s+unknown\b[\s)\]>]*\bas\b/u },
   { id: ": any", pattern: /:\s*any\b/u },
-  { id: "<any>", pattern: /<\s*any\s*>/u },
+  { id: "identifier<any>", pattern: /\b[A-Za-z_$][\w$]*\s*<\s*any\s*>/u },
 ] as const;
 
 type Violation = {
@@ -66,8 +73,8 @@ async function main(): Promise<void> {
 
   for (const root of INCLUDED_ROOTS) {
     for (const filePath of await walkFiles(root)) {
-      const relativePath = relative(process.cwd(), filePath);
-      if (relativePath === SELF_PATH) {
+      const relativePath = relative(process.cwd(), filePath).replace(/\\/gu, "/");
+      if (EXCLUDED_FILES.has(relativePath)) {
         continue;
       }
 

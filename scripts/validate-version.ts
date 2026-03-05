@@ -28,10 +28,21 @@ if (!match) {
 const major = Number(match[1]);
 const allowV1Override = process.env.ALLOW_V1_RELEASE === "1";
 
-const v1TagCheck = spawnSync("git", ["tag", "--list", "v1.0.0"], {
+const localTagCheck = spawnSync("git", ["rev-parse", "-q", "--verify", "refs/tags/v1.0.0"], {
   encoding: "utf8",
 });
-const v1Released = v1TagCheck.status === 0 && v1TagCheck.stdout.trim() === "v1.0.0";
+const localV1TagExists = localTagCheck.status === 0;
+
+let remoteV1TagExists = false;
+if (!localV1TagExists) {
+  const remoteTagCheck = spawnSync("git", ["ls-remote", "--tags", "--refs", "origin", "v1.0.0"], {
+    encoding: "utf8",
+    timeout: 5_000,
+  });
+  remoteV1TagExists = remoteTagCheck.status === 0 && remoteTagCheck.stdout.trim().length > 0;
+}
+
+const v1Released = localV1TagExists || remoteV1TagExists;
 
 if (major > 0 && !allowV1Override && !v1Released) {
   console.error(
@@ -44,8 +55,10 @@ if (major > 0 && !allowV1Override && !v1Released) {
 
 const reason = allowV1Override
   ? "manual v1 override"
-  : v1Released
-    ? "v1.0.0 already released"
-    : "pre-1.0 policy";
+  : localV1TagExists
+    ? "v1.0.0 tag present locally"
+    : remoteV1TagExists
+      ? "v1.0.0 tag found on origin"
+      : "pre-1.0 policy";
 
 console.log(`Version policy OK: ${version} (${reason})`);

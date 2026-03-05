@@ -3,7 +3,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 
-const EXCLUDED_DIRECTORIES = new Set(["vendor", "node_modules", "tmp", ".beads", "dist"]);
+const EXCLUDED_DIRECTORIES = new Set([".git", "vendor", "node_modules", "tmp", ".beads", "dist"]);
 const PACKAGE_FILE_NAME = "package.json";
 
 type PackageRecord = Record<string, unknown>;
