@@ -41,4 +41,8 @@ bun run nx:lint
 bun run nx:typecheck
 ```
 
+## Incremental update (bd-onp.28)
+
+- Added `scripts/guardrails/governance-audit.ts` to fail on governance-forbidden patterns (`@ts-ignore`, `@ts-nocheck`, blanket `eslint-disable`/`oxlint-disable`, `as unknown as`, governance bypass markers) and on any non-root `AGENTS.md` reintroduction.
+
 Lockstep policy update (bd-onp.13): workspace `package.json` files now have a dedicated guardrail at `scripts/guardrails/version-lockstep-policy.ts` to enforce a single release train against the root `version`.
