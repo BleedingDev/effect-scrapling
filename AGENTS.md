@@ -2,6 +2,30 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
+## BD/BR Stability Policy (Mandatory)
+
+This repo uses a dual-tool setup, but only one safe direction is supported:
+
+- Source of truth: `bd` (Dolt)
+- Mirror for compatibility: `br` (SQLite)
+- Sync path: `bd -> .beads/issues.jsonl -> br`
+
+Rules:
+
+- Use `bd` for issue writes (`create/update/close/dep/...`).
+- Do not use `br` for writes in this repo.
+- After any issue mutations, run:
+
+```bash
+scripts/beads-stabilize.sh
+```
+
+- If the command reports foreign prefixes, run one-time cleanup:
+
+```bash
+scripts/beads-stabilize.sh --purge-foreign
+```
+
 ## Quick Reference
 
 ```bash
