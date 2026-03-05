@@ -4,6 +4,9 @@ Reference repositories:
 - `/Users/satan/code/coding-agent-zcp/template`
 - `/Users/satan/code/coding-agent-zcp/platform`
 
+Operations runbook:
+- `docs/runbooks/guardrail-parity-operations.md`
+
 ## Implemented in this repository
 
 | Guardrail | Status | Implementation |
