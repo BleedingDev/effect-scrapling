@@ -13,7 +13,7 @@
     "check:semver": "bun scripts/validate-version.mjs",
     "check:publint": "bunx --bun publint .",
     "check:release": "bun run check:semver && bun run check:publint",
-    "build:sfe:standalone": "bun build --compile src/standalone.ts --outfile dist/standalone",
-    "build:sfe:api": "bun build --compile src/api.ts --outfile dist/api"
+    "build:sfe:standalone": "bun build --compile src/standalone.ts --outfile dist/effect-scrapling",
+    "build:sfe:api": "bun build --compile src/api.ts --outfile dist/effect-scrapling-api"
   }
 }

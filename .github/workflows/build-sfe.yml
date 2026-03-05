@@ -85,8 +85,8 @@ jobs:
             ext=".exe"
           fi
 
-          bun build --compile --target="$target" src/standalone.ts --outfile="dist/standalone-${target}${ext}"
-          bun build --compile --target="$target" src/api.ts --outfile="dist/api-${target}${ext}"
+          bun build --compile --target="$target" src/standalone.ts --outfile="dist/effect-scrapling-${target}${ext}"
+          bun build --compile --target="$target" src/api.ts --outfile="dist/effect-scrapling-api-${target}${ext}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

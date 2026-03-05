@@ -1,41 +1,63 @@
 # effect-scrapling
 
-`effect-scrapling` is a tool for keeping `bd` and `br` in sync.
-It provides two runtime modes:
+`effect-scrapling` keeps `bd` and `br` synchronized.
 
-- `standalone`: command-line mode
-- `api`: HTTP service mode
+There are two executables:
 
-## Requirements
+- `effect-scrapling`: command-line tool
+- `effect-scrapling-api`: HTTP service
 
-- `bun >= 1.3.10`
+## Runtime Requirements
+
 - `bd` CLI available on `PATH`
 - `br` CLI available on `PATH`
 
-## Standalone Mode
+`bun` is only needed when you run from source code.
+If you use prebuilt binaries from Releases, `bun` is not required.
 
-### Run from source
+## Source-Mode Requirement (Optional)
+
+- `bun >= 1.3.10`
+
+## Standalone CLI (`effect-scrapling`)
+
+### Run from binary
 
 ```bash
-bun run standalone help
-bun run standalone status
-bun run standalone sync
-bun run standalone doctor
+./effect-scrapling help
+./effect-scrapling status
+./effect-scrapling sync
+./effect-scrapling doctor
 ```
 
-### Commands
+### Run from source (optional)
+
+```bash
+bun run src/standalone.ts help
+bun run src/standalone.ts status
+bun run src/standalone.ts sync
+bun run src/standalone.ts doctor
+```
+
+### Command reference
 
 - `help`: print usage
 - `status`: return JSON with `bdCount`, `brCount`, and `parity`
 - `sync`: run stabilization to align `bd` and `br`
 - `doctor`: run health checks for both CLIs
 
-## API Mode
+## API Service (`effect-scrapling-api`)
 
-### Run from source
+### Run from binary
 
 ```bash
-PORT=3000 bun run api
+PORT=3000 ./effect-scrapling-api
+```
+
+### Run from source (optional)
+
+```bash
+PORT=3000 bun run src/api.ts
 ```
 
 ### Endpoints
@@ -44,7 +66,7 @@ PORT=3000 bun run api
 - `GET /status`: JSON parity/status (`bdCount`, `brCount`, `parity`)
 - `POST /sync`: run stabilization
 
-## Use in Other Tools (Library-Style Integration)
+## Use Inside Other Tools (Library-Style Integration)
 
 This project is integrated by executing the binaries/processes.
 
@@ -63,8 +85,8 @@ function run(cmd, args) {
   return execFileSync(cmd, args, { encoding: "utf8" });
 }
 
-const status = JSON.parse(run("./standalone", ["status"]));
-if (!status.parity) run("./standalone", ["sync"]);
+const status = JSON.parse(run("./effect-scrapling", ["status"]));
+if (!status.parity) run("./effect-scrapling", ["sync"]);
 ```
 
 ### Python example
@@ -73,7 +95,7 @@ if (!status.parity) run("./standalone", ["sync"]);
 import json
 import subprocess
 
-status = json.loads(subprocess.check_output(["./standalone", "status"], text=True))
+status = json.loads(subprocess.check_output(["./effect-scrapling", "status"], text=True))
 if not status["parity"]:
-    subprocess.check_call(["./standalone", "sync"])
+    subprocess.check_call(["./effect-scrapling", "sync"])
 ```

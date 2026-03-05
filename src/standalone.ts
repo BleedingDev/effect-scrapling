@@ -23,13 +23,13 @@ function runCommand(cmd: string[], cwd = process.cwd()): CommandResult {
 }
 
 function usage(): void {
-  console.log(`effect-scrapling standalone
+  console.log(`effect-scrapling
 
 Usage:
-  standalone help
-  standalone status
-  standalone sync
-  standalone doctor
+  effect-scrapling help
+  effect-scrapling status
+  effect-scrapling sync
+  effect-scrapling doctor
 `);
 }
 
