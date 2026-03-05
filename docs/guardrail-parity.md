@@ -40,3 +40,5 @@ bun run nx:show-projects
 bun run nx:lint
 bun run nx:typecheck
 ```
+
+Lockstep policy update (bd-onp.13): workspace `package.json` files now have a dedicated guardrail at `scripts/guardrails/version-lockstep-policy.ts` to enforce a single release train against the root `version`.
