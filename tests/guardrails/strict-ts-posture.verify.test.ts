@@ -16,8 +16,11 @@ type StrictTsPostureRun = {
 };
 
 type FixtureOptions = {
+  readonly baseTsConfig?: string;
   readonly guardrailsOverrides?: string;
   readonly projectTsConfig?: string;
+  readonly libsProjectTsConfig?: string;
+  readonly toolsProjectTsConfig?: string;
 };
 
 const BASE_TSCONFIG = `{
@@ -67,15 +70,19 @@ async function createFixture(files: Record<string, string>): Promise<string> {
 
 async function createStrictTsFixture(options: FixtureOptions = {}): Promise<string> {
   return createFixture({
-    "tsconfig.base.json": BASE_TSCONFIG,
+    "tsconfig.base.json": options.baseTsConfig ?? BASE_TSCONFIG,
     "tsconfig.guardrails.json": options.guardrailsOverrides ?? DEFAULT_GUARDRAILS_TSCONFIG,
     "apps/api/tsconfig.json": options.projectTsConfig ?? DEFAULT_PROJECT_TSCONFIG,
-    "libs/core/tsconfig.json": `{
+    "libs/core/tsconfig.json":
+      options.libsProjectTsConfig ??
+      `{
   "extends": "../../tsconfig.base.json",
   "include": ["src/**/*.ts"]
 }
 `,
-    "tools/ci/tsconfig.json": `{
+    "tools/ci/tsconfig.json":
+      options.toolsProjectTsConfig ??
+      `{
   "extends": "../../tsconfig.base.json",
   "include": ["src/**/*.ts"]
 }
@@ -96,6 +103,14 @@ function runStrictTsPosture(fixtureRoot: string): StrictTsPostureRun {
     stderr: TEXT_DECODER.decode(result.stderr),
     stdout: TEXT_DECODER.decode(result.stdout),
   };
+}
+
+function readViolationLines(stderr: string): readonly string[] {
+  return stderr
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- "))
+    .map((line) => line.slice(2));
 }
 
 afterEach(async () => {
@@ -121,7 +136,7 @@ describe("strict TypeScript posture guardrail verification", () => {
   "compilerOptions": {
     "noEmit": true,
     "exactOptionalPropertyTypes": false,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": false
   },
   "include": [
     "apps/**/*.ts",
@@ -137,6 +152,9 @@ describe("strict TypeScript posture guardrail verification", () => {
     expect(run.stderr).toContain("Strict TypeScript posture check failed:");
     expect(run.stderr).toContain(
       "tsconfig.guardrails.json#compilerOptions.exactOptionalPropertyTypes must be true.",
+    );
+    expect(run.stderr).toContain(
+      "tsconfig.guardrails.json#compilerOptions.noUncheckedIndexedAccess must be true.",
     );
     expect(run.stdout.trim()).toBe("");
   });
@@ -178,6 +196,126 @@ describe("strict TypeScript posture guardrail verification", () => {
     expect(run.stderr).toContain(
       "apps/api/tsconfig.json#compilerOptions.noImplicitAny must resolve to true.",
     );
+    expect(run.stdout.trim()).toBe("");
+  });
+
+  it("fails when tsconfig.base.json does not enforce strict noImplicitAny posture", async () => {
+    const fixtureRoot = await createStrictTsFixture({
+      baseTsConfig: `{
+  "compilerOptions": {
+    "strict": false
+  }
+}
+`,
+    });
+    const run = runStrictTsPosture(fixtureRoot);
+
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr).toContain("Strict TypeScript posture check failed:");
+    expect(run.stderr).toContain("tsconfig.base.json#compilerOptions.strict must be true.");
+    expect(run.stderr).toContain(
+      "tsconfig.base.json must enforce compilerOptions.noImplicitAny via compilerOptions.strict=true or noImplicitAny=true.",
+    );
+    expect(run.stdout.trim()).toBe("");
+  });
+
+  it("fails when guardrails config stops inheriting base strict posture and misses include coverage", async () => {
+    const fixtureRoot = await createStrictTsFixture({
+      guardrailsOverrides: `{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": [
+    "apps/**/*.ts",
+    "libs/**/*.ts"
+  ]
+}
+`,
+    });
+    const run = runStrictTsPosture(fixtureRoot);
+
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr).toContain("Strict TypeScript posture check failed:");
+    expect(run.stderr).toContain(
+      "tsconfig.guardrails.json must extend tsconfig.base.json to inherit strict compiler posture.",
+    );
+    expect(run.stderr).toContain('tsconfig.guardrails.json#include must contain "tools/**/*.ts".');
+    expect(run.stdout.trim()).toBe("");
+  });
+
+  it("fails when a workspace project disables exactOptionalPropertyTypes", async () => {
+    const fixtureRoot = await createStrictTsFixture({
+      projectTsConfig: `{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src/**/*.ts"]
+}
+`,
+    });
+    const run = runStrictTsPosture(fixtureRoot);
+
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr).toContain("Strict TypeScript posture check failed:");
+    expect(run.stderr).toContain(
+      "apps/api/tsconfig.json must not disable compilerOptions.exactOptionalPropertyTypes.",
+    );
+    expect(run.stdout.trim()).toBe("");
+  });
+
+  it("sorts fail-path violations deterministically", async () => {
+    const fixtureRoot = await createStrictTsFixture({
+      baseTsConfig: `{
+  "compilerOptions": {
+    "strict": false
+  }
+}
+`,
+      guardrailsOverrides: `{
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": ["apps/**/*.ts"]
+}
+`,
+      projectTsConfig: `{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src/**/*.ts"]
+}
+`,
+      libsProjectTsConfig: `{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": false
+  },
+  "include": ["src/**/*.ts"]
+}
+`,
+      toolsProjectTsConfig: `{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["src/**/*.ts"]
+}
+`,
+    });
+    const run = runStrictTsPosture(fixtureRoot);
+    const violationLines = readViolationLines(run.stderr);
+    const sortedViolations = [...violationLines].sort((left, right) => left.localeCompare(right));
+
+    expect(run.exitCode).toBe(1);
+    expect(run.stderr).toContain("Strict TypeScript posture check failed:");
+    expect(violationLines.length).toBeGreaterThan(3);
+    expect(violationLines).toEqual(sortedViolations);
     expect(run.stdout.trim()).toBe("");
   });
 });
