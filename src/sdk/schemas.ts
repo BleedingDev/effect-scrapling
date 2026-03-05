@@ -1,21 +1,39 @@
 import { Schema } from "effect";
 
-const PositiveInt = Schema.Number.pipe(Schema.int(), Schema.positive());
+const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0));
+const NonEmptyTrimmedString = Schema.Trim.check(Schema.isNonEmpty());
+const AccessModeSchema = Schema.Literals(["http", "browser"] as const);
+const BrowserWaitUntilSchema = Schema.Literals([
+  "load",
+  "domcontentloaded",
+  "networkidle",
+  "commit",
+] as const);
+
+export const BrowserOptionsSchema = Schema.Struct({
+  waitUntil: Schema.optional(BrowserWaitUntilSchema),
+  timeoutMs: Schema.optional(PositiveInt),
+  userAgent: Schema.optional(NonEmptyTrimmedString),
+});
 
 export const AccessPreviewRequestSchema = Schema.Struct({
-  url: Schema.NonEmptyTrimmedString,
+  url: NonEmptyTrimmedString,
+  mode: Schema.optional(AccessModeSchema),
   timeoutMs: Schema.optional(PositiveInt),
-  userAgent: Schema.optional(Schema.NonEmptyTrimmedString),
+  userAgent: Schema.optional(NonEmptyTrimmedString),
+  browser: Schema.optional(BrowserOptionsSchema),
 });
 
 export const ExtractRunRequestSchema = Schema.Struct({
-  url: Schema.NonEmptyTrimmedString,
-  selector: Schema.optional(Schema.NonEmptyTrimmedString),
-  attr: Schema.optional(Schema.NonEmptyTrimmedString),
+  url: NonEmptyTrimmedString,
+  mode: Schema.optional(AccessModeSchema),
+  selector: Schema.optional(NonEmptyTrimmedString),
+  attr: Schema.optional(NonEmptyTrimmedString),
   all: Schema.optional(Schema.Boolean),
   limit: Schema.optional(PositiveInt),
   timeoutMs: Schema.optional(PositiveInt),
-  userAgent: Schema.optional(Schema.NonEmptyTrimmedString),
+  userAgent: Schema.optional(NonEmptyTrimmedString),
+  browser: Schema.optional(BrowserOptionsSchema),
 });
 
 export const AccessPreviewResponseSchema = Schema.Struct({
@@ -50,3 +68,6 @@ export type AccessPreviewRequest = Schema.Schema.Type<typeof AccessPreviewReques
 export type ExtractRunRequest = Schema.Schema.Type<typeof ExtractRunRequestSchema>;
 export type AccessPreviewResponse = Schema.Schema.Type<typeof AccessPreviewResponseSchema>;
 export type ExtractRunResponse = Schema.Schema.Type<typeof ExtractRunResponseSchema>;
+export type AccessMode = Schema.Schema.Type<typeof AccessModeSchema>;
+export type BrowserWaitUntil = Schema.Schema.Type<typeof BrowserWaitUntilSchema>;
+export type BrowserOptions = Schema.Schema.Type<typeof BrowserOptionsSchema>;

@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { Context, Effect, Layer, Schema } from "effect";
+import { Effect, Layer, Schema, ServiceMap } from "effect";
 import {
   AccessPreviewRequestSchema,
   AccessPreviewResponseSchema,
@@ -24,25 +24,27 @@ const DEFAULT_BROWSER_USER_AGENT =
 const DEFAULT_BROWSER_WAIT_UNTIL: BrowserWaitUntil = "networkidle";
 
 type FetchServiceShape = {
-  readonly fetch: typeof fetch;
+  readonly fetch: FetchClient;
 };
 
-export class FetchService extends Context.Tag("@effect-scrapling/FetchService")<
-  FetchService,
-  FetchServiceShape
->() {}
+export type FetchClient = (
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+) => ReturnType<typeof fetch>;
 
-const globalFetch: typeof fetch = (input, init) => globalThis.fetch(input, init);
+export class FetchService extends ServiceMap.Service<FetchService, FetchServiceShape>()(
+  "@effect-scrapling/FetchService",
+) {}
 
-export const FetchServiceLive = Layer.succeed(FetchService, {
-  fetch: globalFetch,
+export const FetchServiceLive = Layer.succeed(FetchService)({
+  fetch: globalThis.fetch,
 });
 
-function decodeRequest<A, I>(
-  schema: Schema.Schema<A, I, never>,
+function decodeRequest<S extends Schema.Top & { readonly DecodingServices: never }>(
+  schema: S,
   payload: unknown,
   operation: string,
-): Effect.Effect<A, InvalidInputError> {
+): Effect.Effect<S["Type"], InvalidInputError> {
   return Effect.try({
     try: () => Schema.decodeUnknownSync(schema)(payload),
     catch: (error) =>
