@@ -14,7 +14,7 @@ Policy baseline:
 - Effect dependency posture remains v4-only (`bun run check:effect-v4-policy`) as part of release gates.
 
 Primary enforcement points:
-- `scripts/guardrails/strict-ts-posture.ts`
+- `package.json#scripts.check:strict-ts-posture`
 - `tsconfig.base.json`
 - `tsconfig.guardrails.json`
 - `package.json#scripts.typecheck`
@@ -27,7 +27,7 @@ Run from repository root.
 Targeted strict-posture guardrail:
 
 ```bash
-bun run scripts/guardrails/strict-ts-posture.ts
+bun run check:strict-ts-posture
 ```
 
 Targeted compiler verification:
@@ -56,7 +56,7 @@ bun run nx:typecheck
 
 ```bash
 bun install --frozen-lockfile
-bun run scripts/guardrails/strict-ts-posture.ts
+bun run check:strict-ts-posture
 bun run typecheck
 bun run check
 ```
@@ -78,7 +78,7 @@ cat > apps/new-app/tsconfig.json <<'JSON'
 }
 JSON
 
-bun run scripts/guardrails/strict-ts-posture.ts
+bun run check:strict-ts-posture
 bun run typecheck
 ```
 
@@ -87,7 +87,7 @@ If `apps/new-app/**/*.ts` is not covered by `tsconfig.guardrails.json#include`, 
 ### 3) Fast isolate of a strict TS posture failure
 
 ```bash
-bun run scripts/guardrails/strict-ts-posture.ts
+bun run check:strict-ts-posture
 bun run typecheck
 bun run lint:typesafety
 ```
@@ -122,25 +122,25 @@ Typical failure lines:
 
 - Set `"strict": true` in `tsconfig.base.json#compilerOptions`.
 - Re-run:
-  - `bun run scripts/guardrails/strict-ts-posture.ts`
+  - `bun run check:strict-ts-posture`
   - `bun run typecheck`
 
 ### `tsconfig.guardrails.json must extend tsconfig.base.json to inherit strict compiler posture.`
 
 - Set `"extends": "./tsconfig.base.json"` in `tsconfig.guardrails.json`.
-- Re-run `bun run scripts/guardrails/strict-ts-posture.ts`.
+- Re-run `bun run check:strict-ts-posture`.
 
 ### `tsconfig.guardrails.json#include must contain "<root>/**/*.ts".`
 
 - Ensure `tsconfig.guardrails.json#include` covers each discovered workspace root (`apps/**/*.ts`, `libs/**/*.ts`, `tools/**/*.ts`).
-- Re-run `bun run scripts/guardrails/strict-ts-posture.ts`.
+- Re-run `bun run check:strict-ts-posture`.
 
 ### `<project>/tsconfig.json must extend tsconfig.base.json.`
 
 - Add a valid relative `extends` path back to root base config, for example:
   - `"extends": "../../tsconfig.base.json"` for `apps/*`, `libs/*`, `tools/*`.
 - Re-run:
-  - `bun run scripts/guardrails/strict-ts-posture.ts`
+  - `bun run check:strict-ts-posture`
   - `bun run typecheck`
 
 ### `<project>/tsconfig.json#compilerOptions.noImplicitAny must resolve to true.`
@@ -148,7 +148,7 @@ Typical failure lines:
 - Remove local `"noImplicitAny": false` overrides.
 - Keep strict posture inherited from base config.
 - Re-run:
-  - `bun run scripts/guardrails/strict-ts-posture.ts`
+  - `bun run check:strict-ts-posture`
   - `bun run typecheck`
 
 ### `<project>/tsconfig.json must not disable compilerOptions.exactOptionalPropertyTypes` or `noUncheckedIndexedAccess`
@@ -156,7 +156,7 @@ Typical failure lines:
 - Remove local `false` overrides for those options.
 - Keep these options enabled in guardrail posture.
 - Re-run:
-  - `bun run scripts/guardrails/strict-ts-posture.ts`
+  - `bun run check:strict-ts-posture`
   - `bun run typecheck`
 
 ### Strict posture check passes but CI still fails
@@ -189,7 +189,7 @@ bun run nx:typecheck
 1. Prepare
 - Create a branch for strict posture config/code changes.
 - Confirm clean baseline:
-  - `bun run scripts/guardrails/strict-ts-posture.ts`
+  - `bun run check:strict-ts-posture`
   - `bun run typecheck`
 
 2. Apply
@@ -198,7 +198,7 @@ bun run nx:typecheck
 
 3. Verify
 - Run targeted checks:
-  - `bun run scripts/guardrails/strict-ts-posture.ts`
+  - `bun run check:strict-ts-posture`
   - `bun run typecheck`
   - `bun run check:effect-v4-policy`
 - Run full gates:
@@ -216,7 +216,7 @@ Use rollback only when a strict posture rollout introduces regressions that cann
 1. Identify the offending commit touching TS config/compiler posture.
 2. Revert the offending config/code change (not guardrails).
 3. Re-run:
-   - `bun run scripts/guardrails/strict-ts-posture.ts`
+   - `bun run check:strict-ts-posture`
    - `bun run typecheck`
    - `bun run check`
 4. Re-attempt rollout with corrected strict-compatible changes.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "@effect-native/bun-test";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -22,6 +22,8 @@ type FixtureOptions = {
   readonly libsProjectTsConfig?: string;
   readonly toolsProjectTsConfig?: string;
 };
+
+type PackageScripts = Record<string, string>;
 
 const BASE_TSCONFIG = `{
   "compilerOptions": {
@@ -113,6 +115,13 @@ function readViolationLines(stderr: string): readonly string[] {
     .map((line) => line.slice(2));
 }
 
+async function readPackageScripts(): Promise<PackageScripts> {
+  const packageJsonPath = join(REPO_ROOT, "package.json");
+  const packageJsonContent = await readFile(packageJsonPath, "utf8");
+  const parsed = JSON.parse(packageJsonContent) as { scripts?: PackageScripts };
+  return parsed.scripts ?? {};
+}
+
 afterEach(async () => {
   await Promise.all(
     TEMP_FIXTURES.splice(0).map((fixtureRoot) => rm(fixtureRoot, { force: true, recursive: true })),
@@ -120,6 +129,14 @@ afterEach(async () => {
 });
 
 describe("strict TypeScript posture guardrail verification", () => {
+  it("wires strict posture guardrail into package scripts and full check pipeline", async () => {
+    const scripts = await readPackageScripts();
+    expect(scripts["check:strict-ts-posture"]).toBe(
+      "bun run scripts/guardrails/strict-ts-posture.ts",
+    );
+    expect(scripts.check).toContain("bun run check:strict-ts-posture");
+  });
+
   it("passes on a compliant workspace fixture", async () => {
     const fixtureRoot = await createStrictTsFixture();
     const run = runStrictTsPosture(fixtureRoot);

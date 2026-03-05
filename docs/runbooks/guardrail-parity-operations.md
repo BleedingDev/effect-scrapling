@@ -38,7 +38,7 @@ Primary implementation points:
 | Governance audit | `scripts/guardrails/governance-audit.ts` | `bun run check:governance` | `Governance audit passed (...)` |
 | Workspace lockstep version | `scripts/guardrails/version-lockstep-policy.ts` | `bun run check:lockstep-version` | `Workspace version lockstep policy OK ...` |
 | Effect v4 dependency baseline | `scripts/guardrails/effect-v4-policy.ts` | `bun run check:effect-v4-policy` | `Effect v4 dependency policy check passed ...` |
-| Strict TS posture | `scripts/guardrails/strict-ts-posture.ts`, `tsconfig.base.json`, `tsconfig.guardrails.json` | `bun run scripts/guardrails/strict-ts-posture.ts` | `Strict TypeScript posture check passed ...` |
+| Strict TS posture | `scripts/guardrails/strict-ts-posture.ts`, `tsconfig.base.json`, `tsconfig.guardrails.json` | `bun run check:strict-ts-posture` | `Strict TypeScript posture check passed ...` |
 | Semver release policy | `scripts/validate-version.ts` | `bun run check:semver` | `Version policy OK: ...` |
 | Nx parity checks | `package.json#scripts.nx:*` | `bun run nx:show-projects && bun run nx:lint && bun run nx:typecheck` | Nx commands complete without errors |
 

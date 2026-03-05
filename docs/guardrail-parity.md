@@ -40,7 +40,7 @@ Run before bead closure:
 bun run ultracite
 bun run oxlint
 bun run oxfmt
-bun run scripts/guardrails/strict-ts-posture.ts
+bun run check:strict-ts-posture
 bun run typecheck
 bun test
 bun run build

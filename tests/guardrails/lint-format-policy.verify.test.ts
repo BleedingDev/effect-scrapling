@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "@effect-native/bun-test";
 
@@ -9,6 +9,8 @@ type CommandResult = {
   stdout: string;
   stderr: string;
 };
+
+type PackageScripts = Record<string, string>;
 
 const REPO_ROOT = resolve(import.meta.dir, "..", "..");
 const API_SOURCE_ROOT = join(REPO_ROOT, "apps", "api", "src");
@@ -31,6 +33,13 @@ function getCombinedOutput(result: CommandResult): string {
   return `${result.stdout}\n${result.stderr}`;
 }
 
+async function readPackageScripts(): Promise<PackageScripts> {
+  const packageJsonPath = join(REPO_ROOT, "package.json");
+  const packageJsonContent = await readFile(packageJsonPath, "utf8");
+  const parsed = JSON.parse(packageJsonContent) as { scripts?: PackageScripts };
+  return parsed.scripts ?? {};
+}
+
 async function withTemporaryFixtureFile(
   parentDirectory: string,
   fileNamePrefix: string,
@@ -50,6 +59,20 @@ async function withTemporaryFixtureFile(
 }
 
 describe("lint and format policy verification", () => {
+  it("wires lint and format guardrails into package scripts and full check pipeline", async () => {
+    const scripts = await readPackageScripts();
+    expect(scripts.ultracite).toContain("bunx --bun ultracite check");
+    expect(scripts.oxlint).toContain("bunx --bun oxlint");
+    expect(scripts.oxfmt).toBe("bun run format:check");
+    expect(scripts.check).toContain("bun run ultracite");
+    expect(scripts.check).toContain("bun run oxlint");
+    expect(scripts.check).toContain("bun run oxfmt");
+    expect(scripts["check:strict-ts-posture"]).toBe(
+      "bun run scripts/guardrails/strict-ts-posture.ts",
+    );
+    expect(scripts.check).toContain("bun run check:strict-ts-posture");
+  });
+
   it("passes lint and format policy commands on a clean fixture", async () => {
     await withTemporaryFixtureFile(
       GUARDRAILS_TEST_ROOT,
