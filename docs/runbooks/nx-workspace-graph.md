@@ -77,9 +77,9 @@ export const illegalBoundaryFixture = reportProjectHealth;
 EOF
 
 bunx --bun oxlint "$fixture"
-status=$?
+exit_code=$?
 rm -f "$fixture"
-test "$status" -eq 1
+test "$exit_code" -eq 1
 ```
 
 Expected result:
