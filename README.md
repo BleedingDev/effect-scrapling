@@ -1,125 +1,106 @@
 # effect-scrapling
 
-Issue-tracking workspace using `bd` (Dolt-backed) as the source of truth, with a `br` SQLite mirror for compatibility with tools that expect `br`.
+Tooling package that ships two executable modes:
 
-## Core Model
+- `standalone`: CLI binary for status/sync/doctor actions
+- `api`: HTTP server binary exposing health/status/sync endpoints
 
-- Canonical data source: `bd`
-- Compatibility mirror: `br`
-- Sync direction: `bd -> .beads/issues.jsonl -> br`
+Both are built as single-file executables (SFE) in GitHub Actions for multiple platforms.
 
-`br` is treated as a rebuildable mirror, not the authoritative write path.
-
-## Standalone Mode
-
-Use this repo directly as your tracker workspace.
-
-### Prerequisites
+## Prerequisites
 
 - `bun >= 1.3.10`
 - `bd` CLI
 - `br` CLI
 - `jq`
 
-### First Run
+## Local Usage
+
+### Run as standalone CLI
 
 ```bash
-git clone https://github.com/BleedingDev/effect-scrapling.git
-cd effect-scrapling
-scripts/beads-stabilize.sh
+bun run standalone --help
+bun run standalone status
+bun run standalone sync
+bun run standalone doctor
 ```
 
-### Daily Workflow
-
-1. Create/update issues with `bd`.
-2. Run stabilization to keep `br` parity.
-3. Use either `bd` or `br` for reads/reporting.
-
-Write examples:
+### Run as API server
 
 ```bash
-bd create "Implement X" --description "..." -t task -p 1 --json
-bd update bd-123 --status in_progress --json
-bd close bd-123 --reason "Done" --json
-scripts/beads-stabilize.sh
+PORT=3000 bun run api
 ```
 
-Read examples:
+Available endpoints:
+
+- `GET /health` -> process health
+- `GET /status` -> `bd`/`br` counts + parity
+- `POST /sync` -> run stabilization flow
+
+## Build Single-File Executables Locally
 
 ```bash
-bd ready --json
-br list --json
-br graph --json
+mkdir -p dist
+bun build --compile --target=bun-linux-x64 src/standalone.ts --outfile dist/standalone-bun-linux-x64
+bun build --compile --target=bun-linux-x64 src/api.ts --outfile dist/api-bun-linux-x64
 ```
 
-### Health Checks
+For Windows target names, use `.exe` output files.
 
-```bash
-bd doctor
-br doctor
-br dep cycles
-```
+## GitHub Actions Artifacts (Multi-Platform)
 
-If foreign issue prefixes are detected (non-`bd-*`), review and purge explicitly:
+Workflow: `.github/workflows/build-sfe.yml`
 
-```bash
-scripts/beads-stabilize.sh --purge-foreign --yes
-```
+Build matrix targets:
 
-The script writes detected foreign IDs to:
+- `bun-linux-x64`
+- `bun-linux-arm64`
+- `bun-darwin-x64`
+- `bun-darwin-arm64`
+- `bun-windows-x64`
 
-```text
-.beads/foreign-ids.pending.txt
-```
+For each target, the workflow uploads artifacts containing:
 
-## Library Mode (Use Inside Other Tools)
+- `standalone-<target>[.exe]`
+- `api-<target>[.exe]`
 
-There is no SDK package in this repository. "Library mode" means integrating through CLI calls from your own app/tool.
+## Use as a Library Inside Other Tools
 
-### Integration Pattern
+This repository is integrated as an executable dependency (process-level integration).
 
-1. Your tool performs writes via `bd` (`create`, `update`, `close`, etc.).
-2. Your tool calls `scripts/beads-stabilize.sh`.
-3. Your tool reads from `bd --json ...` or `br --json ...`.
+### Integration pattern
 
-### Node.js Example
+1. Call `standalone status` for health/parity.
+2. Call `standalone sync` before reads that need fresh mirror state.
+3. Use the API binary when you want long-running service mode.
+
+### Node.js example
 
 ```js
 import { execFileSync } from "node:child_process";
 
 const run = (cmd, args) => execFileSync(cmd, args, { encoding: "utf8" });
 
-run("bd", ["create", "Library-created task", "--description", "From host tool", "-t", "task", "-p", "2", "--json"]);
-run("scripts/beads-stabilize.sh", []);
-
-const ready = JSON.parse(run("bd", ["ready", "--json"]));
-console.log(ready);
+const status = JSON.parse(run("./standalone", ["status"]));
+if (!status.parity) run("./standalone", ["sync"]);
 ```
 
-### Python Example
+### Python example
 
 ```python
 import json
 import subprocess
 
-def run(*args):
-    return subprocess.check_output(args, text=True)
-
-run("bd", "create", "Python-created task", "--description", "From host tool", "-t", "task", "-p", "2", "--json")
-run("scripts/beads-stabilize.sh")
-
-ready = json.loads(run("bd", "ready", "--json"))
-print(ready)
+status = json.loads(subprocess.check_output(["./standalone", "status"], text=True))
+if not status["parity"]:
+    subprocess.check_call(["./standalone", "sync"])
 ```
 
-## Script Contract
+## Notes
 
-`scripts/beads-stabilize.sh` guarantees:
+- Sync uses `scripts/beads-stabilize.sh`.
+- If foreign prefixes are detected, run:
 
-- Export canonical issue set from `bd` to configured JSONL path.
-- Refresh `bd` import timestamp metadata to avoid stale-read lockouts.
-- Rebuild `br` SQLite mirror from JSONL.
-- Verify count parity between `bd` and `br`.
-- Run `br doctor` and dependency cycle checks.
-
-Non-zero exits indicate actionable sync/consistency failures.
+```bash
+scripts/beads-stabilize.sh --purge-foreign --yes
+```

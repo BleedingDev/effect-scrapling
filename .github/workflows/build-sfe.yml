@@ -1,0 +1,55 @@
+name: build-sfe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - bun-linux-x64
+          - bun-linux-arm64
+          - bun-darwin-x64
+          - bun-darwin-arm64
+          - bun-windows-x64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Show Bun version
+        run: bun --version
+
+      - name: Build standalone and api SFEs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+
+          target="${{ matrix.target }}"
+          ext=""
+          if [[ "$target" == bun-windows-* ]]; then
+            ext=".exe"
+          fi
+
+          bun build --compile --target="$target" src/standalone.ts --outfile="dist/standalone-${target}${ext}"
+          bun build --compile --target="$target" src/api.ts --outfile="dist/api-${target}${ext}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sfe-${{ matrix.target }}
+          path: dist/*-${{ matrix.target }}*
+          if-no-files-found: error
