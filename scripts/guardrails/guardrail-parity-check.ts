@@ -100,8 +100,17 @@ function parseFirstTableInSection(sectionName: string, sectionContent: string): 
     };
   }
 
-  const headers = parseMarkdownRow(tableLines[0]);
-  const separator = parseMarkdownRow(tableLines[1]);
+  const headerLine = tableLines[0];
+  const separatorLine = tableLines[1];
+  if (headerLine === undefined || separatorLine === undefined) {
+    return {
+      ok: false,
+      error: `Section "${sectionName}" table is malformed (missing header or separator row).`,
+    };
+  }
+
+  const headers = parseMarkdownRow(headerLine);
+  const separator = parseMarkdownRow(separatorLine);
   if (headers === null || separator === null) {
     return {
       ok: false,
@@ -116,7 +125,7 @@ function parseFirstTableInSection(sectionName: string, sectionContent: string): 
     };
   }
 
-  const rows: string[][] = [];
+  const rows: Array<readonly string[]> = [];
   for (const [rowIndex, line] of tableLines.slice(2).entries()) {
     const row = parseMarkdownRow(line);
     if (row === null) {
@@ -184,7 +193,7 @@ function validateImplementedSection(markdown: string, errors: string[]): void {
   const guardrailRows = new Map<string, { status: string; implementation: string }>();
 
   for (const [rowIndex, row] of tableResult.table.rows.entries()) {
-    const [guardrail, status, implementation] = row;
+    const [guardrail = "", status = "", implementation = ""] = row;
     const displayRow = rowIndex + 1;
 
     if (guardrail.length === 0) {
@@ -246,7 +255,7 @@ function validateTrackedDifferencesSection(markdown: string, errors: string[]): 
   }
 
   for (const [rowIndex, row] of tableResult.table.rows.entries()) {
-    const [upstreamPattern, status, rationale] = row;
+    const [upstreamPattern = "", status = "", rationale = ""] = row;
     const displayRow = rowIndex + 1;
 
     if (upstreamPattern.length === 0) {
