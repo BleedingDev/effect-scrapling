@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
-import { afterEach, describe, expect, it } from "@effect-native/bun-test";
+import { describe, expect, it } from "@effect-native/bun-test";
 
 type CommandResult = {
   status: number | null;
@@ -19,14 +19,8 @@ type NxGraphJson = {
 const REPO_ROOT = resolve(import.meta.dir, "..", "..");
 const API_SOURCE_ROOT = join(REPO_ROOT, "apps", "api", "src");
 const TMP_ROOT = join(REPO_ROOT, "tmp");
-const temporaryPaths = new Set<string>();
 
-function trackTemporaryPath(path: string): string {
-  temporaryPaths.add(path);
-  return path;
-}
-
-function runCommand(command: readonly string[], cwd = REPO_ROOT): CommandResult {
+function runCommand(command: readonly [string, ...string[]], cwd = REPO_ROOT): CommandResult {
   const result = spawnSync(command[0], command.slice(1), {
     cwd,
     encoding: "utf8",
@@ -68,61 +62,78 @@ async function readGraphNodeNames(graphFilePath: string): Promise<ReadonlySet<st
   return new Set(Object.keys(graphNodes));
 }
 
-afterEach(async () => {
-  await Promise.all([...temporaryPaths].map((path) => rm(path, { force: true, recursive: true })));
-  temporaryPaths.clear();
-});
+async function withTemporaryPaths(
+  run: (trackTemporaryPath: (path: string) => string) => Promise<void>,
+): Promise<void> {
+  const temporaryPaths = new Set<string>();
+  const trackTemporaryPath = (path: string): string => {
+    temporaryPaths.add(path);
+    return path;
+  };
+
+  try {
+    await run(trackTemporaryPath);
+  } finally {
+    await Promise.all(
+      [...temporaryPaths].map((path) => rm(path, { force: true, recursive: true })),
+    );
+  }
+}
 
 describe("nx workspace graph and boundary verification", () => {
   it("resolves Nx projects and graph nodes deterministically", async () => {
-    await mkdir(TMP_ROOT, { recursive: true });
-    const graphFilePath = trackTemporaryPath(
-      join(TMP_ROOT, `nx-graph-guardrail-${randomUUID()}.json`),
-    );
-    const graphFilePathRelative = relative(REPO_ROOT, graphFilePath);
+    await withTemporaryPaths(async (trackTemporaryPath) => {
+      await mkdir(TMP_ROOT, { recursive: true });
+      const graphFilePath = trackTemporaryPath(
+        join(TMP_ROOT, `nx-graph-guardrail-${randomUUID()}.json`),
+      );
+      const graphFilePathRelative = relative(REPO_ROOT, graphFilePath);
 
-    const projectsRun = runCommand(["bunx", "--bun", "nx", "show", "projects", "--json"]);
-    expect(projectsRun.status).toBe(0);
+      const projectsRun = runCommand(["bunx", "--bun", "nx", "show", "projects", "--json"]);
+      expect(projectsRun.status).toBe(0);
 
-    const projects = parseProjectList(projectsRun.stdout);
-    expect(projects.length).toBeGreaterThan(0);
+      const projects = parseProjectList(projectsRun.stdout);
+      expect(projects.length).toBeGreaterThan(0);
 
-    const graphRun = runCommand([
-      "bunx",
-      "--bun",
-      "nx",
-      "graph",
-      `--file=${graphFilePathRelative}`,
-      "--open=false",
-    ]);
-    expect(graphRun.status).toBe(0);
+      const graphRun = runCommand([
+        "bunx",
+        "--bun",
+        "nx",
+        "graph",
+        `--file=${graphFilePathRelative}`,
+        "--open=false",
+      ]);
+      expect(graphRun.status).toBe(0);
 
-    const graphNodeNames = await readGraphNodeNames(graphFilePath);
-    for (const projectName of projects) {
-      expect(graphNodeNames.has(projectName)).toBe(true);
-    }
+      const graphNodeNames = await readGraphNodeNames(graphFilePath);
+      for (const projectName of projects) {
+        expect(graphNodeNames.has(projectName)).toBe(true);
+      }
+    });
   });
 
   it("rejects illegal type:app to type:tool imports via boundary enforcement", async () => {
-    const fixtureFilePath = trackTemporaryPath(
-      join(API_SOURCE_ROOT, `__nx-boundary-fixture-${randomUUID()}.ts`),
-    );
-    const fixtureFilePathRelative = relative(REPO_ROOT, fixtureFilePath);
+    await withTemporaryPaths(async (trackTemporaryPath) => {
+      const fixtureFilePath = trackTemporaryPath(
+        join(API_SOURCE_ROOT, `__nx-boundary-fixture-${randomUUID()}.ts`),
+      );
+      const fixtureFilePathRelative = relative(REPO_ROOT, fixtureFilePath);
 
-    await writeFile(
-      fixtureFilePath,
-      'import { reportProjectHealth } from "@effect-scrapling/ci-tooling";\n\nexport const illegalBoundaryFixture = reportProjectHealth;\n',
-      "utf8",
-    );
+      await writeFile(
+        fixtureFilePath,
+        'import { reportProjectHealth } from "@effect-scrapling/ci-tooling";\n\nexport const illegalBoundaryFixture = reportProjectHealth;\n',
+        "utf8",
+      );
 
-    const lintRun = runCommand(["bunx", "--bun", "oxlint", fixtureFilePathRelative]);
-    expect(lintRun.status).toBe(1);
+      const lintRun = runCommand(["bunx", "--bun", "oxlint", fixtureFilePathRelative]);
+      expect(lintRun.status).toBe(1);
 
-    const combinedOutput = `${lintRun.stdout}\n${lintRun.stderr}`;
-    expect(combinedOutput).toContain("@nx(enforce-module-boundaries)");
-    expect(combinedOutput).toContain(
-      'A project tagged with "type:app" can only depend on libs tagged with "type:lib"',
-    );
-    expect(combinedOutput).toContain(fixtureFilePathRelative);
+      const combinedOutput = `${lintRun.stdout}\n${lintRun.stderr}`;
+      expect(combinedOutput).toContain("@nx(enforce-module-boundaries)");
+      expect(combinedOutput).toContain(
+        'A project tagged with "type:app" can only depend on libs tagged with "type:lib"',
+      );
+      expect(combinedOutput).toContain(fixtureFilePathRelative);
+    });
   });
 });

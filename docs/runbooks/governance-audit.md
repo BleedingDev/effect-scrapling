@@ -93,6 +93,24 @@ const forced = value as unknown as { id: string };
 export const bypass = true; // governance-bypass
 ```
 
+```ts
+// governance-audit-ignore
+export const ignored = true;
+
+// guardrail-bypass
+export const bypassGuardrail = true;
+
+// skip-governance-check
+export const skipCheck = true;
+```
+
+```ts
+// @ts-nocheck
+// @ts-expect-error
+/* oxlint-disable */
+export const forcedOx = value as unknown as { id: string }; // governance-bypass
+```
+
 ```text
 docs/AGENTS.md
 ```
@@ -102,7 +120,21 @@ Why failing:
 - Contains forbidden TS bypass and cast patterns.
 - Uses blanket linter disable.
 - Uses explicit governance bypass marker.
+- Includes repeated `@ts-nocheck` / `@ts-expect-error` markers and blanket `oxlint-disable`.
 - Introduces non-root `AGENTS.md`.
+
+Additional representative failures (all are rejected):
+
+```ts
+const casted = raw as unknown as { id: string };
+```
+
+```text
+- src/policy.ts:7 [as unknown as] const casted = raw as unknown as { id: string };
+- src/policy.ts:9 [governance-audit-ignore] // governance-audit-ignore
+- src/policy.ts:11 [guardrail-bypass] // guardrail-bypass
+- src/policy.ts:13 [skip-governance-check] // skip-governance-check
+```
 
 ## Troubleshooting
 
@@ -155,4 +187,3 @@ Forbidden rollback actions:
 - Adding skip markers or allowlist hacks to bypass enforcement.
 
 If urgent delivery is blocked, rollback by code reversion, not by policy relaxation.
-
