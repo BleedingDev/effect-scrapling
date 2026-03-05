@@ -46,7 +46,9 @@ function runGovernanceAudit(cwd: string): AuditRun {
 }
 
 afterEach(async () => {
-  await Promise.all(tempFixtures.splice(0).map((fixture) => rm(fixture, { force: true, recursive: true })));
+  await Promise.all(
+    tempFixtures.splice(0).map((fixture) => rm(fixture, { force: true, recursive: true })),
+  );
 });
 
 describe("governance-audit forbidden patterns verification", () => {

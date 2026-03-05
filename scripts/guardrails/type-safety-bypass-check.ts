@@ -7,6 +7,7 @@ const INCLUDED_ROOTS = ["src", "tests", "apps", "libs", "tools", "scripts"] as c
 const EXCLUDED_FILES = new Set([
   "scripts/guardrails/type-safety-bypass-check.ts",
   "scripts/guardrails/governance-audit.ts",
+  "tests/guardrails/governance-audit.verify.test.ts",
 ]);
 const EXTENSIONS = new Set([".ts", ".tsx", ".mts", ".cts"]);
 const IGNORED_DIRS = new Set(["node_modules", "dist", ".git", ".nx", ".beads", "tmp", "Scrapling"]);

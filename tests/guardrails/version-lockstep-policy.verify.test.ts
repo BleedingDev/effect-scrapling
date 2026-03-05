@@ -11,6 +11,10 @@ type CommandResult = {
   stderr: string;
 };
 
+type CommandOptions = {
+  env?: NodeJS.ProcessEnv;
+};
+
 const REPO_ROOT = join(import.meta.dir, "..", "..");
 const LOCKSTEP_POLICY_SCRIPT = join(REPO_ROOT, "scripts/guardrails/version-lockstep-policy.ts");
 const VALIDATE_VERSION_SCRIPT = join(REPO_ROOT, "scripts/validate-version.ts");
@@ -32,10 +36,27 @@ async function writeJsonFile(filePath: string, value: Record<string, unknown>): 
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-function runTypeScriptScript(scriptPath: string, workspaceRoot: string): CommandResult {
+function buildDeterministicEnv(envOverrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ...envOverrides,
+  };
+
+  if (envOverrides.ALLOW_V1_RELEASE === undefined) {
+    delete env.ALLOW_V1_RELEASE;
+  }
+
+  return env;
+}
+
+function runTypeScriptScript(
+  scriptPath: string,
+  workspaceRoot: string,
+  options: CommandOptions = {},
+): CommandResult {
   const result = spawnSync(process.execPath, [scriptPath], {
     cwd: workspaceRoot,
-    env: process.env,
+    env: buildDeterministicEnv(options.env),
     encoding: "utf8",
   });
 
