@@ -8,10 +8,31 @@
     "bun": ">=1.3.10"
   },
   "scripts": {
+    "nx": "nx",
+    "nx:show-projects": "nx show projects",
+    "nx:graph": "nx graph --file=tmp/nx-graph.json",
+    "nx:lint": "nx run-many -t lint --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
+    "nx:typecheck": "nx run-many -t typecheck --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
+    "nx:build": "nx run-many -t build --projects api-app,cli-app,foundation-core,ci-tooling,sf-assets --parallel=1",
     "cli": "bun run src/standalone.ts",
     "standalone": "bun run src/standalone.ts",
     "api": "bun run src/api.ts",
-    "check:semver": "bun scripts/validate-version.mjs",
+    "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts -g '*.ts')",
+    "format:check": "bunx --bun oxfmt --check $(rg --files src tests apps libs tools scripts -g '*.ts')",
+    "ultracite": "bunx --bun ultracite check $(rg --files src tests apps libs tools scripts -g '*.ts')",
+    "oxlint": "bunx --bun oxlint $(rg --files src tests apps libs tools scripts -g '*.ts')",
+    "oxfmt": "bun run format:check",
+    "lint:typesafety": "bun run scripts/guardrails/type-safety-bypass-check.ts",
+    "lint": "bun run ultracite && bun run oxlint && bun run lint:typesafety",
+    "lint:fix": "bunx --bun oxlint $(rg --files src tests apps libs tools scripts -g '*.ts') --fix && bun run format",
+    "typecheck": "bunx --bun tsc --noEmit -p tsconfig.guardrails.json",
+    "test": "bun test tests",
+    "build": "bun run build:sfe:standalone && bun run build:sfe:api",
+    "check": "bun run ultracite && bun run oxlint && bun run oxfmt && bun run lint:typesafety && bun run typecheck && bun run test && bun run build",
+    "browser:install": "bunx --bun playwright install chromium",
+    "browser:install:ci": "bunx --bun playwright install --with-deps chromium",
+    "check:playwright": "bunx --bun playwright --version",
+    "check:semver": "bun run scripts/validate-version.ts",
     "check:publint": "bunx --bun publint .",
     "check:release": "bun run check:semver && bun run check:publint",
     "build:sfe:standalone": "bun build --compile src/standalone.ts --outfile dist/effect-scrapling",
@@ -19,6 +40,17 @@
   },
   "dependencies": {
     "cheerio": "^1.2.0",
-    "effect": "^3.19.19"
+    "effect": "^3.19.19",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@effect/language-service": "^0.75.1",
+    "@nx/eslint-plugin": "22.5.4",
+    "bun-types": "^1.3.10",
+    "nx": "22.5.4",
+    "oxfmt": "^0.34.0",
+    "oxlint": "^1.49.0",
+    "typescript": "5.9.3",
+    "ultracite": "^7.2.4"
   }
 }
