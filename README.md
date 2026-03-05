@@ -14,6 +14,20 @@ Both are built as single-file executables (SFE) in GitHub Actions for multiple p
 - `br` CLI
 - `jq`
 
+## Versioning Policy (Pre-1.0)
+
+Until the first manual stable release, versions must stay in major `0`:
+
+- `0.0.x`
+- `0.x.y`
+
+CI enforces this with:
+
+- `bun run check:semver`
+- `bun run check:publint`
+
+After `v1.0.0` exists, the pre-1.0 major-zero restriction is automatically lifted.
+
 ## Local Usage
 
 ### Run as standalone CLI
@@ -47,7 +61,7 @@ bun build --compile --target=bun-linux-x64 src/api.ts --outfile dist/api-bun-lin
 
 For Windows target names, use `.exe` output files.
 
-## GitHub Actions Artifacts (Multi-Platform)
+## GitHub Actions + Releases (Multi-Platform)
 
 Workflow: `.github/workflows/build-sfe.yml`
 
@@ -63,6 +77,31 @@ For each target, the workflow uploads artifacts containing:
 
 - `standalone-<target>[.exe]`
 - `api-<target>[.exe]`
+
+### Release publishing
+
+Release publishing is manual and explicit.
+
+1. Create and push a tag that matches `package.json` version:
+
+```bash
+git tag v0.0.1
+git push origin v0.0.1
+```
+
+2. Open Actions -> `build-sfe` -> `Run workflow` and set:
+
+- `publish_release=true`
+- `release_tag=v<package.json version>` (example: `v0.0.1`)
+- `allow_v1=true` only for the first manual `>=1.0.0` release
+
+The workflow creates/updates a GitHub Release for that tag with zip assets:
+
+- `sfe-bun-linux-x64.zip`
+- `sfe-bun-linux-arm64.zip`
+- `sfe-bun-darwin-x64.zip`
+- `sfe-bun-darwin-arm64.zip`
+- `sfe-bun-windows-x64.zip`
 
 ## Use as a Library Inside Other Tools
 

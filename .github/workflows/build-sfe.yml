@@ -2,6 +2,21 @@ name: build-sfe
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish GitHub Release with built binaries"
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: "Release tag to publish (required when publish_release=true on manual runs)"
+        required: false
+        type: string
+      allow_v1:
+        description: "Allow version >= 1.0.0 (manual override for first stable release)"
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - master
@@ -23,6 +38,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_release == true && inputs.release_tag || github.ref }}
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force --quiet
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -31,6 +52,26 @@ jobs:
 
       - name: Show Bun version
         run: bun --version
+
+      - name: Enforce semver policy
+        env:
+          ALLOW_V1_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_v1 == true && '1' || '0' }}
+        run: bun run check:semver
+
+      - name: Validate manual release tag/version alignment
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          pkg_version="$(jq -r '.version' package.json)"
+          expected="v${pkg_version}"
+          if [[ "${{ inputs.release_tag }}" != "$expected" ]]; then
+            echo "release_tag (${{ inputs.release_tag }}) must match package version ($expected)" >&2
+            exit 1
+          fi
+
+      - name: Publint package
+        run: bun run check:publint
 
       - name: Build standalone and api SFEs
         shell: bash
@@ -53,3 +94,55 @@ jobs:
           name: sfe-${{ matrix.target }}
           path: dist/*-${{ matrix.target }}*
           if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sfe-*
+          path: release-artifacts
+          merge-multiple: false
+
+      - name: Package release zips
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          for dir in release-artifacts/sfe-*; do
+            target="${dir#release-artifacts/sfe-}"
+            (
+              cd "$dir"
+              zip -9 -r "../../release/sfe-${target}.zip" .
+            )
+          done
+          ls -la release
+
+      - name: Resolve release tag
+        id: release_meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.release_tag }}"
+
+          if [[ -z "$tag" ]]; then
+            echo "release_tag is required for manual release publishing" >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.tag }}
+          generate_release_notes: true
+          files: release/*.zip
+          fail_on_unmatched_files: true

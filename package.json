@@ -2,11 +2,17 @@
   "name": "effect-scrapling-tooling",
   "private": true,
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "Standalone/API executable surfaces for effect-scrapling",
+  "engines": {
+    "bun": ">=1.3.10"
+  },
   "scripts": {
     "standalone": "bun run src/standalone.ts",
     "api": "bun run src/api.ts",
+    "check:semver": "bun scripts/validate-version.mjs",
+    "check:publint": "bunx --bun publint .",
+    "check:release": "bun run check:semver && bun run check:publint",
     "build:sfe:standalone": "bun build --compile src/standalone.ts --outfile dist/standalone",
     "build:sfe:api": "bun build --compile src/api.ts --outfile dist/api"
   }
