@@ -7,12 +7,14 @@ Operate the mirrored template/platform guardrail stack in this repository with r
 Primary references:
 - [Guardrail Parity Report](../guardrail-parity.md)
 - [Effect v4 Dependency Policy Runbook](./effect-v4-policy.md)
+- [Strict TypeScript Compiler Posture Runbook](./strict-typescript-posture.md)
 - [Governance Audit Runbook](./governance-audit.md)
 
 Primary implementation points:
 - `package.json` scripts (`check`, `lint`, `check:*`, `nx:*`)
 - `scripts/guardrails/effect-v4-policy.ts`
 - `scripts/guardrails/governance-audit.ts`
+- `scripts/guardrails/strict-ts-posture.ts`
 - `scripts/guardrails/type-safety-bypass-check.ts`
 - `scripts/guardrails/version-lockstep-policy.ts`
 - `scripts/validate-version.ts`
@@ -36,6 +38,7 @@ Primary implementation points:
 | Governance audit | `scripts/guardrails/governance-audit.ts` | `bun run check:governance` | `Governance audit passed (...)` |
 | Workspace lockstep version | `scripts/guardrails/version-lockstep-policy.ts` | `bun run check:lockstep-version` | `Workspace version lockstep policy OK ...` |
 | Effect v4 dependency baseline | `scripts/guardrails/effect-v4-policy.ts` | `bun run check:effect-v4-policy` | `Effect v4 dependency policy check passed ...` |
+| Strict TS posture | `scripts/guardrails/strict-ts-posture.ts`, `tsconfig.base.json`, `tsconfig.guardrails.json` | `bun run scripts/guardrails/strict-ts-posture.ts` | `Strict TypeScript posture check passed ...` |
 | Semver release policy | `scripts/validate-version.ts` | `bun run check:semver` | `Version policy OK: ...` |
 | Nx parity checks | `package.json#scripts.nx:*` | `bun run nx:show-projects && bun run nx:lint && bun run nx:typecheck` | Nx commands complete without errors |
 
