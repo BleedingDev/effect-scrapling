@@ -1,0 +1,28 @@
+{
+  "name": "foundation-core",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/foundation/core/src",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:foundation"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint libs/foundation/core/src/**/*.ts"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p libs/foundation/core/tsconfig.json"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p libs/foundation/core/tsconfig.json --outDir dist/libs/foundation/core"
+      },
+      "outputs": ["{workspaceRoot}/dist/libs/foundation/core"]
+    }
+  }
+}

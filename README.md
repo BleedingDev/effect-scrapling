@@ -6,6 +6,19 @@ EffectTS + Bun reimplementation of Scrapling with:
 - `effect-scrapling-api` HTTP API
 - reusable SDK functions in `src/sdk`
 
+## Browser Mode (Playwright)
+
+Browser-mode access uses Playwright + Chromium.
+
+```bash
+bun install
+bun run browser:install
+bun run check:playwright
+```
+
+CI installs and verifies Chromium in the Linux x64 build lane using the same
+Playwright scripts and strict `bun install --frozen-lockfile`.
+
 ## CLI
 
 ```bash

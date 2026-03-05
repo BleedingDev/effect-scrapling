@@ -1,0 +1,29 @@
+{
+  "name": "api-app",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/api/src",
+  "projectType": "application",
+  "implicitDependencies": ["foundation-core"],
+  "tags": ["type:app", "scope:api"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint apps/api/src/**/*.ts"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p apps/api/tsconfig.json"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p apps/api/tsconfig.json --outDir dist/apps/api"
+      },
+      "outputs": ["{workspaceRoot}/dist/apps/api"]
+    }
+  }
+}

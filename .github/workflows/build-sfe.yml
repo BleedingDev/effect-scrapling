@@ -54,7 +54,39 @@ jobs:
         run: bun --version
 
       - name: Install dependencies
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
         run: bun install --frozen-lockfile
+
+      - name: Guardrails (lint, format, type-safety)
+        if: matrix.target == 'bun-linux-x64'
+        run: bun run check
+
+      - name: Nx workspace checks
+        if: matrix.target == 'bun-linux-x64'
+        run: |
+          bun run nx:show-projects
+          bun run nx:lint
+          bun run nx:typecheck
+
+      - name: Cache Playwright browsers
+        if: matrix.target == 'bun-linux-x64'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bun.lock', 'package.json') }}
+
+      - name: Install Playwright Chromium
+        if: matrix.target == 'bun-linux-x64'
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
+        run: bun run browser:install:ci
+
+      - name: Verify Playwright runtime
+        if: matrix.target == 'bun-linux-x64'
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: ~/.cache/ms-playwright
+        run: bun run check:playwright
 
       - name: Enforce semver policy
         env:

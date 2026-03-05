@@ -10,7 +10,7 @@
         "playwright": "^1.52.0",
       },
       "devDependencies": {
-        "@effect-native/bun-test": "^4.0.0",
+        "@effect-native/bun-test": "file:vendor/effect-native-bun-test",
         "@effect/language-service": "^0.75.1",
         "@nx/eslint-plugin": "22.5.4",
         "bun-types": "^1.3.10",
@@ -221,7 +221,7 @@
 
     "@clack/prompts": ["@clack/prompts@1.1.0", "", { "dependencies": { "@clack/core": "1.1.0", "sisteransi": "^1.0.5" } }, "sha512-pkqbPGtohJAvm4Dphs2M8xE29ggupihHdy1x84HNojZuMtFsHiUlRvqD24tM2+XmI+61LlfNceM3Wr7U5QES5g=="],
 
-    "@effect-native/bun-test": ["@effect-native/bun-test@4.0.0", "", { "peerDependencies": { "@types/bun": "*", "effect": "^4.0.0-beta.0" } }, "sha512-b2UsoPtY+dA2WdsjZvUiTiLHPYMHZg7PIllErXwK2jNMw4sUf/bunQo3hEiZ1kF2iDvnrfHG3cA91krUaJvBtA=="],
+    "@effect-native/bun-test": ["@effect-native/bun-test@file:vendor/effect-native-bun-test", { "peerDependencies": { "@types/bun": "*", "effect": "^4.0.0-beta.0" } }],
 
     "@effect/language-service": ["@effect/language-service@0.75.1", "", { "bin": { "effect-language-service": "cli.js" } }, "sha512-g9xD2tAQgRFpYC2YgpZq02VeSL5fBbFJ0B/g1o+14NuNmwtaYJc7SjiLWAA9eyhJHosNrn6h1Ye+Kx6j5mN0AA=="],
 

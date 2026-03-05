@@ -4,6 +4,10 @@
 *.db
 dist/
 node_modules/
+.nx/
 
 # Nested upstream reference repo (not part of this project history)
 /Scrapling/
+
+# bv (beads viewer) local config and caches
+.bv/

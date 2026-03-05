@@ -1,0 +1,33 @@
+{
+  "name": "sf-assets",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": ".sf",
+  "projectType": "library",
+  "tags": ["type:sf", "scope:sf"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"process.exit(0)\""
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"process.exit(0)\""
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node -e \"process.exit(0)\""
+      }
+    },
+    "validate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun run scripts/guardrails/validate-sf-assets.ts"
+      }
+    }
+  }
+}

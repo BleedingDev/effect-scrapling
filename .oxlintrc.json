@@ -1,0 +1,37 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["ultracite/oxlint/core"],
+  "jsPlugins": ["@nx/eslint-plugin"],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "ignorePatterns": ["dist", "node_modules", ".nx", ".beads", "Scrapling", "tmp"],
+  "rules": {
+    "@nx/enforce-module-boundaries": [
+      "error",
+      {
+        "enforceBuildableLibDependency": true,
+        "allow": [],
+        "depConstraints": [
+          {
+            "sourceTag": "type:app",
+            "onlyDependOnLibsWithTags": ["type:lib"]
+          },
+          {
+            "sourceTag": "type:lib",
+            "onlyDependOnLibsWithTags": ["type:lib"]
+          },
+          {
+            "sourceTag": "type:tool",
+            "onlyDependOnLibsWithTags": ["type:lib", "type:tool"]
+          },
+          {
+            "sourceTag": "type:sf",
+            "onlyDependOnLibsWithTags": ["type:sf"]
+          }
+        ]
+      }
+    ]
+  }
+}

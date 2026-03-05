@@ -1,0 +1,29 @@
+{
+  "name": "ci-tooling",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/ci/src",
+  "projectType": "library",
+  "implicitDependencies": ["foundation-core"],
+  "tags": ["type:tool", "scope:ci"],
+  "targets": {
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "oxlint tools/ci/src/**/*.ts"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p tools/ci/tsconfig.json"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc -p tools/ci/tsconfig.json --outDir dist/tools/ci"
+      },
+      "outputs": ["{workspaceRoot}/dist/tools/ci"]
+    }
+  }
+}

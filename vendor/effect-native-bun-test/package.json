@@ -1,0 +1,18 @@
+{
+  "name": "@effect-native/bun-test",
+  "version": "4.0.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Helpers for testing every Effect with bun:test",
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts",
+    "./internal/*": null
+  },
+  "peerDependencies": {
+    "@types/bun": "*",
+    "effect": "^4.0.0-beta.0"
+  }
+}

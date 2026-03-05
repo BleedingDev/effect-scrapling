@@ -3,12 +3,21 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 
+type PackageJson = {
+  version?: string;
+};
+
 const pkgPath = path.resolve(process.cwd(), "package.json");
-const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8")) as PackageJson;
 
 const version = pkg.version;
+if (!version) {
+  console.error("Missing version in package.json");
+  process.exit(1);
+}
+
 const semver =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u;
 const match = semver.exec(version);
 
 if (!match) {
@@ -28,7 +37,7 @@ if (major > 0 && !allowV1Override && !v1Released) {
   console.error(
     `Version ${version} is not allowed by pre-1.0 policy. ` +
       "Until the first stable release (v1.0.0), version must stay in major 0 " +
-      "(0.0.x or 0.x.y). Set ALLOW_V1_RELEASE=1 only for the manual v1 release workflow."
+      "(0.0.x or 0.x.y). Set ALLOW_V1_RELEASE=1 only for the manual v1 release workflow.",
   );
   process.exit(1);
 }

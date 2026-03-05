@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@effect-scrapling/api-app": ["apps/api/src/api-entry.ts"],
+      "@effect-scrapling/cli-app": ["apps/cli/src/cli-entry.ts"],
+      "@effect-scrapling/foundation-core": ["libs/foundation/core/src/workspace-banner.ts"],
+      "@effect-scrapling/ci-tooling": ["tools/ci/src/project-health.ts"]
+    }
+  }
+}
