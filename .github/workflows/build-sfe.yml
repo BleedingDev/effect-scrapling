@@ -53,6 +53,9 @@ jobs:
       - name: Show Bun version
         run: bun --version
 
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
       - name: Enforce semver policy
         env:
           ALLOW_V1_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.allow_v1 == true && '1' || '0' }}
