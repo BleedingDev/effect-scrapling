@@ -76,16 +76,24 @@ function makeLifecycleState(): BrowserLifecycleState {
 function makeCrashRecoveryEngine(options: {
   readonly state: BrowserLifecycleState;
   readonly crashOnContentCallNumbers?: ReadonlyArray<number>;
+  readonly failLaunchOnAttemptNumbers?: ReadonlyArray<number>;
 }): BrowserAccessEngine {
   let contextSequence = 0;
   let pageSequence = 0;
   const crashOnContentCallNumbers = new Set(options.crashOnContentCallNumbers ?? []);
+  const failLaunchOnAttemptNumbers = new Set(options.failLaunchOnAttemptNumbers ?? []);
 
   return {
     chromium: {
       launch: async () => {
         options.state.launches.current += 1;
-        const browserId = `browser-${options.state.launches.current}`;
+        const launchAttempt = options.state.launches.current;
+
+        if (failLaunchOnAttemptNumbers.has(launchAttempt)) {
+          throw new Error(`launch failed on attempt ${launchAttempt}`);
+        }
+
+        const browserId = `browser-${launchAttempt}`;
         options.state.launchedBrowsers.push(browserId);
 
         return {
@@ -111,7 +119,7 @@ function makeCrashRecoveryEngine(options: {
 
                     return `<html><body><main>${browserId}:${pageId}</main></body></html>`;
                   },
-                  screenshot: async () => Uint8Array.from([options.state.launches.current, 7, 9]),
+                  screenshot: async () => Uint8Array.from([launchAttempt, 7, 9]),
                   evaluate: async () => ({
                     navigation: [],
                     resources: [],
@@ -207,6 +215,76 @@ describe("foundation-core browser crash recovery", () => {
       ]);
       expect(state.closedPages).toEqual(state.openedPages);
     }),
+  );
+
+  it.effect(
+    "records unrecovered crash telemetry when browser recycle relaunch fails without leaks",
+    () =>
+      Effect.gen(function* () {
+        const state = makeLifecycleState();
+        const detector = yield* makeInMemoryBrowserLeakDetector(
+          leakPolicy,
+          () => new Date("2026-03-06T12:00:06.000Z"),
+        );
+        const engine = makeCrashRecoveryEngine({
+          state,
+          crashOnContentCallNumbers: [1],
+          failLaunchOnAttemptNumbers: [2],
+        });
+
+        const failure = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const access = yield* BrowserAccess;
+            return yield* access.capture(browserPlan).pipe(Effect.flip);
+          }).pipe(
+            Effect.provide(
+              BrowserAccessLive({
+                engine,
+                detector,
+                now: () => new Date("2026-03-06T12:00:05.000Z"),
+              }),
+            ),
+          ),
+        );
+        const telemetry = yield* detector.readCrashTelemetry;
+        const inspection = yield* detector.inspect;
+        const alarms = yield* detector.readAlarms;
+
+        expect(failure.name).toBe("RenderCrashError");
+        expect(failure.message).toContain("failed to capture rendered DOM");
+        expect(telemetry.map((entry) => encodeCrashTelemetry(entry))).toEqual([
+          {
+            planId: browserPlan.id,
+            browserGeneration: 0,
+            recycledToGeneration: null,
+            recovered: false,
+            failure: {
+              code: "render_crash",
+              retryable: true,
+              message: "Browser access failed to capture rendered DOM: page crashed in browser-1",
+            },
+            recordedAt: "2026-03-06T12:00:05.000Z",
+          },
+        ]);
+        expect(encodeLeakSnapshot(inspection)).toEqual({
+          openBrowsers: 0,
+          openContexts: 0,
+          openPages: 0,
+          consecutiveViolationCount: 0,
+          sampleCount: 6,
+          lastPlanId: browserPlan.id,
+          recordedAt: "2026-03-06T12:00:06.000Z",
+        });
+        expect(alarms).toEqual([]);
+        expect(state.launches.current).toBe(2);
+        expect(state.contentCalls.current).toBe(1);
+        expect(state.launchedBrowsers).toEqual(["browser-1"]);
+        expect(state.closedBrowsers).toEqual(["browser-1"]);
+        expect(state.openedContexts).toEqual(["browser-1/context-1"]);
+        expect(state.closedContexts).toEqual(state.openedContexts);
+        expect(state.openedPages).toEqual(["browser-1/context-1/page-1"]);
+        expect(state.closedPages).toEqual(state.openedPages);
+      }),
   );
 
   it.effect("reports zero dangling browser resources after a passing soak run", () =>

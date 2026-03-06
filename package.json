@@ -39,6 +39,8 @@
     "check:e1-performance-budget": "bun run benchmark:e1-performance-budget",
     "benchmark:e3-access-runtime": "bun run scripts/benchmarks/e3-access-runtime.ts --baseline docs/artifacts/e3-access-runtime-baseline.json",
     "check:e3-access-runtime": "bun run benchmark:e3-access-runtime",
+    "benchmark:e4-browser-soak-load": "bun run scripts/benchmarks/e4-browser-soak-load.ts",
+    "check:e4-browser-soak-load": "bun run benchmark:e4-browser-soak-load",
     "check:e1-foundation-core-consumer": "bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts && bun run example:e1-foundation-core-consumer",
     "benchmark:e0-performance-budget": "bun run scripts/benchmarks/e0-performance-budget.ts --baseline docs/artifacts/e0-performance-budget-baseline.json",
     "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts examples -g '*.ts')",

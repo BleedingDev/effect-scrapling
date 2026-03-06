@@ -220,6 +220,93 @@ describe("foundation-core browser leak detection", () => {
     }),
   );
 
+  it.effect(
+    "keeps resource counts at zero for imbalanced closes and alarms on repeated underflow",
+    () =>
+      Effect.gen(function* () {
+        const detector = yield* makeInMemoryBrowserLeakDetector(
+          BASE_POLICY,
+          makeClock([
+            "2026-03-06T16:30:00.000Z",
+            "2026-03-06T16:30:01.000Z",
+            "2026-03-06T16:30:02.000Z",
+            "2026-03-06T16:30:03.000Z",
+            "2026-03-06T16:30:04.000Z",
+          ]),
+        );
+
+        const firstUnderflow = yield* detector.recordContextClosed("plan-underflow-001");
+        const alarmsBeforeThreshold = yield* detector.readAlarms;
+        const thresholdUnderflow = yield* detector.recordContextClosed();
+        const recovered = yield* detector.recordContextOpened();
+        const balanced = yield* detector.recordContextClosed();
+        const inspection = yield* detector.inspect;
+        const alarms = yield* detector.readAlarms;
+
+        expect(encodeSnapshot(firstUnderflow)).toEqual({
+          openBrowsers: 0,
+          openContexts: 0,
+          openPages: 0,
+          consecutiveViolationCount: 1,
+          sampleCount: 1,
+          lastPlanId: "plan-underflow-001",
+          recordedAt: "2026-03-06T16:30:00.000Z",
+        });
+        expect(alarmsBeforeThreshold).toEqual([]);
+        expect(encodeSnapshot(thresholdUnderflow)).toEqual({
+          openBrowsers: 0,
+          openContexts: 0,
+          openPages: 0,
+          consecutiveViolationCount: 2,
+          sampleCount: 2,
+          lastPlanId: "plan-underflow-001",
+          recordedAt: "2026-03-06T16:30:01.000Z",
+        });
+        expect(encodeSnapshot(recovered)).toEqual({
+          openBrowsers: 0,
+          openContexts: 1,
+          openPages: 0,
+          consecutiveViolationCount: 0,
+          sampleCount: 3,
+          lastPlanId: "plan-underflow-001",
+          recordedAt: "2026-03-06T16:30:02.000Z",
+        });
+        expect(encodeSnapshot(balanced)).toEqual({
+          openBrowsers: 0,
+          openContexts: 0,
+          openPages: 0,
+          consecutiveViolationCount: 0,
+          sampleCount: 4,
+          lastPlanId: "plan-underflow-001",
+          recordedAt: "2026-03-06T16:30:03.000Z",
+        });
+        expect(encodeSnapshot(inspection)).toEqual({
+          openBrowsers: 0,
+          openContexts: 0,
+          openPages: 0,
+          consecutiveViolationCount: 0,
+          sampleCount: 4,
+          lastPlanId: "plan-underflow-001",
+          recordedAt: "2026-03-06T16:30:04.000Z",
+        });
+        expect(alarms.map((alarm) => encodeAlarm(alarm))).toEqual([
+          {
+            snapshot: {
+              openBrowsers: 0,
+              openContexts: 0,
+              openPages: 0,
+              consecutiveViolationCount: 2,
+              sampleCount: 2,
+              lastPlanId: "plan-underflow-001",
+              recordedAt: "2026-03-06T16:30:01.000Z",
+            },
+            reason: "Browser leak detector attempted to release context below zero.",
+            recordedAt: "2026-03-06T16:30:01.000Z",
+          },
+        ]);
+      }),
+  );
+
   it.effect("stores crash telemetry entries with typed failure envelopes", () =>
     Effect.gen(function* () {
       const detector = yield* makeInMemoryBrowserLeakDetector(BASE_POLICY);
