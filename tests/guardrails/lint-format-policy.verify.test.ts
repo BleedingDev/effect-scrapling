@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "@effect-native/bun-test";
+import { Schema } from "effect";
 
 type CommandResult = {
   status: number | null;
@@ -15,6 +16,9 @@ type PackageScripts = Record<string, string>;
 const REPO_ROOT = resolve(import.meta.dir, "..", "..");
 const API_SOURCE_ROOT = join(REPO_ROOT, "apps", "api", "src");
 const GUARDRAILS_TEST_ROOT = join(REPO_ROOT, "tests", "guardrails");
+const PACKAGE_JSON_SCHEMA = Schema.Struct({
+  scripts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+});
 
 function runCommand(command: readonly [string, ...string[]], cwd = REPO_ROOT): CommandResult {
   const result = spawnSync(command[0], command.slice(1), {
@@ -36,7 +40,7 @@ function getCombinedOutput(result: CommandResult): string {
 async function readPackageScripts(): Promise<PackageScripts> {
   const packageJsonPath = join(REPO_ROOT, "package.json");
   const packageJsonContent = await readFile(packageJsonPath, "utf8");
-  const parsed = JSON.parse(packageJsonContent) as { scripts?: PackageScripts };
+  const parsed = Schema.decodeUnknownSync(PACKAGE_JSON_SCHEMA)(JSON.parse(packageJsonContent));
   return parsed.scripts ?? {};
 }
 
@@ -59,14 +63,22 @@ async function withTemporaryFixtureFile(
 }
 
 describe("lint and format policy verification", () => {
-  it("wires lint and format guardrails into package scripts and full check pipeline", async () => {
+  it("wires autofix lint scripts and check-only verification into package scripts", async () => {
     const scripts = await readPackageScripts();
-    expect(scripts.ultracite).toContain("bunx --bun ultracite check");
+    expect(scripts.ultracite).toContain("bunx --bun ultracite fix");
+    expect(scripts["ultracite:check"]).toContain("bunx --bun ultracite check");
     expect(scripts.oxlint).toContain("bunx --bun oxlint");
-    expect(scripts.oxfmt).toBe("bun run format:check");
-    expect(scripts.check).toContain("bun run ultracite");
-    expect(scripts.check).toContain("bun run oxlint");
-    expect(scripts.check).toContain("bun run oxfmt");
+    expect(scripts.oxlint).toContain("--fix");
+    expect(scripts["oxlint:check"]).toContain("bunx --bun oxlint");
+    expect(scripts["oxlint:check"]).not.toContain("--fix");
+    expect(scripts.oxfmt).toBe("bun run format");
+    expect(scripts.lint).toContain("bun run ultracite");
+    expect(scripts.lint).toContain("bun run oxlint");
+    expect(scripts.lint).toContain("bun run oxfmt");
+    expect(scripts["lint:check"]).toContain("bun run ultracite:check");
+    expect(scripts["lint:check"]).toContain("bun run oxlint:check");
+    expect(scripts["lint:check"]).toContain("bun run format:check");
+    expect(scripts.check).toContain("bun run lint:check");
     expect(scripts["check:strict-ts-posture"]).toBe(
       "bun run scripts/guardrails/strict-ts-posture.ts",
     );

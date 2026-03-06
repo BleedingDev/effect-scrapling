@@ -43,6 +43,15 @@ export {
   type IdentityLeaseEncoded,
 } from "./budget-lease-artifact.js";
 export {
+  PackPromotionDecision,
+  PackPromotionDecisionSchema,
+  QualityVerdictSchema,
+  SnapshotDiffSchema,
+  type PackPromotionDecisionEncoded,
+  type QualityVerdict,
+  type SnapshotDiff,
+} from "./diff-verdict.js";
+export {
   CheckpointCorruption,
   CoreErrorCodeSchema,
   CoreErrorEnvelopeSchema,

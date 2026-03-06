@@ -1,9 +1,9 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../../../dist/out-tsc/libs/foundation/core",
+    "outDir": "../../../dist/out-tsc/libs/foundation/core",
     "rootDir": "./src",
-    "tsBuildInfoFile": "../../../../dist/out-tsc/libs/foundation/core/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "../../../dist/out-tsc/libs/foundation/core/tsconfig.tsbuildinfo"
   },
   "include": ["src/**/*.ts"]
 }

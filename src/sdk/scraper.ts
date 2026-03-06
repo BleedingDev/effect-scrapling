@@ -9,6 +9,7 @@ import {
   type AccessPreviewResponse,
   type BrowserOptions,
   type BrowserWaitUntil,
+  DEFAULT_BROWSER_WAIT_UNTIL,
   ExtractRunRequestSchema,
   ExtractRunResponseSchema,
   type ExtractRunRequest,
@@ -17,14 +18,22 @@ import {
 import { formatUnknownError } from "./error-guards";
 import { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors";
 
-const DEFAULT_TIMEOUT_MS = 15_000;
-const DEFAULT_SELECTOR = "title";
-const DEFAULT_LIMIT = 20;
 const MAX_REDIRECTS = 5;
 const DEFAULT_USER_AGENT = "effect-scrapling/0.0.1";
 const DEFAULT_BROWSER_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
-const DEFAULT_BROWSER_WAIT_UNTIL: BrowserWaitUntil = "networkidle";
+const IPV4_SEGMENT_TEXT_SCHEMA = Schema.String.check(Schema.isPattern(/^(?:0|[1-9]\d{0,2})$/u));
+const IPV4_SEGMENT_SCHEMA = Schema.FiniteFromString.check(Schema.isInt())
+  .check(Schema.isGreaterThanOrEqualTo(0))
+  .check(Schema.isLessThanOrEqualTo(255));
+const IPV6_SEGMENT_TEXT_SCHEMA = Schema.String.check(Schema.isPattern(/^[0-9a-f]{1,4}$/iu));
+const IPV6_SEGMENT_SCHEMA = Schema.NumberFromString.check(Schema.isInt())
+  .check(Schema.isGreaterThanOrEqualTo(0))
+  .check(Schema.isLessThanOrEqualTo(0xffff));
+const decodeIpv4SegmentText = Schema.decodeUnknownSync(IPV4_SEGMENT_TEXT_SCHEMA);
+const decodeIpv4Segment = Schema.decodeUnknownSync(IPV4_SEGMENT_SCHEMA);
+const decodeIpv6SegmentText = Schema.decodeUnknownSync(IPV6_SEGMENT_TEXT_SCHEMA);
+const decodeIpv6Segment = Schema.decodeUnknownSync(IPV6_SEGMENT_SCHEMA);
 
 type FetchServiceShape = {
   readonly fetch: FetchClient;
@@ -58,13 +67,6 @@ function decodeRequest<S extends Schema.Top & { readonly DecodingServices: never
   });
 }
 
-function resolveTimeout(timeoutMs?: number): number {
-  if (typeof timeoutMs === "number" && timeoutMs > 0) {
-    return timeoutMs;
-  }
-  return DEFAULT_TIMEOUT_MS;
-}
-
 function resolveBrowserWaitUntil(waitUntil?: BrowserWaitUntil): BrowserWaitUntil {
   return waitUntil ?? DEFAULT_BROWSER_WAIT_UNTIL;
 }
@@ -84,20 +86,18 @@ function parseIpv4Segments(
     return undefined;
   }
 
-  const parsed = segments.map((segment) => Number.parseInt(segment, 10));
-  if (
-    parsed.some(
-      (segment, index) =>
-        !Number.isInteger(segment) ||
-        segment < 0 ||
-        segment > 255 ||
-        String(segment) !== segments[index],
-    )
-  ) {
+  const [firstSegment, secondSegment, thirdSegment, fourthSegment] = segments;
+
+  try {
+    return [
+      decodeIpv4Segment(decodeIpv4SegmentText(firstSegment)),
+      decodeIpv4Segment(decodeIpv4SegmentText(secondSegment)),
+      decodeIpv4Segment(decodeIpv4SegmentText(thirdSegment)),
+      decodeIpv4Segment(decodeIpv4SegmentText(fourthSegment)),
+    ];
+  } catch {
     return undefined;
   }
-
-  return parsed as [number, number, number, number];
 }
 
 function parseIpv6SegmentsPart(part: string): number[] | undefined {
@@ -119,11 +119,11 @@ function parseIpv6SegmentsPart(part: string): number[] | undefined {
       continue;
     }
 
-    if (!/^[0-9a-f]{1,4}$/iu.test(segment)) {
+    try {
+      parsed.push(decodeIpv6Segment(`0x${decodeIpv6SegmentText(segment)}`));
+    } catch {
       return undefined;
     }
-
-    parsed.push(Number.parseInt(segment, 16));
   }
 
   return parsed;
@@ -274,8 +274,8 @@ function resolveValidatedUrl(candidate: string, currentUrl?: URL): URL {
 }
 
 type RequestFetchOptions = {
-  readonly mode?: AccessMode | undefined;
-  readonly timeoutMs?: number | undefined;
+  readonly mode: AccessMode;
+  readonly timeoutMs: number;
   readonly userAgent?: string | undefined;
   readonly browser?: BrowserOptions | undefined;
 };
@@ -296,12 +296,12 @@ type BrowserFetchOptions = {
 type ResolvedFetchOptions = HttpFetchOptions | BrowserFetchOptions;
 
 function resolveFetchOptions(request: RequestFetchOptions): ResolvedFetchOptions {
-  const mode: AccessMode = request.mode ?? "http";
+  const mode: AccessMode = request.mode;
   if (mode === "browser") {
     const userAgent = request.browser?.userAgent ?? request.userAgent;
     return {
       mode,
-      timeoutMs: resolveTimeout(request.browser?.timeoutMs ?? request.timeoutMs),
+      timeoutMs: request.browser?.timeoutMs ?? request.timeoutMs,
       waitUntil: resolveBrowserWaitUntil(request.browser?.waitUntil),
       ...(userAgent !== undefined ? { userAgent } : {}),
     };
@@ -310,7 +310,7 @@ function resolveFetchOptions(request: RequestFetchOptions): ResolvedFetchOptions
   const userAgent = request.userAgent;
   return {
     mode: "http",
-    timeoutMs: resolveTimeout(request.timeoutMs),
+    timeoutMs: request.timeoutMs,
     ...(userAgent !== undefined ? { userAgent } : {}),
   };
 }
@@ -450,12 +450,12 @@ function isPlaywrightModule(module: unknown): module is PlaywrightModule {
     return false;
   }
 
-  const chromium = (module as { readonly chromium?: unknown }).chromium;
+  const chromium = Reflect.get(module, "chromium");
   if (typeof chromium !== "object" || chromium === null) {
     return false;
   }
 
-  return typeof (chromium as { readonly launch?: unknown }).launch === "function";
+  return typeof Reflect.get(chromium, "launch") === "function";
 }
 
 function loadPlaywright(): Effect.Effect<PlaywrightModule, BrowserError> {
@@ -673,9 +673,9 @@ export function extractRun(
     );
     const validatedUrl = yield* parseUserFacingUrl(request.url);
 
-    const selector = request.selector ?? DEFAULT_SELECTOR;
-    const limit = request.limit ?? DEFAULT_LIMIT;
-    const all = request.all ?? false;
+    const selector = request.selector;
+    const limit = request.limit;
+    const all = request.all;
     const options = resolveFetchOptions(request);
 
     const page = yield* fetchPage(validatedUrl, options);

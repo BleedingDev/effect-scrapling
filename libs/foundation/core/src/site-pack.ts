@@ -1,46 +1,36 @@
-import { Schema } from "effect";
+import { Effect, Schema, SchemaGetter } from "effect";
 import { CanonicalIdentifierSchema } from "./schema-primitives.js";
 
 const DOMAIN_PATTERN_SCHEMA = Schema.Trim.pipe(
   Schema.check(Schema.isNonEmpty()),
   Schema.check(Schema.isLowercased()),
-  Schema.refine(
-    (value): value is string =>
-      /^(?:\*\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/u.test(
-        value,
-      ) &&
-      !value.includes("://") &&
-      !/\s/gu.test(value),
-    {
-      message: "Expected a lowercased domain pattern without protocol or whitespace.",
-    },
-  ),
+  Schema.decode({
+    decode: SchemaGetter.checkEffect((value) =>
+      Effect.succeed(
+        /^(?:\*\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/u.test(
+          value,
+        ) &&
+          !value.includes("://") &&
+          !/\s/gu.test(value)
+          ? undefined
+          : "Expected a lowercased domain pattern without protocol or whitespace.",
+      ),
+    ),
+    encode: SchemaGetter.passthrough(),
+  }),
 );
 
 const PACK_VERSION_SCHEMA = Schema.Trim.pipe(
   Schema.check(Schema.isNonEmpty()),
-  Schema.refine((value): value is string => !/\s/gu.test(value), {
-    message: "Expected a non-empty pack version without whitespace.",
+  Schema.decode({
+    decode: SchemaGetter.checkEffect((value) =>
+      Effect.succeed(
+        !/\s/gu.test(value) ? undefined : "Expected a non-empty pack version without whitespace.",
+      ),
+    ),
+    encode: SchemaGetter.passthrough(),
   }),
 );
-
-const ALLOWED_TRANSITIONS = new Set([
-  "draft->shadow",
-  "draft->retired",
-  "shadow->active",
-  "shadow->retired",
-  "active->shadow",
-  "active->guarded",
-  "active->quarantined",
-  "active->retired",
-  "guarded->shadow",
-  "guarded->active",
-  "guarded->quarantined",
-  "guarded->retired",
-  "quarantined->shadow",
-  "quarantined->active",
-  "quarantined->retired",
-]);
 
 export const PackStateSchema = Schema.Literals([
   "draft",
@@ -59,22 +49,68 @@ export class SitePack extends Schema.Class<SitePack>("SitePack")({
   version: PACK_VERSION_SCHEMA,
 }) {}
 
-class PackLifecycleTransitionBase extends Schema.Class<PackLifecycleTransitionBase>(
-  "PackLifecycleTransition",
-)({
-  from: PackStateSchema,
-  to: PackStateSchema,
-}) {}
-
-export const PackLifecycleTransitionSchema = PackLifecycleTransitionBase.pipe(
-  Schema.refine(
-    (value): value is Schema.Schema.Type<typeof PackLifecycleTransitionBase> =>
-      ALLOWED_TRANSITIONS.has(`${value.from}->${value.to}`),
-    {
-      message: "Expected a supported site-pack lifecycle transition.",
-    },
-  ),
-);
+export const PackLifecycleTransitionSchema = Schema.Union([
+  Schema.Struct({
+    from: Schema.Literal("draft"),
+    to: Schema.Literal("shadow"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("draft"),
+    to: Schema.Literal("retired"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("shadow"),
+    to: Schema.Literal("active"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("shadow"),
+    to: Schema.Literal("retired"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("active"),
+    to: Schema.Literal("shadow"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("active"),
+    to: Schema.Literal("guarded"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("active"),
+    to: Schema.Literal("quarantined"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("active"),
+    to: Schema.Literal("retired"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("guarded"),
+    to: Schema.Literal("shadow"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("guarded"),
+    to: Schema.Literal("active"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("guarded"),
+    to: Schema.Literal("quarantined"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("guarded"),
+    to: Schema.Literal("retired"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("quarantined"),
+    to: Schema.Literal("shadow"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("quarantined"),
+    to: Schema.Literal("active"),
+  }),
+  Schema.Struct({
+    from: Schema.Literal("quarantined"),
+    to: Schema.Literal("retired"),
+  }),
+]);
 
 export const SitePackSchema = SitePack;
 

@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from "effect";
 
 const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0));
 const NonEmptyTrimmedString = Schema.Trim.check(Schema.isNonEmpty());
@@ -10,28 +10,98 @@ const BrowserWaitUntilSchema = Schema.Literals([
   "commit",
 ] as const);
 
+export const DEFAULT_ACCESS_MODE = "http";
+export const DEFAULT_TIMEOUT_MS = 15_000;
+export const DEFAULT_SELECTOR = "title";
+export const DEFAULT_LIMIT = 20;
+export const DEFAULT_BROWSER_WAIT_UNTIL = "networkidle";
+const PositiveIntFromString = Schema.FiniteFromString.check(Schema.isInt()).check(
+  Schema.isGreaterThan(0),
+);
+
+const PositiveIntInputSchema = Schema.Union([
+  PositiveInt,
+  Schema.Trim.pipe(
+    Schema.check(Schema.isPattern(/^\d+$/u)),
+    Schema.decodeTo(PositiveIntFromString, {
+      decode: SchemaGetter.passthrough(),
+      encode: SchemaGetter.String(),
+    }),
+  ),
+]);
+
+const AccessModeInputSchema = Schema.Trim.pipe(
+  Schema.decodeTo(AccessModeSchema, {
+    decode: SchemaGetter.transformOrFail((value) => {
+      if (value === "http" || value === "browser") {
+        return Effect.succeed(value);
+      }
+
+      return Effect.fail(new SchemaIssue.InvalidValue(Option.some(value)));
+    }),
+    encode: SchemaGetter.String(),
+  }),
+);
+
+const BrowserWaitUntilInputSchema = Schema.Trim.pipe(
+  Schema.decodeTo(BrowserWaitUntilSchema, {
+    decode: SchemaGetter.transformOrFail((value) => {
+      if (
+        value === "load" ||
+        value === "domcontentloaded" ||
+        value === "networkidle" ||
+        value === "commit"
+      ) {
+        return Effect.succeed(value);
+      }
+
+      return Effect.fail(new SchemaIssue.InvalidValue(Option.some(value)));
+    }),
+    encode: SchemaGetter.String(),
+  }),
+);
+
+const BooleanInputSchema = Schema.Union([
+  Schema.Boolean,
+  Schema.Trim.pipe(
+    Schema.decodeTo(Schema.Boolean, {
+      decode: SchemaGetter.transformOrFail((value) => {
+        const normalized = value.toLowerCase();
+        if (normalized === "true") {
+          return Effect.succeed(true);
+        }
+        if (normalized === "false") {
+          return Effect.succeed(false);
+        }
+        return Effect.fail(new SchemaIssue.InvalidValue(Option.some(value)));
+      }),
+      encode: SchemaGetter.transform((value) => (value ? "true" : "false")),
+    }),
+  ),
+]);
+
 export const BrowserOptionsSchema = Schema.Struct({
-  waitUntil: Schema.optional(BrowserWaitUntilSchema),
-  timeoutMs: Schema.optional(PositiveInt),
+  waitUntil: Schema.optional(BrowserWaitUntilInputSchema),
+  timeoutMs: Schema.optional(PositiveIntInputSchema),
   userAgent: Schema.optional(NonEmptyTrimmedString),
 });
 
 export const AccessPreviewRequestSchema = Schema.Struct({
   url: NonEmptyTrimmedString,
-  mode: Schema.optional(AccessModeSchema),
-  timeoutMs: Schema.optional(PositiveInt),
+  mode: AccessModeInputSchema.pipe(Schema.withDecodingDefault(() => DEFAULT_ACCESS_MODE)),
+  timeoutMs: PositiveIntInputSchema.pipe(Schema.withDecodingDefault(() => DEFAULT_TIMEOUT_MS)),
   userAgent: Schema.optional(NonEmptyTrimmedString),
   browser: Schema.optional(BrowserOptionsSchema),
 });
 
 export const ExtractRunRequestSchema = Schema.Struct({
   url: NonEmptyTrimmedString,
-  mode: Schema.optional(AccessModeSchema),
-  selector: Schema.optional(NonEmptyTrimmedString),
+  mode: AccessModeInputSchema.pipe(Schema.withDecodingDefault(() => DEFAULT_ACCESS_MODE)),
+  selector: NonEmptyTrimmedString.pipe(Schema.withDecodingDefault(() => DEFAULT_SELECTOR)),
   attr: Schema.optional(NonEmptyTrimmedString),
-  all: Schema.optional(Schema.Boolean),
-  limit: Schema.optional(PositiveInt),
-  timeoutMs: Schema.optional(PositiveInt),
+  all: BooleanInputSchema.pipe(Schema.withDecodingDefault(() => false)),
+  limit: PositiveIntInputSchema.pipe(Schema.withDecodingDefault(() => DEFAULT_LIMIT)),
+  timeoutMs: PositiveIntInputSchema.pipe(Schema.withDecodingDefault(() => DEFAULT_TIMEOUT_MS)),
   userAgent: Schema.optional(NonEmptyTrimmedString),
   browser: Schema.optional(BrowserOptionsSchema),
 });
