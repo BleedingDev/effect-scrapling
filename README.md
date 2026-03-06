@@ -82,6 +82,7 @@ Operator runbooks:
 - [E0 security review](docs/runbooks/e0-security-review.md)
 - [E0 performance budget](docs/runbooks/e0-performance-budget.md)
 - [E0 operations and rollback drill](docs/runbooks/e0-operations-rollback-drill.md)
+- `docs/artifacts/e0-post-validation-triage.md`
 
 ## CLI
 
@@ -202,3 +203,4 @@ Performance and recovery evidence for the same slice:
 - `bun run benchmark:e0-performance-budget`
 - `docs/artifacts/e0-performance-budget-baseline.json`
 - `docs/artifacts/e0-rollback-drill.md`
+- `docs/artifacts/e0-post-validation-triage.md`

@@ -10,6 +10,7 @@ Run one deterministic command that exercises the full E0 workspace foundation:
 - CI workflow contract verification
 - compliant-module generator verification
 - E0 security, performance, rollback, and consumer-contract verification
+- post-validation triage evidence verification
 - root guardrail, test, and build gates
 
 Use this when you need a single executable evidence path for promotion,
@@ -49,8 +50,9 @@ The command executes this sequence in order:
 17. `bun test tests/guardrails/e0-performance-budget.verify.test.ts`
 18. `bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts`
 19. `bun test tests/sdk/consumer-example.test.ts`
-20. `bun test tests/guardrails/e0-capability-slice.verify.test.ts`
-21. `bun run check`
+20. `bun test tests/guardrails/e0-post-validation-triage.verify.test.ts`
+21. `bun test tests/guardrails/e0-capability-slice.verify.test.ts`
+22. `bun run check`
 
 The slice is deterministic: any failing step stops the command immediately.
 
@@ -69,6 +71,7 @@ E0 foundation without reading the entire implementation:
 - committed performance budget baseline and benchmark contract verification
 - committed rollback drill evidence and operator runbook verification
 - committed public consumer example that imports `effect-scrapling/sdk`
+- committed post-validation triage summary for residual and deferred items
 - final root guardrail, test, and build output from `bun run check`
 
 ## Troubleshooting
@@ -96,6 +99,7 @@ bun test tests/guardrails/e0-security-review.verify.test.ts
 bun test tests/guardrails/e0-performance-budget.verify.test.ts
 bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts
 bun test tests/sdk/consumer-example.test.ts
+bun test tests/guardrails/e0-post-validation-triage.verify.test.ts
 bun test tests/guardrails/e0-capability-slice.verify.test.ts
 ```
 
