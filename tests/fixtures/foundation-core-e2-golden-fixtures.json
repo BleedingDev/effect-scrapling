@@ -1,0 +1,598 @@
+[
+  {
+    "fixtureId": "golden-product-relocated",
+    "plan": {
+      "id": "golden-plan-001",
+      "targetId": "target-golden-001",
+      "packId": "pack-golden-001",
+      "accessPolicyId": "policy-http-001",
+      "concurrencyBudgetId": "budget-golden-001",
+      "entryUrl": "https://example.com/products/sku-101",
+      "maxAttempts": 1,
+      "timeoutMs": 1000,
+      "checkpointInterval": 1,
+      "steps": [
+        {
+          "id": "step-capture",
+          "stage": "capture",
+          "requiresBrowser": false,
+          "artifactKind": "html"
+        },
+        {
+          "id": "step-extract",
+          "stage": "extract",
+          "requiresBrowser": false
+        }
+      ],
+      "createdAt": "2026-03-06T13:00:00.000Z"
+    },
+    "recipe": {
+      "packId": "pack-golden-001",
+      "fields": [
+        {
+          "field": "title",
+          "selectors": [
+            {
+              "path": "title/primary",
+              "selector": ".product-title"
+            }
+          ],
+          "normalizer": "text"
+        },
+        {
+          "field": "price",
+          "selectors": [
+            {
+              "path": "price/primary",
+              "selector": "[data-testid=\"price\"]"
+            },
+            {
+              "path": "price/fallback",
+              "selector": ".price-fallback"
+            }
+          ],
+          "fallbackPolicy": {
+            "maxFallbackCount": 2,
+            "fallbackConfidenceImpact": 0.2,
+            "maxConfidenceImpact": 0.5
+          },
+          "normalizer": "price"
+        },
+        {
+          "field": "availability",
+          "selectors": [
+            {
+              "path": "availability/primary",
+              "selector": ".availability"
+            }
+          ],
+          "normalizer": "availability"
+        }
+      ],
+      "requiredFields": [
+        {
+          "field": "title",
+          "minimumConfidence": 0.9
+        },
+        {
+          "field": "price",
+          "minimumConfidence": 0.7
+        },
+        {
+          "field": "availability",
+          "minimumConfidence": 0.9
+        }
+      ],
+      "businessInvariants": [
+        {
+          "kind": "numericRange",
+          "field": "price",
+          "minimum": 10,
+          "maximum": 25
+        },
+        {
+          "kind": "stringOneOf",
+          "field": "availability",
+          "allowedValues": [
+            "inStock"
+          ]
+        }
+      ]
+    },
+    "captureBundle": {
+      "capturedAt": "2026-03-06T13:00:05.000Z",
+      "artifacts": [
+        {
+          "id": "golden-plan-001-html",
+          "runId": "golden-plan-001",
+          "artifactId": "golden-plan-001-html",
+          "kind": "html",
+          "visibility": "raw",
+          "locator": {
+            "namespace": "captures/target-golden-001",
+            "key": "golden-plan-001/body.html"
+          },
+          "sha256": "f29d32fdf23c0138114c4866d1e5f4c101d3ec94aa124648f4cd746f7eaaabe5",
+          "sizeBytes": 271,
+          "mediaType": "text/html; charset=utf-8",
+          "storedAt": "2026-03-06T13:00:05.000Z"
+        }
+      ],
+      "payloads": [
+        {
+          "locator": {
+            "namespace": "captures/target-golden-001",
+            "key": "golden-plan-001/body.html"
+          },
+          "mediaType": "text/html; charset=utf-8",
+          "body": "\n  <html>\n    <body>\n      <article data-sku=\"sku-101\">\n        <h1 class=\"product-title\"> Example Product </h1>\n        <div class=\"pricing\">\n          <span class=\"price-fallback\"> USD 19.99 </span>\n        </div>\n        <span class=\"availability\"> In stock </span>\n      </article>\n    </body>\n  </html>\n"
+        }
+      ]
+    },
+    "expected": {
+      "kind": "success",
+      "result": {
+        "documentArtifactId": "golden-plan-001-html",
+        "selectorResolutions": [
+          {
+            "selectorPath": "title/primary",
+            "selector": ".product-title",
+            "values": [
+              "Example Product"
+            ],
+            "matchedCount": 1,
+            "candidateOrder": [
+              "title/primary"
+            ],
+            "relocated": false,
+            "fallbackCount": 0,
+            "confidence": 1,
+            "confidenceImpact": 0,
+            "relocationTrace": [
+              {
+                "selectorPath": "title/primary",
+                "selector": ".product-title",
+                "fallbackDepth": 0,
+                "matchedCount": 1,
+                "confidenceImpact": 0,
+                "selected": true
+              }
+            ]
+          },
+          {
+            "selectorPath": "price/fallback",
+            "selector": ".price-fallback",
+            "values": [
+              "USD 19.99"
+            ],
+            "matchedCount": 1,
+            "candidateOrder": [
+              "price/primary",
+              "price/fallback"
+            ],
+            "relocated": true,
+            "fallbackCount": 1,
+            "confidence": 0.8,
+            "confidenceImpact": 0.2,
+            "relocationTrace": [
+              {
+                "selectorPath": "price/primary",
+                "selector": "[data-testid=\"price\"]",
+                "fallbackDepth": 0,
+                "matchedCount": 0,
+                "confidenceImpact": 0,
+                "selected": false
+              },
+              {
+                "selectorPath": "price/fallback",
+                "selector": ".price-fallback",
+                "fallbackDepth": 1,
+                "matchedCount": 1,
+                "confidenceImpact": 0.2,
+                "selected": true
+              }
+            ]
+          },
+          {
+            "selectorPath": "availability/primary",
+            "selector": ".availability",
+            "values": [
+              "In stock"
+            ],
+            "matchedCount": 1,
+            "candidateOrder": [
+              "availability/primary"
+            ],
+            "relocated": false,
+            "fallbackCount": 0,
+            "confidence": 1,
+            "confidenceImpact": 0,
+            "relocationTrace": [
+              {
+                "selectorPath": "availability/primary",
+                "selector": ".availability",
+                "fallbackDepth": 0,
+                "matchedCount": 1,
+                "confidenceImpact": 0,
+                "selected": true
+              }
+            ]
+          }
+        ],
+        "snapshotAssembly": {
+          "snapshot": {
+            "id": "golden-plan-001-snapshot",
+            "targetId": "target-golden-001",
+            "observations": [
+              {
+                "field": "availability",
+                "normalizedValue": "inStock",
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "golden-plan-001-html"
+                ]
+              },
+              {
+                "field": "price",
+                "normalizedValue": {
+                  "amount": 19.99,
+                  "currency": "USD"
+                },
+                "confidence": 0.8,
+                "evidenceRefs": [
+                  "golden-plan-001-html"
+                ]
+              },
+              {
+                "field": "title",
+                "normalizedValue": "Example Product",
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "golden-plan-001-html"
+                ]
+              }
+            ],
+            "qualityScore": 0.848667,
+            "createdAt": "2026-03-06T13:00:00.000Z"
+          },
+          "qualityScoreInputs": {
+            "sourceObservationCount": 3,
+            "assembledObservationCount": 3,
+            "duplicateObservationCount": 0,
+            "uniqueFieldCount": 3,
+            "conflictingFieldCount": 0,
+            "uniqueEvidenceRefCount": 1,
+            "multiEvidenceObservationCount": 0,
+            "averageEvidenceRefsPerObservation": 1,
+            "averageConfidence": 0.906667,
+            "minimumConfidence": 0.8,
+            "evidenceStrengthScore": 0.5,
+            "conflictFreeScore": 1,
+            "uniquenessScore": 1
+          },
+          "qualityScoreBreakdown": {
+            "confidenceContribution": 0.498667,
+            "evidenceStrengthContribution": 0.1,
+            "conflictFreeContribution": 0.15,
+            "uniquenessContribution": 0.1
+          }
+        },
+        "assertionReport": {
+          "snapshotId": "golden-plan-001-snapshot",
+          "evaluatedRuleCount": 5,
+          "assertedFields": [
+            "title",
+            "price",
+            "availability"
+          ]
+        },
+        "evidenceManifest": {
+          "id": "golden-plan-001-snapshot-evidence-manifest",
+          "snapshotId": "golden-plan-001-snapshot",
+          "targetId": "target-golden-001",
+          "documentId": "golden-plan-001-html",
+          "createdAt": "2026-03-06T13:00:00.000Z",
+          "observations": [
+            {
+              "observationIndex": 0,
+              "field": "availability",
+              "observation": {
+                "field": "availability",
+                "normalizedValue": "inStock",
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "golden-plan-001-html"
+                ]
+              },
+              "artifacts": [
+                {
+                  "id": "golden-plan-001-html",
+                  "runId": "golden-plan-001",
+                  "artifactId": "golden-plan-001-html",
+                  "kind": "html",
+                  "visibility": "raw",
+                  "locator": {
+                    "namespace": "captures/target-golden-001",
+                    "key": "golden-plan-001/body.html"
+                  },
+                  "sha256": "f29d32fdf23c0138114c4866d1e5f4c101d3ec94aa124648f4cd746f7eaaabe5",
+                  "sizeBytes": 271,
+                  "mediaType": "text/html; charset=utf-8",
+                  "storedAt": "2026-03-06T13:00:05.000Z"
+                }
+              ],
+              "selectorTraces": [
+                {
+                  "documentId": "golden-plan-001-html",
+                  "rootPath": "document",
+                  "resolution": {
+                    "selectorPath": "availability/primary",
+                    "selector": ".availability",
+                    "values": [
+                      "In stock"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "availability/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "availability/primary",
+                        "selector": ".availability",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "observationIndex": 1,
+              "field": "price",
+              "observation": {
+                "field": "price",
+                "normalizedValue": {
+                  "amount": 19.99,
+                  "currency": "USD"
+                },
+                "confidence": 0.8,
+                "evidenceRefs": [
+                  "golden-plan-001-html"
+                ]
+              },
+              "artifacts": [
+                {
+                  "id": "golden-plan-001-html",
+                  "runId": "golden-plan-001",
+                  "artifactId": "golden-plan-001-html",
+                  "kind": "html",
+                  "visibility": "raw",
+                  "locator": {
+                    "namespace": "captures/target-golden-001",
+                    "key": "golden-plan-001/body.html"
+                  },
+                  "sha256": "f29d32fdf23c0138114c4866d1e5f4c101d3ec94aa124648f4cd746f7eaaabe5",
+                  "sizeBytes": 271,
+                  "mediaType": "text/html; charset=utf-8",
+                  "storedAt": "2026-03-06T13:00:05.000Z"
+                }
+              ],
+              "selectorTraces": [
+                {
+                  "documentId": "golden-plan-001-html",
+                  "rootPath": "document",
+                  "resolution": {
+                    "selectorPath": "price/fallback",
+                    "selector": ".price-fallback",
+                    "values": [
+                      "USD 19.99"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "price/primary",
+                      "price/fallback"
+                    ],
+                    "relocated": true,
+                    "fallbackCount": 1,
+                    "confidence": 0.8,
+                    "confidenceImpact": 0.2,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-testid=\"price\"]",
+                        "fallbackDepth": 0,
+                        "matchedCount": 0,
+                        "confidenceImpact": 0,
+                        "selected": false
+                      },
+                      {
+                        "selectorPath": "price/fallback",
+                        "selector": ".price-fallback",
+                        "fallbackDepth": 1,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0.2,
+                        "selected": true
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "observationIndex": 2,
+              "field": "title",
+              "observation": {
+                "field": "title",
+                "normalizedValue": "Example Product",
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "golden-plan-001-html"
+                ]
+              },
+              "artifacts": [
+                {
+                  "id": "golden-plan-001-html",
+                  "runId": "golden-plan-001",
+                  "artifactId": "golden-plan-001-html",
+                  "kind": "html",
+                  "visibility": "raw",
+                  "locator": {
+                    "namespace": "captures/target-golden-001",
+                    "key": "golden-plan-001/body.html"
+                  },
+                  "sha256": "f29d32fdf23c0138114c4866d1e5f4c101d3ec94aa124648f4cd746f7eaaabe5",
+                  "sizeBytes": 271,
+                  "mediaType": "text/html; charset=utf-8",
+                  "storedAt": "2026-03-06T13:00:05.000Z"
+                }
+              ],
+              "selectorTraces": [
+                {
+                  "documentId": "golden-plan-001-html",
+                  "rootPath": "document",
+                  "resolution": {
+                    "selectorPath": "title/primary",
+                    "selector": ".product-title",
+                    "values": [
+                      "Example Product"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "title/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": ".product-title",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "fixtureId": "golden-product-assertion-failure",
+    "plan": {
+      "id": "golden-plan-002",
+      "targetId": "target-golden-002",
+      "packId": "pack-golden-002",
+      "accessPolicyId": "policy-http-001",
+      "concurrencyBudgetId": "budget-golden-002",
+      "entryUrl": "https://example.com/products/sku-102",
+      "maxAttempts": 1,
+      "timeoutMs": 1000,
+      "checkpointInterval": 1,
+      "steps": [
+        {
+          "id": "step-capture",
+          "stage": "capture",
+          "requiresBrowser": false,
+          "artifactKind": "html"
+        }
+      ],
+      "createdAt": "2026-03-06T13:10:00.000Z"
+    },
+    "recipe": {
+      "packId": "pack-golden-002",
+      "fields": [
+        {
+          "field": "price",
+          "selectors": [
+            {
+              "path": "price/primary",
+              "selector": "[data-testid=\"price\"]"
+            }
+          ],
+          "normalizer": "price"
+        },
+        {
+          "field": "availability",
+          "selectors": [
+            {
+              "path": "availability/primary",
+              "selector": ".availability"
+            }
+          ],
+          "normalizer": "availability"
+        }
+      ],
+      "requiredFields": [
+        {
+          "field": "price",
+          "minimumConfidence": 0.9
+        },
+        {
+          "field": "availability",
+          "minimumConfidence": 0.9
+        }
+      ],
+      "businessInvariants": [
+        {
+          "kind": "stringOneOf",
+          "field": "availability",
+          "allowedValues": [
+            "inStock"
+          ]
+        }
+      ]
+    },
+    "captureBundle": {
+      "capturedAt": "2026-03-06T13:10:05.000Z",
+      "artifacts": [
+        {
+          "id": "golden-plan-002-html",
+          "runId": "golden-plan-002",
+          "artifactId": "golden-plan-002-html",
+          "kind": "html",
+          "visibility": "raw",
+          "locator": {
+            "namespace": "captures/target-golden-002",
+            "key": "golden-plan-002/body.html"
+          },
+          "sha256": "b33bddf3f7b0c4b2909fdd906b4ca0ff6bc53344ee30efa4f2f53b76f1c7d514",
+          "sizeBytes": 279,
+          "mediaType": "text/html; charset=utf-8",
+          "storedAt": "2026-03-06T13:10:05.000Z"
+        }
+      ],
+      "payloads": [
+        {
+          "locator": {
+            "namespace": "captures/target-golden-002",
+            "key": "golden-plan-002/body.html"
+          },
+          "mediaType": "text/html; charset=utf-8",
+          "body": "\n  <html>\n    <body>\n      <article data-sku=\"sku-102\">\n        <h1 class=\"product-title\"> Broken Product </h1>\n        <div class=\"pricing\">\n          <span data-testid=\"price\"> $29.99 </span>\n        </div>\n        <span class=\"availability\"> Sold out </span>\n      </article>\n    </body>\n  </html>\n"
+        }
+      ]
+    },
+    "expected": {
+      "kind": "failure",
+      "error": {
+        "code": "extraction_mismatch",
+        "retryable": false,
+        "message": "Extraction assertions failed: Field availability normalized value outOfStock is outside the allowed set inStock."
+      }
+    }
+  }
+]
