@@ -5,7 +5,7 @@ import { RunPlanSchema } from "./run-state.ts";
 import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
 import { AccessPlanner } from "./service-topology.ts";
 import { SitePackSchema } from "./site-pack.ts";
-import { PolicyViolation } from "./tagged-errors.ts";
+import { CoreErrorCodeSchema, PolicyViolation } from "./tagged-errors.ts";
 import { TargetProfileSchema } from "./target-profile.ts";
 
 export class PlannerRationaleEntry extends Schema.Class<PlannerRationaleEntry>(
@@ -33,11 +33,21 @@ export class AccessPlannerDecision extends Schema.Class<AccessPlannerDecision>(
   rationale: PlannerRationaleSchema,
 }) {}
 
+const FailureCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).check(
+  Schema.isLessThanOrEqualTo(32),
+);
+
+class PlannerFailureContext extends Schema.Class<PlannerFailureContext>("PlannerFailureContext")({
+  recentFailureCount: FailureCountSchema,
+  lastFailureCode: Schema.optional(CoreErrorCodeSchema),
+}) {}
+
 export const AccessPlannerInputSchema = Schema.Struct({
   target: TargetProfileSchema,
   pack: SitePackSchema,
   accessPolicy: AccessPolicySchema,
   createdAt: IsoDateTimeSchema,
+  failureContext: Schema.optional(PlannerFailureContext),
 });
 
 export const PlannerRationaleEntrySchema = PlannerRationaleEntry;
@@ -56,10 +66,109 @@ function matchesTargetDomain(targetDomain: string, candidateDomain: string) {
   return candidateDomain === targetDomain || candidateDomain.endsWith(`.${targetDomain}`);
 }
 
-function buildPlanRationale(input: Schema.Schema.Type<typeof AccessPlannerInputSchema>) {
-  const requiresBrowser =
-    input.accessPolicy.mode !== "http" || input.accessPolicy.render !== "never";
+const highFrictionTargetKinds: ReadonlySet<string> = new Set([
+  "productListing",
+  "searchResult",
+  "socialPost",
+] as const);
+const accessFailureEscalationCodes: ReadonlySet<string> = new Set([
+  "timeout",
+  "provider_unavailable",
+  "render_crash",
+] as const);
 
+type PlannerInput = Schema.Schema.Type<typeof AccessPlannerInputSchema>;
+type CaptureProvider = "http" | "browser";
+
+type ProviderSelection = {
+  readonly provider: CaptureProvider;
+  readonly evidence: string;
+};
+
+function isHighFrictionTarget(target: PlannerInput["target"]) {
+  return highFrictionTargetKinds.has(target.kind);
+}
+
+function describeFailureEscalation(input: PlannerInput) {
+  const failureContext = input.failureContext;
+  if (failureContext === undefined || failureContext.recentFailureCount === 0) {
+    return;
+  }
+
+  if (
+    failureContext.recentFailureCount >= 2 ||
+    (failureContext.lastFailureCode !== undefined &&
+      accessFailureEscalationCodes.has(failureContext.lastFailureCode))
+  ) {
+    const failureCode =
+      failureContext.lastFailureCode === undefined
+        ? "unspecified-access-failure"
+        : failureContext.lastFailureCode;
+
+    return `${failureContext.recentFailureCount} recent access failure(s), latest ${failureCode}`;
+  }
+}
+
+function selectCaptureProvider(input: PlannerInput): ProviderSelection {
+  switch (input.accessPolicy.mode) {
+    case "http": {
+      return {
+        provider: "http",
+        evidence: 'HTTP mode with `render: "never"` keeps capture on the plain HTTP provider.',
+      };
+    }
+    case "browser": {
+      return {
+        provider: "browser",
+        evidence: "Browser mode requires browser-backed capture.",
+      };
+    }
+    case "managed": {
+      return {
+        provider: "browser",
+        evidence: "Managed mode delegates capture to a browser-capable provider.",
+      };
+    }
+    case "hybrid": {
+      if (input.accessPolicy.render === "always") {
+        return {
+          provider: "browser",
+          evidence: 'Hybrid mode with `render: "always"` requires browser-backed capture.',
+        };
+      }
+
+      const failureEscalation = describeFailureEscalation(input);
+      const highFrictionTarget = isHighFrictionTarget(input.target);
+      if (failureEscalation !== undefined && highFrictionTarget) {
+        return {
+          provider: "browser",
+          evidence: `Hybrid mode escalated to browser for high-friction ${input.target.kind} targets after ${failureEscalation}.`,
+        };
+      }
+
+      if (failureEscalation !== undefined) {
+        return {
+          provider: "browser",
+          evidence: `Hybrid mode escalated to browser after ${failureEscalation}.`,
+        };
+      }
+
+      if (highFrictionTarget) {
+        return {
+          provider: "browser",
+          evidence: `Hybrid mode escalated to browser for high-friction ${input.target.kind} targets.`,
+        };
+      }
+
+      return {
+        provider: "http",
+        evidence: `Hybrid mode kept the HTTP-first path for ${input.target.kind} targets without browser escalation signals.`,
+      };
+    }
+  }
+}
+
+function buildPlanRationale(input: PlannerInput, providerSelection: ProviderSelection) {
   return [
     Schema.decodeUnknownSync(PlannerRationaleEntrySchema)({
       key: "mode",
@@ -75,9 +184,7 @@ function buildPlanRationale(input: Schema.Schema.Type<typeof AccessPlannerInputS
     }),
     Schema.decodeUnknownSync(PlannerRationaleEntrySchema)({
       key: "capture-path",
-      message: requiresBrowser
-        ? "Capture step requires browser-backed execution."
-        : "Capture step can execute over plain HTTP.",
+      message: `Capture step selected ${providerSelection.provider} provider. ${providerSelection.evidence}`,
     }),
   ];
 }
@@ -140,8 +247,8 @@ export function planAccessExecution(input: unknown) {
       );
     }
 
-    const requiresBrowser =
-      decoded.accessPolicy.mode !== "http" || decoded.accessPolicy.render !== "never";
+    const providerSelection = selectCaptureProvider(decoded);
+    const requiresBrowser = providerSelection.provider === "browser";
     const concurrencyBudget = Schema.decodeUnknownSync(ConcurrencyBudgetSchema)({
       id: `budget-${decoded.target.id}`,
       ownerId: decoded.target.id,
@@ -182,7 +289,7 @@ export function planAccessExecution(input: unknown) {
     return Schema.decodeUnknownSync(AccessPlannerDecisionSchema)({
       plan,
       concurrencyBudget,
-      rationale: buildPlanRationale(decoded),
+      rationale: buildPlanRationale(decoded, providerSelection),
     });
   });
 }

@@ -175,6 +175,116 @@ describe("foundation-core access runtime", () => {
     }),
   );
 
+  it.effect(
+    "keeps low-friction hybrid targets on the HTTP-first provider and records evidence",
+    () =>
+      Effect.gen(function* () {
+        const hybridDecision = yield* planAccessExecution({
+          target: Schema.decodeUnknownSync(TargetProfileSchema)({
+            ...Schema.encodeSync(TargetProfileSchema)(target),
+            kind: "blogPost",
+          }),
+          pack,
+          accessPolicy: Schema.decodeUnknownSync(AccessPolicySchema)({
+            ...Schema.encodeSync(AccessPolicySchema)(httpPolicy),
+            mode: "hybrid",
+            render: "onDemand",
+          }),
+          createdAt: FIXED_DATE,
+        });
+
+        expect(hybridDecision.plan.steps[0]?.requiresBrowser).toBe(false);
+        expect(hybridDecision.plan.steps[0]?.artifactKind).toBe("html");
+        expect(hybridDecision.rationale.find(({ key }) => key === "mode")?.message).toBe(
+          "Access mode resolved to hybrid.",
+        );
+        expect(
+          hybridDecision.rationale.find(({ key }) => key === "capture-path")?.message,
+        ).toContain("selected http provider");
+        expect(
+          hybridDecision.rationale.find(({ key }) => key === "capture-path")?.message,
+        ).toContain("HTTP-first path for blogPost targets");
+      }),
+  );
+
+  it.effect('escalates hybrid targets with `render: "always"` to the browser provider', () =>
+    Effect.gen(function* () {
+      const hybridDecision = yield* planAccessExecution({
+        target,
+        pack,
+        accessPolicy: Schema.decodeUnknownSync(AccessPolicySchema)({
+          ...Schema.encodeSync(AccessPolicySchema)(httpPolicy),
+          mode: "hybrid",
+          render: "always",
+        }),
+        createdAt: FIXED_DATE,
+      });
+
+      expect(hybridDecision.plan.steps[0]?.requiresBrowser).toBe(true);
+      expect(hybridDecision.plan.steps[0]?.artifactKind).toBe("renderedDom");
+      expect(hybridDecision.rationale.find(({ key }) => key === "capture-path")?.message).toContain(
+        'render: "always"',
+      );
+    }),
+  );
+
+  it.effect("escalates high-friction hybrid targets to the browser provider", () =>
+    Effect.gen(function* () {
+      const hybridDecision = yield* planAccessExecution({
+        target: Schema.decodeUnknownSync(TargetProfileSchema)({
+          ...Schema.encodeSync(TargetProfileSchema)(target),
+          kind: "searchResult",
+        }),
+        pack,
+        accessPolicy: Schema.decodeUnknownSync(AccessPolicySchema)({
+          ...Schema.encodeSync(AccessPolicySchema)(httpPolicy),
+          mode: "hybrid",
+          render: "onDemand",
+        }),
+        createdAt: FIXED_DATE,
+      });
+
+      expect(hybridDecision.plan.steps[0]?.requiresBrowser).toBe(true);
+      expect(hybridDecision.plan.steps[0]?.artifactKind).toBe("renderedDom");
+      expect(hybridDecision.rationale.find(({ key }) => key === "capture-path")?.message).toContain(
+        "selected browser provider",
+      );
+      expect(hybridDecision.rationale.find(({ key }) => key === "capture-path")?.message).toContain(
+        "high-friction searchResult targets",
+      );
+    }),
+  );
+
+  it.effect(
+    "escalates hybrid targets after repeated access failures and records policy evidence",
+    () =>
+      Effect.gen(function* () {
+        const hybridDecision = yield* planAccessExecution({
+          target,
+          pack,
+          accessPolicy: Schema.decodeUnknownSync(AccessPolicySchema)({
+            ...Schema.encodeSync(AccessPolicySchema)(httpPolicy),
+            mode: "hybrid",
+            render: "onDemand",
+          }),
+          createdAt: FIXED_DATE,
+          failureContext: {
+            recentFailureCount: 2,
+            lastFailureCode: "provider_unavailable",
+          },
+        });
+
+        expect(hybridDecision.plan.steps[0]?.requiresBrowser).toBe(true);
+        expect(hybridDecision.plan.steps[0]?.artifactKind).toBe("renderedDom");
+        expect(
+          hybridDecision.rationale.find(({ key }) => key === "capture-path")?.message,
+        ).toContain("provider_unavailable");
+        expect(
+          hybridDecision.rationale.find(({ key }) => key === "capture-path")?.message,
+        ).toContain("2 recent access failure");
+      }),
+  );
+
   it.effect("captures normalized request and response artifacts over HTTP", () =>
     Effect.gen(function* () {
       const decision = yield* planAccessExecution({
