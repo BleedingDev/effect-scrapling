@@ -18,7 +18,7 @@
     "paths": {
       "@effect-scrapling/api-app": ["apps/api/src/api-entry.ts"],
       "@effect-scrapling/cli-app": ["apps/cli/src/cli-entry.ts"],
-      "@effect-scrapling/foundation-core": ["libs/foundation/core/src/workspace-banner.ts"],
+      "@effect-scrapling/foundation-core": ["libs/foundation/core/src/index.ts"],
       "@effect-scrapling/ci-tooling": ["tools/ci/src/project-health.ts"]
     }
   }
