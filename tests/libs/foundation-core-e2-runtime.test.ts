@@ -8,6 +8,7 @@ import {
   resolveSelectorPrecedence,
   SelectorResolutionSchema,
 } from "../../libs/foundation/core/src/selector-engine.ts";
+import { toCoreErrorEnvelope } from "../../libs/foundation/core/src/tagged-errors.ts";
 
 const PRODUCT_HTML = `
   <html>
@@ -49,6 +50,31 @@ describe("foundation-core extraction runtime", () => {
           (node) => node.attributes["data-testid"] === "price" && node.textContent === "$19.99",
         ),
       ).toBe(true);
+    }),
+  );
+
+  it.effect("fails with the same parser envelope for repeated invalid HTML input", () =>
+    Effect.gen(function* () {
+      const invalidInput = {
+        documentId: "document-001",
+        html: "   \n\t   ",
+      };
+      const firstFailure = yield* parseDeterministicHtml(invalidInput).pipe(
+        Effect.match({
+          onFailure: toCoreErrorEnvelope,
+          onSuccess: () => null,
+        }),
+      );
+      const secondFailure = yield* parseDeterministicHtml(invalidInput).pipe(
+        Effect.match({
+          onFailure: toCoreErrorEnvelope,
+          onSuccess: () => null,
+        }),
+      );
+
+      expect(firstFailure).toEqual(secondFailure);
+      expect(firstFailure?.code).toBe("parser_failure");
+      expect(firstFailure?.retryable).toBe(false);
     }),
   );
 
@@ -159,7 +185,7 @@ describe("foundation-core extraction runtime", () => {
         documentId: "document-001",
         html: PRODUCT_HTML,
       });
-      const failureMessage = yield* resolveSelectorPrecedence({
+      const failure = yield* resolveSelectorPrecedence({
         document,
         candidates: [
           {
@@ -182,17 +208,59 @@ describe("foundation-core extraction runtime", () => {
         },
       }).pipe(
         Effect.match({
-          onFailure: ({ message }) => message,
-          onSuccess: () => "unexpected-success",
+          onFailure: toCoreErrorEnvelope,
+          onSuccess: () => null,
         }),
       );
 
-      expect(failureMessage).not.toBe("unexpected-success");
-      expect(failureMessage).toContain("Attempted candidates: price/primary, price/secondary.");
-      expect(failureMessage).toContain(
-        "Skipped candidates beyond fallback bounds: price/relocated.",
-      );
+      expect(failure).toEqual({
+        code: "extraction_mismatch",
+        retryable: false,
+        message:
+          "No selector candidates matched within bounded fallback policy after 1 fallback candidate(s). Attempted candidates: price/primary, price/secondary. Skipped candidates beyond fallback bounds: price/relocated.",
+      });
     }),
+  );
+
+  it.effect(
+    "stops before fallbacks that exceed the maximum confidence impact even when a later selector would match",
+    () =>
+      Effect.gen(function* () {
+        const document = yield* parseDeterministicHtml({
+          documentId: "document-001",
+          html: PRODUCT_HTML,
+        });
+        const failure = yield* resolveSelectorPrecedence({
+          document,
+          candidates: [
+            {
+              path: "price/primary",
+              selector: ".missing-price",
+            },
+            {
+              path: "price/relocated",
+              selector: "[data-testid='price']",
+            },
+          ],
+          fallbackPolicy: {
+            maxFallbackCount: 2,
+            fallbackConfidenceImpact: 0.3,
+            maxConfidenceImpact: 0.2,
+          },
+        }).pipe(
+          Effect.match({
+            onFailure: toCoreErrorEnvelope,
+            onSuccess: () => null,
+          }),
+        );
+
+        expect(failure?.code).toBe("extraction_mismatch");
+        expect(failure?.retryable).toBe(false);
+        expect(failure?.message).toContain("Attempted candidates: price/primary.");
+        expect(failure?.message).toContain(
+          "Skipped candidates beyond fallback bounds: price/relocated.",
+        );
+      }),
   );
 
   it.effect("fails deterministically when no selector candidate matches", () =>
@@ -201,7 +269,7 @@ describe("foundation-core extraction runtime", () => {
         documentId: "document-001",
         html: PRODUCT_HTML,
       });
-      const failureMessage = yield* resolveSelectorPrecedence({
+      const failure = yield* resolveSelectorPrecedence({
         document,
         candidates: [
           {
@@ -211,13 +279,14 @@ describe("foundation-core extraction runtime", () => {
         ],
       }).pipe(
         Effect.match({
-          onFailure: ({ message }) => message,
-          onSuccess: () => "unexpected-success",
+          onFailure: toCoreErrorEnvelope,
+          onSuccess: () => null,
         }),
       );
 
-      expect(failureMessage).not.toBe("unexpected-success");
-      expect(failureMessage).toContain("Attempted candidates: price/missing.");
+      expect(failure?.code).toBe("extraction_mismatch");
+      expect(failure?.retryable).toBe(false);
+      expect(failure?.message).toContain("Attempted candidates: price/missing.");
     }),
   );
 });
