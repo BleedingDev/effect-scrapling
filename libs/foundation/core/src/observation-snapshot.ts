@@ -1,4 +1,5 @@
 import { Effect, Schema, SchemaGetter } from "effect";
+import { NormalizedPriceSchema } from "./domain-normalizers.ts";
 import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
 
 const BOUNDED_SCORE_SCHEMA = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)).check(
@@ -19,10 +20,7 @@ const OBSERVATION_FIELDS = {
   evidenceRefs: EVIDENCE_REFS_SCHEMA,
 } as const;
 
-const PRICE_NORMALIZED_VALUE_SCHEMA = Schema.Struct({
-  amount: Schema.Finite,
-  currency: Schema.Trim.pipe(Schema.check(Schema.isNonEmpty())),
-});
+const PRICE_NORMALIZED_VALUE_SCHEMA = NormalizedPriceSchema;
 
 const NON_PRICE_FIELD_SCHEMA = Schema.Trim.pipe(
   Schema.check(Schema.isNonEmpty()),

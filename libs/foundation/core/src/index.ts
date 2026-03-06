@@ -110,6 +110,22 @@ export {
   parseDeterministicHtml,
 } from "./extraction-parser.ts";
 export {
+  AssertionEvidenceLinkSchema,
+  AssertionEngineFailure,
+  AssertionFailureSchema,
+  BusinessInvariantFailureSchema,
+  MissingRequiredFieldFailureSchema,
+  runAssertionEngine,
+  type AssertionContext,
+  type AssertionEngineInput,
+  type AssertionEvidenceLink,
+  type AssertionFailure,
+  type BusinessInvariantAssertion,
+  type BusinessInvariantFailure,
+  type MissingRequiredFieldFailure,
+  type RequiredFieldAssertion,
+} from "./assertion-engine.ts";
+export {
   SelectorCandidate,
   SelectorCandidateSchema,
   SelectorEngineInputSchema,

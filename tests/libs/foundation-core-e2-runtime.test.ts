@@ -2,10 +2,12 @@ import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
 import {
   ParsedHtmlDocumentSchema,
-  SelectorResolutionSchema,
   parseDeterministicHtml,
+} from "../../libs/foundation/core/src/extraction-parser.ts";
+import {
   resolveSelectorPrecedence,
-} from "../../libs/foundation/core/src";
+  SelectorResolutionSchema,
+} from "../../libs/foundation/core/src/selector-engine.ts";
 
 const PRODUCT_HTML = `
   <html>
