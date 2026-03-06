@@ -1,31 +1,14 @@
 import { Effect, Schema, SchemaGetter } from "effect";
-import { CanonicalIdentifierSchema } from "./schema-primitives.js";
+import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.js";
 
 const BOUNDED_SCORE_SCHEMA = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)).check(
   Schema.isLessThanOrEqualTo(1),
 );
-const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
 
 const EVIDENCE_REFS_SCHEMA = Schema.UniqueArray(CanonicalIdentifierSchema).pipe(
   Schema.decode({
     decode: SchemaGetter.checkEffect((value) =>
       Effect.succeed(value.length > 0 ? undefined : "Expected at least one evidence reference."),
-    ),
-    encode: SchemaGetter.passthrough(),
-  }),
-);
-
-const ISO_DATE_TIME_SCHEMA = Schema.Trim.pipe(
-  Schema.check(Schema.isNonEmpty()),
-  Schema.decode({
-    decode: SchemaGetter.checkEffect((value) =>
-      Effect.succeed(
-        ISO_DATE_TIME_PATTERN.test(value) &&
-          Number.isFinite(Date.parse(value)) &&
-          new Date(value).toISOString() === value
-          ? undefined
-          : "Expected an ISO-8601 datetime string.",
-      ),
     ),
     encode: SchemaGetter.passthrough(),
   }),
@@ -75,7 +58,7 @@ export class Snapshot extends Schema.Class<Snapshot>("Snapshot")({
   targetId: CanonicalIdentifierSchema,
   observations: Schema.Array(ObservationSchema),
   qualityScore: BOUNDED_SCORE_SCHEMA,
-  createdAt: ISO_DATE_TIME_SCHEMA,
+  createdAt: IsoDateTimeSchema,
 }) {}
 
 export const SnapshotSchema = Snapshot;

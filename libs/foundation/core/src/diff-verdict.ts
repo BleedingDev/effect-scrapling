@@ -1,7 +1,5 @@
 import { Effect, Schema, SchemaGetter } from "effect";
-import { CanonicalIdentifierSchema } from "./schema-primitives.js";
-
-const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
+import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.js";
 
 const RATE_DELTA_SCHEMA = Schema.Number.check(Schema.isGreaterThanOrEqualTo(-1)).check(
   Schema.isLessThanOrEqualTo(1),
@@ -14,35 +12,20 @@ const QUALITY_ACTION_SCHEMA = Schema.Literals([
   "quarantined",
   "retired",
 ] as const);
-const ISO_DATE_TIME_SCHEMA = Schema.Trim.pipe(
-  Schema.check(Schema.isNonEmpty()),
-  Schema.decode({
-    decode: SchemaGetter.checkEffect((value) =>
-      Effect.succeed(
-        ISO_DATE_TIME_PATTERN.test(value) &&
-          Number.isFinite(Date.parse(value)) &&
-          new Date(value).toISOString() === value
-          ? undefined
-          : "Expected an ISO-8601 datetime string.",
-      ),
-    ),
-    encode: SchemaGetter.passthrough(),
-  }),
-);
 
 const QUALITY_VERDICT_FIELDS = {
   id: CanonicalIdentifierSchema,
   packId: CanonicalIdentifierSchema,
   snapshotDiffId: CanonicalIdentifierSchema,
   action: QUALITY_ACTION_SCHEMA,
-  createdAt: ISO_DATE_TIME_SCHEMA,
+  createdAt: IsoDateTimeSchema,
 } as const;
 
 const PACK_PROMOTION_DECISION_FIELDS = {
   id: CanonicalIdentifierSchema,
   packId: CanonicalIdentifierSchema,
   triggerVerdictId: CanonicalIdentifierSchema,
-  createdAt: ISO_DATE_TIME_SCHEMA,
+  createdAt: IsoDateTimeSchema,
 } as const;
 
 class SnapshotDiffMetrics extends Schema.Class<SnapshotDiffMetrics>("SnapshotDiffMetrics")({
@@ -58,7 +41,7 @@ export class SnapshotDiff extends Schema.Class<SnapshotDiff>("SnapshotDiff")({
   baselineSnapshotId: CanonicalIdentifierSchema,
   candidateSnapshotId: CanonicalIdentifierSchema,
   metrics: SnapshotDiffMetrics,
-  createdAt: ISO_DATE_TIME_SCHEMA,
+  createdAt: IsoDateTimeSchema,
 }) {}
 
 export const SnapshotDiffSchema = SnapshotDiff;

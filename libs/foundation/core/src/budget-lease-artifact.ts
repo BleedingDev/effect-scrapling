@@ -1,7 +1,5 @@
 import { Schema } from "effect";
-import { CanonicalIdentifierSchema } from "./schema-primitives.js";
-
-const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
+import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.js";
 
 const GlobalConcurrencySchema = Schema.Int.check(Schema.isGreaterThan(0)).check(
   Schema.isLessThanOrEqualTo(4096),
@@ -10,18 +8,6 @@ const MaxPerDomainSchema = Schema.Int.check(Schema.isGreaterThan(0)).check(
   Schema.isLessThanOrEqualTo(128),
 );
 const ArtifactLocatorSchema = Schema.Trim.check(Schema.isNonEmpty());
-const IsoDateTimeSchema = Schema.Trim.pipe(
-  Schema.check(Schema.isNonEmpty()),
-  Schema.refine(
-    (value): value is string =>
-      ISO_DATE_TIME_PATTERN.test(value) &&
-      Number.isFinite(Date.parse(value)) &&
-      new Date(value).toISOString() === value,
-    {
-      message: "Expected an ISO-8601 datetime string.",
-    },
-  ),
-);
 
 export const ArtifactKindSchema = Schema.Literals([
   "requestMetadata",
