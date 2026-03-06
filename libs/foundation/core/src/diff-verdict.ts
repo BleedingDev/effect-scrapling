@@ -1,9 +1,14 @@
 import { Effect, Schema, SchemaGetter } from "effect";
+import { ObservationSchema } from "./observation-snapshot.ts";
 import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
 
 const RATE_DELTA_SCHEMA = Schema.Number.check(Schema.isGreaterThanOrEqualTo(-1)).check(
   Schema.isLessThanOrEqualTo(1),
 );
+const BOUNDED_SCORE_SCHEMA = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0)).check(
+  Schema.isLessThanOrEqualTo(1),
+);
+const NON_NEGATIVE_INT_SCHEMA = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const GATE_STATUS_SCHEMA = Schema.Literals(["pass", "fail"] as const);
 const QUALITY_ACTION_SCHEMA = Schema.Literals([
   "promote-shadow",
@@ -36,11 +41,69 @@ class SnapshotDiffMetrics extends Schema.Class<SnapshotDiffMetrics>("SnapshotDif
   memoryDelta: Schema.Finite,
 }) {}
 
+const SNAPSHOT_DIFF_CHANGE_FIELD_SCHEMA = Schema.Trim.check(Schema.isNonEmpty());
+
+const SNAPSHOT_DIFF_ADD_SCHEMA = Schema.Struct({
+  changeType: Schema.Literal("add"),
+  field: SNAPSHOT_DIFF_CHANGE_FIELD_SCHEMA,
+  candidate: ObservationSchema,
+  confidenceDelta: RATE_DELTA_SCHEMA,
+});
+
+const SNAPSHOT_DIFF_REMOVE_SCHEMA = Schema.Struct({
+  changeType: Schema.Literal("remove"),
+  field: SNAPSHOT_DIFF_CHANGE_FIELD_SCHEMA,
+  baseline: ObservationSchema,
+  confidenceDelta: RATE_DELTA_SCHEMA,
+});
+
+const SNAPSHOT_DIFF_CHANGE_SCHEMA = Schema.Struct({
+  changeType: Schema.Literal("change"),
+  field: SNAPSHOT_DIFF_CHANGE_FIELD_SCHEMA,
+  baseline: ObservationSchema,
+  candidate: ObservationSchema,
+  confidenceDelta: RATE_DELTA_SCHEMA,
+});
+
+export const SnapshotDiffChangeSchema = Schema.Union([
+  SNAPSHOT_DIFF_ADD_SCHEMA,
+  SNAPSHOT_DIFF_REMOVE_SCHEMA,
+  SNAPSHOT_DIFF_CHANGE_SCHEMA,
+]);
+
+const SNAPSHOT_DIFF_CHANGES_SCHEMA = Schema.Array(SnapshotDiffChangeSchema).pipe(
+  Schema.refine(
+    (changes): changes is ReadonlyArray<Schema.Schema.Type<typeof SnapshotDiffChangeSchema>> =>
+      new Set(changes.map(({ field }) => field)).size === changes.length,
+    {
+      message: "Expected snapshot diff changes keyed by unique field names.",
+    },
+  ),
+);
+
+class SnapshotDiffCanonicalMetricsRecord extends Schema.Class<SnapshotDiffCanonicalMetricsRecord>(
+  "SnapshotDiffCanonicalMetrics",
+)({
+  baselineFieldCount: NON_NEGATIVE_INT_SCHEMA,
+  candidateFieldCount: NON_NEGATIVE_INT_SCHEMA,
+  unchangedFieldCount: NON_NEGATIVE_INT_SCHEMA,
+  addedFieldCount: NON_NEGATIVE_INT_SCHEMA,
+  removedFieldCount: NON_NEGATIVE_INT_SCHEMA,
+  changedFieldCount: NON_NEGATIVE_INT_SCHEMA,
+  baselineConfidenceScore: BOUNDED_SCORE_SCHEMA,
+  candidateConfidenceScore: BOUNDED_SCORE_SCHEMA,
+  confidenceDelta: RATE_DELTA_SCHEMA,
+}) {}
+
+export const SnapshotDiffCanonicalMetricsSchema = SnapshotDiffCanonicalMetricsRecord;
+
 export class SnapshotDiff extends Schema.Class<SnapshotDiff>("SnapshotDiff")({
   id: CanonicalIdentifierSchema,
   baselineSnapshotId: CanonicalIdentifierSchema,
   candidateSnapshotId: CanonicalIdentifierSchema,
   metrics: SnapshotDiffMetrics,
+  changes: Schema.optional(SNAPSHOT_DIFF_CHANGES_SCHEMA),
+  canonicalMetrics: Schema.optional(SnapshotDiffCanonicalMetricsSchema),
   createdAt: IsoDateTimeSchema,
 }) {}
 
@@ -216,6 +279,14 @@ export const PackPromotionDecision = PackPromotionDecisionSchema;
 
 export type SnapshotDiffEncoded = Schema.Codec.Encoded<typeof SnapshotDiffSchema>;
 export type SnapshotDiffMetricsEncoded = Schema.Codec.Encoded<typeof SnapshotDiffMetrics>;
+export type SnapshotDiffChange = Schema.Schema.Type<typeof SnapshotDiffChangeSchema>;
+export type SnapshotDiffChangeEncoded = Schema.Codec.Encoded<typeof SnapshotDiffChangeSchema>;
+export type SnapshotDiffCanonicalMetrics = Schema.Schema.Type<
+  typeof SnapshotDiffCanonicalMetricsSchema
+>;
+export type SnapshotDiffCanonicalMetricsEncoded = Schema.Codec.Encoded<
+  typeof SnapshotDiffCanonicalMetricsSchema
+>;
 export type QualityVerdict = Schema.Schema.Type<typeof QualityVerdictSchema>;
 export type QualityVerdictEncoded = Schema.Codec.Encoded<typeof QualityVerdictSchema>;
 export type PackPromotionDecisionEncoded = Schema.Codec.Encoded<typeof PackPromotionDecisionSchema>;
