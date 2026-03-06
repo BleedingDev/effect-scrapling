@@ -15,6 +15,7 @@ export const ArtifactKindSchema = Schema.Literals([
   "html",
   "renderedDom",
   "screenshot",
+  "networkSummary",
   "timings",
 ] as const);
 
