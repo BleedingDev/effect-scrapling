@@ -102,6 +102,22 @@ export {
   type SitePackEncoded,
 } from "./site-pack.js";
 export {
+  DeterministicParserInputSchema,
+  ParsedHtmlDocument,
+  ParsedHtmlDocumentSchema,
+  ParsedHtmlNode,
+  ParsedHtmlNodeSchema,
+  parseDeterministicHtml,
+} from "./extraction-parser.js";
+export {
+  SelectorCandidate,
+  SelectorCandidateSchema,
+  SelectorEngineInputSchema,
+  SelectorResolution,
+  SelectorResolutionSchema,
+  resolveSelectorPrecedence,
+} from "./selector-engine.js";
+export {
   ArtifactMetadataRecord,
   ArtifactMetadataRecordSchema,
   ArtifactMetadataStore,
@@ -123,6 +139,25 @@ export {
   type RunConfigSource,
   type RunExecutionConfigEncoded,
 } from "./config-storage.js";
+export {
+  AccessPlannerDecision,
+  AccessPlannerDecisionSchema,
+  AccessPlannerInputSchema,
+  AccessPlannerLive,
+  PlannerRationaleEntry,
+  PlannerRationaleEntrySchema,
+  makeAccessPlanner,
+  planAccessExecution,
+} from "./access-planner-runtime.js";
+export {
+  HttpCaptureBundle,
+  HttpCaptureBundleSchema,
+  HttpCapturePayload,
+  HttpCapturePayloadSchema,
+  HttpAccessLive,
+  captureHttpArtifacts,
+  makeHttpAccess,
+} from "./http-access-runtime.js";
 export {
   AccessPlanner,
   ArtifactExporter,
