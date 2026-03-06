@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { Deferred, Effect, Layer, Ref, Schema } from "effect";
+import { Deferred, Effect, Exit, Layer, Ref, Schema } from "effect";
+import { makeBrowserCrashTelemetry, type BrowserLeakDetector } from "./browser-leak-detection.ts";
 import {
   type ArtifactMetadataRecord,
   ArtifactMetadataRecordSchema,
@@ -118,6 +119,11 @@ export type BrowserAccessRuntimeHandle = {
   readonly shutdown: Effect.Effect<void>;
 };
 
+type BrowserProcessHandle = {
+  readonly generation: number;
+  readonly browser: BrowserInstance;
+};
+
 type BrowserRuntimeState =
   | { readonly status: "idle" }
   | {
@@ -142,9 +148,40 @@ type LaunchDecision =
     }
   | { readonly kind: "closed" };
 
+type BrowserProcessState =
+  | { readonly status: "idle"; readonly nextGeneration: number }
+  | {
+      readonly status: "launching";
+      readonly nextGeneration: number;
+      readonly deferred: Deferred.Deferred<BrowserProcessHandle, ProviderUnavailable>;
+    }
+  | {
+      readonly status: "ready";
+      readonly current: BrowserProcessHandle;
+      readonly nextGeneration: number;
+    }
+  | { readonly status: "closed"; readonly nextGeneration: number };
+
+type BrowserProcessLaunchDecision =
+  | { readonly kind: "ready"; readonly current: BrowserProcessHandle }
+  | {
+      readonly kind: "await";
+      readonly deferred: Deferred.Deferred<BrowserProcessHandle, ProviderUnavailable>;
+    }
+  | {
+      readonly kind: "launch";
+      readonly deferred: Deferred.Deferred<BrowserProcessHandle, ProviderUnavailable>;
+      readonly generation: number;
+    }
+  | { readonly kind: "closed" };
+
 const TEXT_ENCODER = new TextEncoder();
 const idleState: BrowserRuntimeState = { status: "idle" };
 const closedState: BrowserRuntimeState = { status: "closed" };
+const idleBrowserProcessState = {
+  status: "idle",
+  nextGeneration: 0,
+} satisfies BrowserProcessState;
 
 function readCauseMessage(cause: unknown, fallback: string) {
   if ((typeof cause === "object" && cause !== null) || typeof cause === "function") {
@@ -216,6 +253,13 @@ function closeQuietly(effect: () => PromiseLike<void>) {
       onSuccess: () => Effect.void,
     },
   );
+}
+
+function recordDetector(
+  detector: BrowserLeakDetector | undefined,
+  effect: (detector: BrowserLeakDetector) => Effect.Effect<unknown>,
+) {
+  return detector === undefined ? Effect.void : effect(detector).pipe(Effect.asVoid);
 }
 
 const browserAccessTimedOut = Symbol.for("foundation.core.browserAccess.timedOut");
@@ -412,17 +456,25 @@ export function captureBrowserArtifacts(
   plan: unknown,
   browser: BrowserInstance,
   now: () => Date = () => new Date(),
+  options?: {
+    readonly detector?: BrowserLeakDetector;
+  },
 ) {
   return Effect.gen(function* () {
     const decodedPlan = yield* decodeBrowserPlan(plan).pipe(
       Effect.flatMap(ensureBrowserCapturePlan),
     );
-    return yield* captureDecodedBrowserArtifacts(decodedPlan, browser, now);
+    return yield* captureDecodedBrowserArtifacts(decodedPlan, browser, now, options?.detector);
   });
 }
 
 const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBrowserArtifacts")(
-  function* (plan: RunPlan, browser: BrowserInstance, now: () => Date) {
+  function* (
+    plan: RunPlan,
+    browser: BrowserInstance,
+    now: () => Date,
+    detector?: BrowserLeakDetector,
+  ) {
     const startedAt = now();
     const timeoutMessage = `Browser access timed out for run plan ${plan.id}.`;
     const deadlineMs = startedAt.valueOf() + plan.timeoutMs;
@@ -442,6 +494,11 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
               toRenderCrash("Browser access failed to allocate a browsing context", cause),
           }),
         ),
+        Effect.tap(() =>
+          recordDetector(detector, (runtimeDetector) =>
+            runtimeDetector.recordContextOpened(plan.id),
+          ),
+        ),
       ),
       (context) =>
         Effect.acquireUseRelease(
@@ -458,6 +515,11 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
                 onError: (cause) =>
                   toRenderCrash("Browser access failed to allocate a page", cause),
               }),
+            ),
+            Effect.tap(() =>
+              recordDetector(detector, (runtimeDetector) =>
+                runtimeDetector.recordPageOpened(plan.id),
+              ),
             ),
           ),
           (page) =>
@@ -618,9 +680,23 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
                 ],
               });
             }),
-          (page) => closeQuietly(() => page.close()),
+          (page) =>
+            closeQuietly(() => page.close()).pipe(
+              Effect.andThen(
+                recordDetector(detector, (runtimeDetector) =>
+                  runtimeDetector.recordPageClosed(plan.id),
+                ),
+              ),
+            ),
         ),
-      (context) => closeQuietly(() => context.close()),
+      (context) =>
+        closeQuietly(() => context.close()).pipe(
+          Effect.andThen(
+            recordDetector(detector, (runtimeDetector) =>
+              runtimeDetector.recordContextClosed(plan.id),
+            ),
+          ),
+        ),
     );
   },
 );
@@ -628,22 +704,227 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
 export function makePlaywrightBrowserAccessRuntime(options?: {
   readonly engine?: BrowserAccessEngine;
   readonly now?: () => Date;
+  readonly detector?: BrowserLeakDetector;
 }) {
   const now = options?.now ?? (() => new Date());
 
   return Effect.gen(function* () {
     const engine = options?.engine ?? (yield* loadPlaywrightEngine());
-    const browser = yield* Effect.tryPromise({
-      try: () => engine.chromium.launch({ headless: true }),
-      catch: (cause) => toProviderUnavailable("Browser access launch failed", cause),
+    const detector = options?.detector;
+    const browserStateRef = yield* Ref.make<BrowserProcessState>(idleBrowserProcessState);
+
+    const launchBrowserProcess = Effect.fn("PlaywrightBrowserAccessRuntime.launchBrowserProcess")(
+      (generation: number, planId?: string) =>
+        Effect.tryPromise({
+          try: () => engine.chromium.launch({ headless: true }),
+          catch: (cause) => toProviderUnavailable("Browser access launch failed", cause),
+        }).pipe(
+          Effect.flatMap((browser) =>
+            recordDetector(detector, (runtimeDetector) =>
+              runtimeDetector.recordBrowserOpened(planId),
+            ).pipe(Effect.as({ generation, browser } satisfies BrowserProcessHandle)),
+          ),
+        ),
+    );
+
+    const getOrLaunchBrowserProcess = Effect.fn(
+      "PlaywrightBrowserAccessRuntime.getOrLaunchBrowserProcess",
+    )(function* (planId?: string) {
+      const deferred = yield* Deferred.make<BrowserProcessHandle, ProviderUnavailable>();
+      const decision = yield* Ref.modify(
+        browserStateRef,
+        (state): readonly [BrowserProcessLaunchDecision, BrowserProcessState] => {
+          switch (state.status) {
+            case "ready": {
+              return [{ kind: "ready", current: state.current }, state];
+            }
+            case "launching": {
+              return [{ kind: "await", deferred: state.deferred }, state];
+            }
+            case "closed": {
+              return [{ kind: "closed" }, state];
+            }
+            case "idle": {
+              return [
+                { kind: "launch", deferred, generation: state.nextGeneration },
+                { status: "launching", deferred, nextGeneration: state.nextGeneration },
+              ];
+            }
+          }
+        },
+      );
+
+      switch (decision.kind) {
+        case "ready": {
+          return decision.current;
+        }
+        case "await": {
+          return yield* Deferred.await(decision.deferred);
+        }
+        case "closed": {
+          return yield* Effect.fail(
+            new ProviderUnavailable({
+              message: "Browser access runtime is closed for this scope.",
+            }),
+          );
+        }
+        case "launch": {
+          return yield* Effect.matchEffect(launchBrowserProcess(decision.generation, planId), {
+            onFailure: (error) =>
+              Effect.gen(function* () {
+                yield* Ref.modify(
+                  browserStateRef,
+                  (state): readonly [void, BrowserProcessState] => [
+                    undefined,
+                    state.status === "closed"
+                      ? state
+                      : { status: "idle", nextGeneration: decision.generation },
+                  ],
+                );
+                yield* Deferred.fail(decision.deferred, error);
+                return yield* Effect.fail(error);
+              }),
+            onSuccess: (current) =>
+              Effect.gen(function* () {
+                const transition = yield* Ref.modify(
+                  browserStateRef,
+                  (
+                    state,
+                  ): readonly [{ readonly releaseAfterLaunch: boolean }, BrowserProcessState] => {
+                    if (state.status === "closed") {
+                      return [{ releaseAfterLaunch: true }, state];
+                    }
+
+                    return [
+                      { releaseAfterLaunch: false },
+                      {
+                        status: "ready",
+                        current,
+                        nextGeneration: current.generation + 1,
+                      },
+                    ];
+                  },
+                );
+                yield* Deferred.succeed(decision.deferred, current);
+
+                if (transition.releaseAfterLaunch) {
+                  yield* closeQuietly(() => current.browser.close()).pipe(
+                    Effect.andThen(
+                      recordDetector(detector, (runtimeDetector) =>
+                        runtimeDetector.recordBrowserClosed(planId),
+                      ),
+                    ),
+                  );
+                }
+
+                return current;
+              }),
+          });
+        }
+      }
     });
+
+    const releaseBrowserProcess = Effect.fn("PlaywrightBrowserAccessRuntime.releaseBrowserProcess")(
+      function* (planId?: string) {
+        return yield* Ref.modify(
+          browserStateRef,
+          (state): readonly [Effect.Effect<void>, BrowserProcessState] => {
+            if (state.status === "ready") {
+              return [
+                closeQuietly(() => state.current.browser.close()).pipe(
+                  Effect.andThen(
+                    recordDetector(detector, (runtimeDetector) =>
+                      runtimeDetector.recordBrowserClosed(planId),
+                    ),
+                  ),
+                ),
+                { status: "closed", nextGeneration: state.nextGeneration },
+              ];
+            }
+
+            return [Effect.void, { status: "closed", nextGeneration: state.nextGeneration }];
+          },
+        ).pipe(Effect.flatten);
+      },
+    );
+
+    const resetBrowserProcess = Effect.fn("PlaywrightBrowserAccessRuntime.resetBrowserProcess")(
+      function* (current: BrowserProcessHandle, planId: string) {
+        return yield* Ref.modify(
+          browserStateRef,
+          (state): readonly [Effect.Effect<boolean>, BrowserProcessState] => {
+            if (state.status === "ready" && state.current.generation === current.generation) {
+              return [
+                closeQuietly(() => current.browser.close()).pipe(
+                  Effect.andThen(
+                    recordDetector(detector, (runtimeDetector) =>
+                      runtimeDetector.recordBrowserClosed(planId),
+                    ),
+                  ),
+                  Effect.as(true),
+                ),
+                { status: "idle", nextGeneration: state.nextGeneration },
+              ];
+            }
+
+            return [Effect.succeed(false), state];
+          },
+        ).pipe(Effect.flatten);
+      },
+    );
+
+    const emitCrashTelemetry = Effect.fn("PlaywrightBrowserAccessRuntime.emitCrashTelemetry")(
+      function* (input: {
+        readonly planId: string;
+        readonly browserGeneration: number;
+        readonly recycledToGeneration: number | null;
+        readonly recovered: boolean;
+        readonly failure: RenderCrashError;
+      }) {
+        if (detector === undefined) {
+          return;
+        }
+
+        yield* detector.recordCrashTelemetry(
+          makeBrowserCrashTelemetry({
+            ...input,
+            recordedAt: now().toISOString(),
+          }),
+        );
+      },
+    );
 
     return {
       capture: Effect.fn("PlaywrightBrowserAccessRuntime.capture")(function* (plan: RunPlan) {
-        const bundle = yield* captureDecodedBrowserArtifacts(plan, browser, now);
+        const current = yield* getOrLaunchBrowserProcess(plan.id);
+        const bundle = yield* captureDecodedBrowserArtifacts(
+          plan,
+          current.browser,
+          now,
+          detector,
+        ).pipe(
+          Effect.catchTag("RenderCrashError", (failure) =>
+            Effect.gen(function* () {
+              yield* resetBrowserProcess(current, plan.id);
+              const recoveredProcess = yield* Effect.exit(getOrLaunchBrowserProcess(plan.id));
+
+              yield* emitCrashTelemetry({
+                planId: plan.id,
+                browserGeneration: current.generation,
+                recycledToGeneration: Exit.isSuccess(recoveredProcess)
+                  ? recoveredProcess.value.generation
+                  : null,
+                recovered: Exit.isSuccess(recoveredProcess),
+                failure,
+              });
+
+              return yield* Effect.fail(failure);
+            }),
+          ),
+        );
         return bundle.artifacts;
       }),
-      shutdown: closeQuietly(() => browser.close()),
+      shutdown: releaseBrowserProcess(),
     } satisfies BrowserAccessRuntimeHandle;
   });
 }
@@ -743,14 +1024,20 @@ function getOrLaunchRuntime(options: {
 function getPlaywrightRuntimeOptions(options?: {
   readonly engine?: BrowserAccessEngine;
   readonly now?: () => Date;
+  readonly detector?: BrowserLeakDetector;
 }) {
-  if (options?.engine === undefined && options?.now === undefined) {
+  if (
+    options?.engine === undefined &&
+    options?.now === undefined &&
+    options?.detector === undefined
+  ) {
     return undefined;
   }
 
   return {
     ...(options?.engine === undefined ? {} : { engine: options.engine }),
     ...(options?.now === undefined ? {} : { now: options.now }),
+    ...(options?.detector === undefined ? {} : { detector: options.detector }),
   };
 }
 
@@ -758,6 +1045,7 @@ export function BrowserAccessLive(options?: {
   readonly launch?: Effect.Effect<BrowserAccessRuntimeHandle, BrowserLaunchError>;
   readonly engine?: BrowserAccessEngine;
   readonly now?: () => Date;
+  readonly detector?: BrowserLeakDetector;
 }) {
   const launch =
     options?.launch ?? makePlaywrightBrowserAccessRuntime(getPlaywrightRuntimeOptions(options));

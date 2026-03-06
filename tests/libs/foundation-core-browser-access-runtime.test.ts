@@ -619,12 +619,72 @@ describe("foundation-core browser access runtime", () => {
       expect(contentCalls.current).toBe(2);
       expect(closed.page).toBe(2);
       expect(closed.context).toBe(2);
-      expect(closed.browser).toBe(1);
+      expect(closed.browser).toBe(2);
     }),
   );
 
   it.effect(
-    "maps browser network summary failures to RenderCrashError and releases browser resources",
+    "maps browser screenshot failures to RenderCrashError recycles the browser and releases resources",
+    () =>
+      Effect.gen(function* () {
+        const closed = {
+          browser: 0,
+          context: 0,
+          page: 0,
+        };
+        const engine: BrowserAccessEngine = {
+          chromium: {
+            launch: async () => ({
+              newContext: async () => ({
+                newPage: async () => ({
+                  goto: async () => undefined,
+                  content: async () => "<html><body><h1>Screenshot recovery</h1></body></html>",
+                  screenshot: async () => {
+                    throw new Error("capture target closed");
+                  },
+                  evaluate: async () => ({
+                    navigation: [],
+                    resources: [],
+                  }),
+                  close: async () => {
+                    closed.page += 1;
+                  },
+                }),
+                close: async () => {
+                  closed.context += 1;
+                },
+              }),
+              close: async () => {
+                closed.browser += 1;
+              },
+            }),
+          },
+        };
+
+        const error = yield* Effect.scoped(
+          Effect.gen(function* () {
+            const access = yield* BrowserAccess;
+            return yield* access.capture(browserPlan).pipe(Effect.flip);
+          }).pipe(
+            Effect.provide(
+              BrowserAccessLive({
+                engine,
+                now: () => new Date("2026-03-06T10:00:05.000Z"),
+              }),
+            ),
+          ),
+        );
+
+        expect(error.name).toBe("RenderCrashError");
+        expect(error.message).toContain("failed to capture page screenshot");
+        expect(closed.page).toBe(1);
+        expect(closed.context).toBe(1);
+        expect(closed.browser).toBe(2);
+      }),
+  );
+
+  it.effect(
+    "maps browser network summary failures to RenderCrashError recycles the browser and releases resources",
     () =>
       Effect.gen(function* () {
         const closed = {
@@ -676,7 +736,7 @@ describe("foundation-core browser access runtime", () => {
         expect(error.message).toContain("failed to capture network summary");
         expect(closed.page).toBe(1);
         expect(closed.context).toBe(1);
-        expect(closed.browser).toBe(1);
+        expect(closed.browser).toBe(2);
       }),
   );
 });

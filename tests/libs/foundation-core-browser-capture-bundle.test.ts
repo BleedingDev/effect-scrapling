@@ -242,6 +242,78 @@ describe("foundation-core browser capture bundle", () => {
   );
 
   it.effect(
+    "maps browser rendered DOM failures to RenderCrashError and releases scoped resources",
+    () =>
+      Effect.gen(function* () {
+        const closed = {
+          context: 0,
+          page: 0,
+        };
+        const browser: BrowserInstance = {
+          newContext: async () => ({
+            newPage: async () => ({
+              goto: async () => undefined,
+              content: async () => {
+                throw new Error("renderer lost execution context");
+              },
+              screenshot: async () => Uint8Array.from([10, 11, 12, 13]),
+              evaluate: async () => ({ navigation: [], resources: [] }),
+              close: async () => {
+                closed.page += 1;
+              },
+            }),
+            close: async () => {
+              closed.context += 1;
+            },
+          }),
+          close: async () => undefined,
+        };
+        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(Effect.flip);
+
+        expect(error.name).toBe("RenderCrashError");
+        expect(error.message).toContain("failed to capture rendered DOM");
+        expect(closed.page).toBe(1);
+        expect(closed.context).toBe(1);
+      }),
+  );
+
+  it.effect(
+    "maps browser screenshot failures to RenderCrashError and releases scoped resources",
+    () =>
+      Effect.gen(function* () {
+        const closed = {
+          context: 0,
+          page: 0,
+        };
+        const browser: BrowserInstance = {
+          newContext: async () => ({
+            newPage: async () => ({
+              goto: async () => undefined,
+              content: async () => "<html><body><main>Rendered</main></body></html>",
+              screenshot: async () => {
+                throw new Error("capture target closed");
+              },
+              evaluate: async () => ({ navigation: [], resources: [] }),
+              close: async () => {
+                closed.page += 1;
+              },
+            }),
+            close: async () => {
+              closed.context += 1;
+            },
+          }),
+          close: async () => undefined,
+        };
+        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(Effect.flip);
+
+        expect(error.name).toBe("RenderCrashError");
+        expect(error.message).toContain("failed to capture page screenshot");
+        expect(closed.page).toBe(1);
+        expect(closed.context).toBe(1);
+      }),
+  );
+
+  it.effect(
     "maps browser network summary failures to RenderCrashError and releases scoped resources",
     () =>
       Effect.gen(function* () {
