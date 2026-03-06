@@ -21,6 +21,8 @@
     "standalone": "bun run src/standalone.ts",
     "api": "bun run src/api.ts",
     "example:sdk-consumer": "bun run examples/sdk-consumer.ts",
+    "example:e1-capability-slice": "bun run examples/e1-capability-slice.ts",
+    "check:e1-capability-slice": "bun test tests/guardrails/e1-capability-slice.verify.test.ts && bun run example:e1-capability-slice",
     "benchmark:e0-performance-budget": "bun run scripts/benchmarks/e0-performance-budget.ts --baseline docs/artifacts/e0-performance-budget-baseline.json",
     "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
     "format:check": "bunx --bun oxfmt --check $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
@@ -52,6 +54,7 @@
     "build:sfe:api": "bun build --compile src/api.ts --outfile dist/effect-scrapling-api"
   },
   "dependencies": {
+    "@effect-scrapling/foundation-core": "file:libs/foundation/core",
     "cheerio": "^1.2.0",
     "effect": "^4.0.0-beta.27",
     "playwright": "^1.52.0"

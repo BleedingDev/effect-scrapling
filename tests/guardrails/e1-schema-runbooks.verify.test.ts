@@ -7,7 +7,21 @@ const TARGET_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-target-profi
 const ACCESS_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-access-policy.md");
 const SITE_PACK_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-site-pack-state.md");
 const OBSERVATION_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-observation-snapshot.md");
-const RUN_STATE_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-budget-lease-artifact.md");
+const BUDGET_LEASE_RUNBOOK_PATH = join(
+  REPO_ROOT,
+  "docs",
+  "runbooks",
+  "e1-budget-lease-artifact.md",
+);
+const WORKFLOW_RUN_STATE_RUNBOOK_PATH = join(
+  REPO_ROOT,
+  "docs",
+  "runbooks",
+  "e1-workflow-run-state.md",
+);
+const DIFF_VERDICT_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-diff-verdict.md");
+const SERVICE_TOPOLOGY_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-service-topology.md");
+const CONFIG_STORAGE_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-config-storage.md");
 const TAGGED_ERRORS_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-tagged-errors.md");
 
 async function readRunbook(path: string): Promise<string> {
@@ -53,13 +67,45 @@ describe("E1 schema runbooks verification", () => {
     expect(runbook).toContain("evidence");
   });
 
-  it("keeps the run-state resource runbook present for operators", async () => {
-    const runbook = await readRunbook(RUN_STATE_RUNBOOK_PATH);
+  it("keeps the budget and lease runbook present for operators", async () => {
+    const runbook = await readRunbook(BUDGET_LEASE_RUNBOOK_PATH);
 
     expect(runbook).toContain("ConcurrencyBudget");
     expect(runbook).toContain("EgressLease");
     expect(runbook).toContain("IdentityLease");
     expect(runbook).toContain("ArtifactRef");
+  });
+
+  it("keeps the workflow run-state runbook present for operators", async () => {
+    const runbook = await readRunbook(WORKFLOW_RUN_STATE_RUNBOOK_PATH);
+
+    expect(runbook).toContain("RunPlan");
+    expect(runbook).toContain("RunCheckpoint");
+    expect(runbook).toContain("RunStats");
+  });
+
+  it("keeps the diff verdict runbook present for operators", async () => {
+    const runbook = await readRunbook(DIFF_VERDICT_RUNBOOK_PATH);
+
+    expect(runbook).toContain("SnapshotDiff");
+    expect(runbook).toContain("QualityVerdict");
+    expect(runbook).toContain("PackPromotionDecision");
+  });
+
+  it("keeps the service topology runbook present for operators", async () => {
+    const runbook = await readRunbook(SERVICE_TOPOLOGY_RUNBOOK_PATH);
+
+    expect(runbook).toContain("TargetRegistry");
+    expect(runbook).toContain("WorkflowRunner");
+    expect(runbook).toContain("Layer");
+  });
+
+  it("keeps the config and storage runbook present for operators", async () => {
+    const runbook = await readRunbook(CONFIG_STORAGE_RUNBOOK_PATH);
+
+    expect(runbook).toContain("RunExecutionConfig");
+    expect(runbook).toContain("CheckpointRecord");
+    expect(runbook).toContain("ArtifactMetadataStore");
   });
 
   it("keeps the tagged errors runbook present for operators", async () => {

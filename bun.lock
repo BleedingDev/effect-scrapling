@@ -5,6 +5,7 @@
     "": {
       "name": "effect-scrapling-tooling",
       "dependencies": {
+        "@effect-scrapling/foundation-core": "file:libs/foundation/core",
         "cheerio": "^1.2.0",
         "effect": "^4.0.0-beta.27",
         "playwright": "^1.52.0",
@@ -227,6 +228,8 @@
     "@effect-native/bun-test": ["@effect-native/bun-test@file:vendor/effect-native-bun-test", { "peerDependencies": { "@types/bun": "*", "effect": "^4.0.0-beta.0" } }],
 
     "@effect-scrapling/ci-tooling": ["@effect-scrapling/ci-tooling@file:tools/ci", {}],
+
+    "@effect-scrapling/foundation-core": ["@effect-scrapling/foundation-core@file:libs/foundation/core", {}],
 
     "@effect/language-service": ["@effect/language-service@0.75.1", "", { "bin": { "effect-language-service": "cli.js" } }, "sha512-g9xD2tAQgRFpYC2YgpZq02VeSL5fBbFJ0B/g1o+14NuNmwtaYJc7SjiLWAA9eyhJHosNrn6h1Ye+Kx6j5mN0AA=="],
 
