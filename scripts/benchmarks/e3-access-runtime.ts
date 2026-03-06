@@ -4,15 +4,48 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Effect, Schema, SchemaGetter } from "effect";
 import { planAccessExecution } from "../../libs/foundation/core/src/access-planner-runtime.ts";
-import { AccessPolicySchema } from "../../libs/foundation/core/src/access-policy.ts";
+import {
+  AccessPolicySchema,
+  type AccessPolicyEncoded,
+} from "../../libs/foundation/core/src/access-policy.ts";
 import { makeInMemoryCaptureBundleStore } from "../../libs/foundation/core/src/capture-store-runtime.ts";
 import { captureHttpArtifacts } from "../../libs/foundation/core/src/http-access-runtime.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
 import { TargetProfileSchema } from "../../libs/foundation/core/src/target-profile.ts";
 
-const DEFAULT_SAMPLE_SIZE = 12;
-const DEFAULT_WARMUP_ITERATIONS = 3;
-const FIXED_DATE = "2026-03-06T10:30:00.000Z";
+export const DEFAULT_SAMPLE_SIZE = 12;
+export const DEFAULT_WARMUP_ITERATIONS = 3;
+export const FIXED_DATE = "2026-03-06T10:30:00.000Z";
+
+const FIXTURE_TARGET = {
+  id: "target-product-001",
+  tenantId: "tenant-main",
+  domain: "example.com",
+  kind: "productPage",
+  canonicalKey: "catalog/product-001",
+  seedUrls: ["https://example.com/products/001"],
+  accessPolicyId: "policy-http",
+  packId: "pack-example-com",
+  priority: 10,
+} as const;
+
+const FIXTURE_PACK = {
+  id: "pack-example-com",
+  domainPattern: "*.example.com",
+  state: "shadow",
+  accessPolicyId: "policy-http",
+  version: "2026.03.06",
+} as const;
+
+const FIXTURE_ACCESS_POLICY: AccessPolicyEncoded = {
+  id: "policy-http",
+  mode: "http",
+  perDomainConcurrency: 8,
+  globalConcurrency: 64,
+  timeoutMs: 1_000,
+  maxRetries: 2,
+  render: "never",
+};
 
 const PositiveIntFromString = Schema.FiniteFromString.check(Schema.isInt()).check(
   Schema.isGreaterThan(0),
@@ -25,13 +58,13 @@ const PositiveIntArgumentSchema = Schema.Trim.pipe(
   }),
 );
 
-const PERFORMANCE_BUDGETS = {
+export const PERFORMANCE_BUDGETS = {
   baselineAccessP95Ms: 25,
   candidateAccessP95Ms: 50,
   retryRecoveryP95Ms: 300,
 } as const;
 
-const BenchmarkSummarySchema = Schema.Struct({
+export const BenchmarkSummarySchema = Schema.Struct({
   samples: Schema.Int.check(Schema.isGreaterThan(0)),
   minMs: Schema.Finite,
   meanMs: Schema.Finite,
@@ -39,7 +72,7 @@ const BenchmarkSummarySchema = Schema.Struct({
   maxMs: Schema.Finite,
 });
 
-const BenchmarkArtifactSchema = Schema.Struct({
+export const BenchmarkArtifactSchema = Schema.Struct({
   benchmark: Schema.Literal("e3-access-runtime"),
   generatedAt: Schema.String,
   environment: Schema.Struct({
@@ -70,7 +103,21 @@ const BenchmarkArtifactSchema = Schema.Struct({
   status: Schema.Literals(["pass", "fail"] as const),
 });
 
-function decodePositiveIntegerOption(rawValue: string | undefined, fallback: number) {
+export type BenchmarkSummary = Schema.Schema.Type<typeof BenchmarkSummarySchema>;
+export type BenchmarkArtifact = Schema.Schema.Type<typeof BenchmarkArtifactSchema>;
+
+type BenchmarkFetch = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
+type FixtureOverrides = {
+  readonly accessPolicy?: Partial<AccessPolicyEncoded>;
+};
+type CandidateAccessOptions = FixtureOverrides & {
+  readonly fetchImpl?: BenchmarkFetch;
+};
+type RetryRecoveryOptions = CandidateAccessOptions & {
+  readonly onAttempt?: (attempt: number) => void;
+};
+
+export function decodePositiveIntegerOption(rawValue: string | undefined, fallback: number) {
   if (rawValue === undefined) {
     return fallback;
   }
@@ -78,7 +125,7 @@ function decodePositiveIntegerOption(rawValue: string | undefined, fallback: num
   return Schema.decodeUnknownSync(PositiveIntArgumentSchema)(rawValue);
 }
 
-function parseOptions(args: readonly string[]) {
+export function parseOptions(args: readonly string[]) {
   let artifactPath: string | undefined;
   let baselinePath: string | undefined;
   let sampleSize = DEFAULT_SAMPLE_SIZE;
@@ -121,17 +168,19 @@ function parseOptions(args: readonly string[]) {
   };
 }
 
-function percentile95(values: readonly number[]) {
+export type BenchmarkOptions = ReturnType<typeof parseOptions>;
+
+export function percentile95(values: readonly number[]) {
   const sorted = [...values].sort((left, right) => left - right);
   const index = Math.ceil(sorted.length * 0.95) - 1;
   return sorted[Math.max(0, index)] ?? 0;
 }
 
-function roundToThree(value: number) {
+export function roundToThree(value: number) {
   return Number.parseFloat(value.toFixed(3));
 }
 
-function summarizeMeasurements(values: readonly number[]) {
+export function summarizeMeasurements(values: readonly number[]) {
   return Schema.decodeUnknownSync(BenchmarkSummarySchema)({
     samples: values.length,
     minMs: roundToThree(Math.min(...values)),
@@ -141,7 +190,7 @@ function summarizeMeasurements(values: readonly number[]) {
   });
 }
 
-async function measureEffect(
+export async function measureEffect(
   sampleSize: number,
   warmupIterations: number,
   effectFactory: () => Effect.Effect<unknown, unknown, never>,
@@ -160,7 +209,7 @@ async function measureEffect(
   return summarizeMeasurements(values);
 }
 
-async function readBaseline(path: string | undefined) {
+export async function readBaseline(path: string | undefined) {
   if (path === undefined) {
     return undefined;
   }
@@ -169,39 +218,18 @@ async function readBaseline(path: string | undefined) {
   return Schema.decodeUnknownSync(BenchmarkArtifactSchema)(JSON.parse(baseline));
 }
 
-function makeFixtures() {
-  const target = Schema.decodeUnknownSync(TargetProfileSchema)({
-    id: "target-product-001",
-    tenantId: "tenant-main",
-    domain: "example.com",
-    kind: "productPage",
-    canonicalKey: "catalog/product-001",
-    seedUrls: ["https://example.com/products/001"],
-    accessPolicyId: "policy-http",
-    packId: "pack-example-com",
-    priority: 10,
-  });
-  const pack = Schema.decodeUnknownSync(SitePackSchema)({
-    id: "pack-example-com",
-    domainPattern: "*.example.com",
-    state: "shadow",
-    accessPolicyId: "policy-http",
-    version: "2026.03.06",
-  });
+export function makeFixtures(overrides: FixtureOverrides = {}) {
+  const target = Schema.decodeUnknownSync(TargetProfileSchema)(FIXTURE_TARGET);
+  const pack = Schema.decodeUnknownSync(SitePackSchema)(FIXTURE_PACK);
   const accessPolicy = Schema.decodeUnknownSync(AccessPolicySchema)({
-    id: "policy-http",
-    mode: "http",
-    perDomainConcurrency: 8,
-    globalConcurrency: 64,
-    timeoutMs: 1_000,
-    maxRetries: 2,
-    render: "never",
+    ...FIXTURE_ACCESS_POLICY,
+    ...overrides.accessPolicy,
   });
 
   return { target, pack, accessPolicy };
 }
 
-function successResponse() {
+export function successResponse() {
   return new Response("<html><body><h1>Example Product</h1></body></html>", {
     status: 200,
     headers: {
@@ -211,8 +239,8 @@ function successResponse() {
   });
 }
 
-function makePlan() {
-  const fixtures = makeFixtures();
+export function makePlan(overrides: FixtureOverrides = {}) {
+  const fixtures = makeFixtures(overrides);
 
   return planAccessExecution({
     ...fixtures,
@@ -220,22 +248,27 @@ function makePlan() {
   }).pipe(Effect.map(({ plan }) => plan));
 }
 
-function runBaselineAccess() {
+export function runBaselineAccess() {
   return Effect.gen(function* () {
     const plan = yield* makePlan();
     const response = yield* Effect.tryPromise(() => Promise.resolve(successResponse()));
     const body = yield* Effect.tryPromise(() => response.text());
 
-    return { runId: plan.id, bodyLength: body.length };
+    return {
+      runId: plan.id,
+      bodyLength: body.length,
+    };
   });
 }
 
-function runCandidateAccess() {
+export function runCandidateAccess(options: CandidateAccessOptions = {}) {
   return Effect.gen(function* () {
-    const plan = yield* makePlan();
+    const plan = yield* makePlan(
+      options.accessPolicy === undefined ? {} : { accessPolicy: options.accessPolicy },
+    );
     const bundle = yield* captureHttpArtifacts(
       plan,
-      async () => Promise.resolve(successResponse()),
+      options.fetchImpl ?? (async () => Promise.resolve(successResponse())),
       () => new Date(FIXED_DATE),
       undefined,
       () => Effect.void,
@@ -243,23 +276,38 @@ function runCandidateAccess() {
     const store = yield* makeInMemoryCaptureBundleStore();
     const stored = yield* store.persistBundle(plan.id, bundle);
 
-    return stored.bundle.artifacts.length;
+    return {
+      runId: plan.id,
+      artifactCount: stored.bundle.artifacts.length,
+      payloadCount: stored.bundle.payloads.length,
+      artifactKinds: stored.bundle.artifacts.map(({ kind }) => kind).sort(),
+    };
   });
 }
 
-function runRetryRecovery() {
+export function runRetryRecovery(options: RetryRecoveryOptions = {}) {
   return Effect.gen(function* () {
-    const plan = yield* makePlan();
+    const plan = yield* makePlan(
+      options.accessPolicy === undefined ? {} : { accessPolicy: options.accessPolicy },
+    );
     let attempts = 0;
     const bundle = yield* captureHttpArtifacts(
       plan,
-      async () => {
+      async (...args) => {
         attempts += 1;
-        if (attempts === 1) {
-          return Promise.reject(new Error("transient upstream"));
-        }
+        options.onAttempt?.(attempts);
 
-        return Promise.resolve(successResponse());
+        const fetchImpl =
+          options.fetchImpl ??
+          (async () => {
+            if (attempts === 1) {
+              return Promise.reject(new Error("transient upstream"));
+            }
+
+            return Promise.resolve(successResponse());
+          });
+
+        return fetchImpl(...args);
       },
       () => new Date(FIXED_DATE),
       undefined,
@@ -268,18 +316,22 @@ function runRetryRecovery() {
     const store = yield* makeInMemoryCaptureBundleStore();
     yield* store.persistBundle(plan.id, bundle);
 
-    return attempts;
+    return {
+      runId: plan.id,
+      attempts,
+      artifactCount: bundle.artifacts.length,
+    };
   });
 }
 
-function buildArtifact(
-  options: ReturnType<typeof parseOptions>,
+export function buildArtifact(
+  options: BenchmarkOptions,
   measurements: {
-    readonly baselineAccess: Schema.Schema.Type<typeof BenchmarkSummarySchema>;
-    readonly candidateAccess: Schema.Schema.Type<typeof BenchmarkSummarySchema>;
-    readonly retryRecovery: Schema.Schema.Type<typeof BenchmarkSummarySchema>;
+    readonly baselineAccess: BenchmarkSummary;
+    readonly candidateAccess: BenchmarkSummary;
+    readonly retryRecovery: BenchmarkSummary;
   },
-  baseline: Schema.Schema.Type<typeof BenchmarkArtifactSchema> | undefined,
+  baseline: BenchmarkArtifact | undefined,
 ) {
   const status =
     measurements.baselineAccess.p95Ms <= PERFORMANCE_BUDGETS.baselineAccessP95Ms &&
@@ -324,7 +376,7 @@ function buildArtifact(
   });
 }
 
-async function writeArtifact(path: string | undefined, artifact: unknown) {
+export async function writeArtifact(path: string | undefined, artifact: unknown) {
   if (path === undefined) {
     return;
   }
@@ -333,10 +385,8 @@ async function writeArtifact(path: string | undefined, artifact: unknown) {
   await writeFile(path, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
 }
 
-async function main() {
-  const options = parseOptions(Bun.argv.slice(2));
-  const baseline = await readBaseline(options.baselinePath);
-  const measurements = {
+export async function collectMeasurements(options: BenchmarkOptions) {
+  return {
     baselineAccess: await measureEffect(
       options.sampleSize,
       options.warmupIterations,
@@ -353,9 +403,21 @@ async function main() {
       runRetryRecovery,
     ),
   };
+}
+
+export async function runBenchmark(args: readonly string[] = Bun.argv.slice(2)) {
+  const options = parseOptions(args);
+  const baseline = await readBaseline(options.baselinePath);
+  const measurements = await collectMeasurements(options);
   const artifact = buildArtifact(options, measurements, baseline);
 
   await writeArtifact(options.artifactPath, artifact);
+
+  return artifact;
+}
+
+export async function main(args: readonly string[] = Bun.argv.slice(2)) {
+  const artifact = await runBenchmark(args);
   console.log(JSON.stringify(artifact, null, 2));
 
   if (artifact.status !== "pass") {
@@ -363,4 +425,6 @@ async function main() {
   }
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}

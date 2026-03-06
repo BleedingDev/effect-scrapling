@@ -10,7 +10,7 @@ import {
   HttpCapturePayloadSchema,
 } from "../../libs/foundation/core/src/http-access-runtime.ts";
 
-function makeBundle() {
+function makeBundle(runId: string, htmlBody = "<html><body>ok</body></html>") {
   const responsePayload = Schema.decodeUnknownSync(HttpCapturePayloadSchema)({
     locator: {
       namespace: "captures/target-product-001",
@@ -25,11 +25,11 @@ function makeBundle() {
       key: "plan-001/body.html",
     },
     mediaType: "text/html; charset=utf-8",
-    body: "<html><body>ok</body></html>",
+    body: htmlBody,
   });
   const responseArtifact = Schema.decodeUnknownSync(ArtifactMetadataRecordSchema)({
     id: "plan-001-response-metadata",
-    runId: "run-001",
+    runId,
     artifactId: "plan-001-response-metadata",
     kind: "responseMetadata",
     visibility: "redacted",
@@ -41,7 +41,7 @@ function makeBundle() {
   });
   const htmlArtifact = Schema.decodeUnknownSync(ArtifactMetadataRecordSchema)({
     id: "plan-001-html",
-    runId: "run-001",
+    runId,
     artifactId: "plan-001-html",
     kind: "html",
     visibility: "raw",
@@ -63,7 +63,7 @@ describe("foundation-core capture store runtime", () => {
   it.effect("persists and reloads capture bundles with deterministic locator ordering", () =>
     Effect.gen(function* () {
       const store = yield* makeInMemoryCaptureBundleStore();
-      const stored = yield* store.persistBundle("run-001", makeBundle());
+      const stored = yield* store.persistBundle("run-001", makeBundle("run-001"));
       const reloaded = yield* store.readBundle("run-001");
 
       expect(stored.bundle.artifacts.map(({ locator }) => locator.key)).toEqual([
@@ -84,6 +84,40 @@ describe("foundation-core capture store runtime", () => {
     }),
   );
 
+  it.effect("keeps payload partitions isolated across runs even when locator keys collide", () =>
+    Effect.gen(function* () {
+      const store = yield* makeInMemoryCaptureBundleStore();
+      yield* store.persistBundle(
+        "run-001",
+        makeBundle("run-001", "<html><body>first</body></html>"),
+      );
+      yield* store.persistBundle(
+        "run-002",
+        makeBundle("run-002", "<html><body>second</body></html>"),
+      );
+
+      const firstReloaded = yield* store.readBundle("run-001").pipe(
+        Effect.flatMap((option) =>
+          Option.match(option, {
+            onNone: () => Effect.die(new Error("Expected run-001 bundle to exist.")),
+            onSome: Effect.succeed,
+          }),
+        ),
+      );
+      const secondReloaded = yield* store.readBundle("run-002").pipe(
+        Effect.flatMap((option) =>
+          Option.match(option, {
+            onNone: () => Effect.die(new Error("Expected run-002 bundle to exist.")),
+            onSome: Effect.succeed,
+          }),
+        ),
+      );
+
+      expect(firstReloaded.bundle.payloads[0]?.body).toContain("first");
+      expect(secondReloaded.bundle.payloads[0]?.body).toContain("second");
+    }),
+  );
+
   it.effect("returns none for unknown run ids and rejects inconsistent bundles", () =>
     Effect.gen(function* () {
       const store = yield* makeInMemoryCaptureBundleStore();
@@ -93,7 +127,7 @@ describe("foundation-core capture store runtime", () => {
 
       const inconsistentMessage = yield* store
         .persistBundle("run-001", {
-          ...Schema.encodeSync(HttpCaptureBundleSchema)(makeBundle()),
+          ...Schema.encodeSync(HttpCaptureBundleSchema)(makeBundle("run-001")),
           payloads: [],
         })
         .pipe(

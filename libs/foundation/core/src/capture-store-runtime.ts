@@ -85,8 +85,8 @@ export function makeInMemoryCaptureBundleStore() {
       new Map<string, ReadonlyArray<Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>>>(),
     );
     const capturedAtByRun = yield* Ref.make(new Map<string, string>());
-    const payloadByKey = yield* Ref.make(
-      new Map<string, Schema.Schema.Type<typeof HttpCapturePayloadSchema>>(),
+    const payloadsByRun = yield* Ref.make(
+      new Map<string, Map<string, Schema.Schema.Type<typeof HttpCapturePayloadSchema>>>(),
     );
 
     const persistBundle = Effect.fn("InMemoryCaptureBundleStore.persistBundle")(function* (
@@ -100,11 +100,14 @@ export function makeInMemoryCaptureBundleStore() {
       const sortedArtifacts = sortArtifacts(decodedBundle.artifacts);
       const sortedPayloads = sortPayloads(decodedBundle.payloads);
 
-      yield* Ref.update(payloadByKey, (current) => {
+      yield* Ref.update(payloadsByRun, (current) => {
         const next = new Map(current);
-        for (const payload of sortedPayloads) {
-          next.set(payloadStorageKey(payload.locator), payload);
-        }
+        next.set(
+          decodedRunId,
+          new Map(
+            sortedPayloads.map((payload) => [payloadStorageKey(payload.locator), payload] as const),
+          ),
+        );
         return next;
       });
       yield* Ref.update(artifactsByRun, (current) => {
@@ -139,10 +142,24 @@ export function makeInMemoryCaptureBundleStore() {
         return Option.none<StoredCaptureBundle>();
       }
 
-      const payloads = yield* Ref.get(payloadByKey).pipe(
+      const payloads = yield* Ref.get(payloadsByRun).pipe(
         Effect.flatMap((current) =>
+          Effect.sync(() => current.get(decodedRunId)).pipe(
+            Effect.flatMap((payloadsForRun) =>
+              payloadsForRun === undefined
+                ? Effect.fail(
+                    new PolicyViolation({
+                      message:
+                        "Capture-store payload state is corrupted because the run payload partition is missing.",
+                    }),
+                  )
+                : Effect.succeed(payloadsForRun),
+            ),
+          ),
+        ),
+        Effect.flatMap((payloadsForRun) =>
           Effect.forEach(artifacts, ({ locator }) =>
-            Effect.sync(() => current.get(payloadStorageKey(locator))).pipe(
+            Effect.sync(() => payloadsForRun.get(payloadStorageKey(locator))).pipe(
               Effect.flatMap((payload) =>
                 payload === undefined
                   ? Effect.fail(
