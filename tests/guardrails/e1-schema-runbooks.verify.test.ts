@@ -7,6 +7,8 @@ const TARGET_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-target-profi
 const ACCESS_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-access-policy.md");
 const SITE_PACK_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-site-pack-state.md");
 const OBSERVATION_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-observation-snapshot.md");
+const RUN_STATE_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-budget-lease-artifact.md");
+const TAGGED_ERRORS_RUNBOOK_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-tagged-errors.md");
 
 async function readRunbook(path: string): Promise<string> {
   const runbook = await readFile(path, "utf8");
@@ -49,5 +51,22 @@ describe("E1 schema runbooks verification", () => {
     expect(runbook).toContain("Observation");
     expect(runbook).toContain("Snapshot");
     expect(runbook).toContain("evidence");
+  });
+
+  it("keeps the run-state resource runbook present for operators", async () => {
+    const runbook = await readRunbook(RUN_STATE_RUNBOOK_PATH);
+
+    expect(runbook).toContain("ConcurrencyBudget");
+    expect(runbook).toContain("EgressLease");
+    expect(runbook).toContain("IdentityLease");
+    expect(runbook).toContain("ArtifactRef");
+  });
+
+  it("keeps the tagged errors runbook present for operators", async () => {
+    const runbook = await readRunbook(TAGGED_ERRORS_RUNBOOK_PATH);
+
+    expect(runbook).toContain("TimeoutError");
+    expect(runbook).toContain("PolicyViolation");
+    expect(runbook).toContain("provider_unavailable");
   });
 });
