@@ -67,9 +67,8 @@ Supported lifecycle transition matrix:
 Run targeted verification from repository root:
 
 ```bash
-bun test tests/libs/foundation-core.test.ts
-bun test tests/guardrails/e1-site-pack-state.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-e3-runtime.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 ```
 
 Run touched-project compilation checks:
@@ -171,7 +170,7 @@ Use schema decode results and typed Effect error handling instead.
 1. Prepare
 - confirm producers emit canonical `SitePack` payloads
 - verify requested state moves against `PackLifecycleTransitionSchema`
-- validate local examples with `bun test tests/guardrails/e1-site-pack-state.verify.test.ts`
+- validate the runtime path with `bun test tests/guardrails/e1-capability-slice.verify.test.ts`
 
 2. Apply
 - decode incoming pack payloads through `SitePackSchema`
@@ -186,7 +185,7 @@ Use schema decode results and typed Effect error handling instead.
 4. Promote
 - move new packs `draft -> shadow` first, then `shadow -> active` only after
   verification is complete
-- merge only when the site pack verify test and full gates are green
+- merge only when the site pack runtime and capability slice are green
 
 ## Rollback Guidance
 
@@ -202,9 +201,8 @@ Use schema decode results and typed Effect error handling instead.
 3. Re-run:
 
 ```bash
-bun test tests/libs/foundation-core.test.ts
-bun test tests/guardrails/e1-site-pack-state.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-e3-runtime.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 bun run check
 ```
 

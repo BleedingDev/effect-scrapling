@@ -1,0 +1,48 @@
+{
+  "benchmark": "e3-access-runtime",
+  "generatedAt": "2026-03-06T11:35:17.520Z",
+  "environment": {
+    "bun": "1.3.10",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "sampleSize": 3,
+  "warmupIterations": 1,
+  "budgets": {
+    "baselineAccessP95Ms": 25,
+    "candidateAccessP95Ms": 50,
+    "retryRecoveryP95Ms": 300
+  },
+  "measurements": {
+    "baselineAccess": {
+      "samples": 3,
+      "minMs": 0.908,
+      "meanMs": 1.001,
+      "p95Ms": 1.057,
+      "maxMs": 1.057
+    },
+    "candidateAccess": {
+      "samples": 3,
+      "minMs": 3.333,
+      "meanMs": 4.237,
+      "p95Ms": 4.837,
+      "maxMs": 4.837
+    },
+    "retryRecovery": {
+      "samples": 3,
+      "minMs": 255.615,
+      "meanMs": 256.324,
+      "p95Ms": 256.742,
+      "maxMs": 256.742
+    }
+  },
+  "comparison": {
+    "baselinePath": null,
+    "deltas": {
+      "baselineAccessP95Ms": null,
+      "candidateAccessP95Ms": null,
+      "retryRecoveryP95Ms": null
+    }
+  },
+  "status": "pass"
+}

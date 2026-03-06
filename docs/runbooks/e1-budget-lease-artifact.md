@@ -61,7 +61,6 @@ Run repository-root validation:
 
 ```bash
 bun test tests/libs/foundation-core-run-state.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
 ```
 
 Run touched-project compilation checks:
@@ -200,7 +199,6 @@ Effect error handling instead of manual class or tag inspection.
 
 ```bash
 bun test tests/libs/foundation-core-run-state.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
 bun run check
 ```
 

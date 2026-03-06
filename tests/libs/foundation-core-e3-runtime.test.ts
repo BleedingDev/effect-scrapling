@@ -1,19 +1,20 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Layer, Match, Schema } from "effect";
+import { AccessPlanner, HttpAccess } from "../../libs/foundation/core/src/service-topology.ts";
 import {
-  AccessPlanner,
   AccessPlannerDecisionSchema,
   AccessPlannerLive,
-  AccessPolicySchema,
-  HttpAccess,
+  planAccessExecution,
+} from "../../libs/foundation/core/src/access-planner-runtime.ts";
+import { AccessPolicySchema } from "../../libs/foundation/core/src/access-policy.ts";
+import {
   HttpAccessLive,
   HttpCaptureBundleSchema,
-  RunPlanSchema,
-  SitePackSchema,
-  TargetProfileSchema,
   captureHttpArtifacts,
-  planAccessExecution,
-} from "../../libs/foundation/core/src";
+} from "../../libs/foundation/core/src/http-access-runtime.ts";
+import { RunPlanSchema } from "../../libs/foundation/core/src/run-state.ts";
+import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
+import { TargetProfileSchema } from "../../libs/foundation/core/src/target-profile.ts";
 
 const FIXED_DATE = "2026-03-06T10:30:00.000Z";
 
@@ -228,18 +229,16 @@ describe("foundation-core access runtime", () => {
   it.effect("rejects browser-required plans for HTTP access", () =>
     Effect.gen(function* () {
       const browserPlan = Schema.decodeUnknownSync(RunPlanSchema)({
-        ...Schema.encodeSync(RunPlanSchema)(
-          (yield* planAccessExecution({
-            target,
-            pack,
-            accessPolicy: Schema.decodeUnknownSync(AccessPolicySchema)({
-              ...Schema.encodeSync(AccessPolicySchema)(httpPolicy),
-              mode: "browser",
-              render: "always",
-            }),
-            createdAt: FIXED_DATE,
-          })).plan,
-        ),
+        ...(yield* planAccessExecution({
+          target,
+          pack,
+          accessPolicy: Schema.decodeUnknownSync(AccessPolicySchema)({
+            ...Schema.encodeSync(AccessPolicySchema)(httpPolicy),
+            mode: "browser",
+            render: "always",
+          }),
+          createdAt: FIXED_DATE,
+        })).plan,
       });
       const failureMessage = yield* Effect.gen(function* () {
         const httpAccess = yield* HttpAccess;
@@ -308,7 +307,7 @@ describe("foundation-core access runtime", () => {
         expect(bodyReadFailureMessage).toContain("body read failed");
 
         const noCapturePlan = Schema.decodeUnknownSync(RunPlanSchema)({
-          ...Schema.encodeSync(RunPlanSchema)(decision.plan),
+          ...decision.plan,
           steps: [
             {
               id: "step-extract",

@@ -16,7 +16,7 @@ import {
   SnapshotSchema,
   StorageLocatorSchema,
 } from "@effect-scrapling/foundation-core";
-import { runE1CapabilitySlice } from "../../examples/e1-capability-slice";
+import { runE1CapabilitySlice } from "../../examples/e1-capability-slice.ts";
 
 const DEFAULT_SAMPLE_SIZE = 12;
 const DEFAULT_WARMUP_ITERATIONS = 3;

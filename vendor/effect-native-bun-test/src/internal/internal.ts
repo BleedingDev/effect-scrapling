@@ -17,7 +17,7 @@ import * as TestClock from "effect/testing/TestClock";
 import * as TestConsole from "effect/testing/TestConsole";
 
 // Use our package's BunTest types from a dedicated types module to avoid cycles
-import type { BunTest } from "../types.js";
+import type { BunTest } from "../types.ts";
 
 /**
  * Executes an Effect and returns a Promise that resolves to the result or throws an error.

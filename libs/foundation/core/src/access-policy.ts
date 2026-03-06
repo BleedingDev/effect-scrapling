@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { CanonicalIdentifierSchema } from "./schema-primitives.js";
+import { CanonicalIdentifierSchema, TimeoutMsSchema } from "./schema-primitives.ts";
 
 export const AccessModeSchema = Schema.Literals(["http", "browser", "hybrid", "managed"] as const);
 
@@ -10,9 +10,6 @@ const PerDomainConcurrencySchema = Schema.Int.check(Schema.isGreaterThan(0)).che
 );
 const GlobalConcurrencySchema = Schema.Int.check(Schema.isGreaterThan(0)).check(
   Schema.isLessThanOrEqualTo(4096),
-);
-const TimeoutMsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(100)).check(
-  Schema.isLessThanOrEqualTo(600_000),
 );
 const MaxRetriesSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).check(
   Schema.isLessThanOrEqualTo(10),

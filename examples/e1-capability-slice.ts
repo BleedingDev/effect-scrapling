@@ -111,6 +111,7 @@ const plan = Schema.decodeUnknownSync(RunPlanSchema)({
   concurrencyBudgetId: "budget-run-001",
   entryUrl: "https://example.com/products/001",
   maxAttempts: 3,
+  timeoutMs: 30_000,
   checkpointInterval: 2,
   steps: [
     {

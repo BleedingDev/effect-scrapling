@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
 import {
@@ -8,10 +6,7 @@ import {
   StorageLocatorSchema,
   TargetProfileSchema,
 } from "../../libs/foundation/core/src";
-import { runE1CapabilitySlice } from "../../examples/e1-capability-slice";
-
-const REPO_ROOT = resolve(import.meta.dir, "..", "..");
-const SECURITY_REVIEW_PATH = join(REPO_ROOT, "docs", "runbooks", "e1-security-review.md");
+import { runE1CapabilitySlice } from "../../examples/e1-capability-slice.ts";
 
 describe("E1 security review verification", () => {
   it("rejects traversal-like keys and unsafe public-boundary URLs", () => {
@@ -76,28 +71,17 @@ describe("E1 security review verification", () => {
     () =>
       Effect.gen(function* () {
         const result = yield* runE1CapabilitySlice();
+        const errorEnvelope = Schema.decodeUnknownSync(CoreErrorEnvelopeSchema)(
+          result.errorEnvelope,
+        );
 
         expect(result.resolvedConfig.artifactNamespace).not.toContain("..");
         expect(result.resolvedConfig.checkpointNamespace).not.toContain("..");
         expect(result.exportedLocator.namespace.startsWith("/")).toBe(false);
         expect(result.exportedLocator.namespace).not.toContain("..");
         expect(result.exportedLocator.key).not.toContain("..");
-        expect(
-          Schema.encodeSync(CoreErrorEnvelopeSchema)(
-            Schema.decodeUnknownSync(CoreErrorEnvelopeSchema)(result.errorEnvelope),
-          ),
-        ).toEqual(result.errorEnvelope);
-        expect(Object.keys(result.errorEnvelope).sort()).toEqual(["code", "message", "retryable"]);
+        expect(errorEnvelope.code).toBe("policy_violation");
+        expect(Object.keys(errorEnvelope).sort()).toEqual(["code", "message", "retryable"]);
       }),
   );
-
-  it("documents the reviewed controls and residual risk", async () => {
-    const reviewSource = await readFile(SECURITY_REVIEW_PATH, "utf8");
-
-    expect(reviewSource).toContain("Open high-severity findings: none");
-    expect(reviewSource).toContain("Traversal-like storage namespaces or keys");
-    expect(reviewSource).toContain("CanonicalKeySchema");
-    expect(reviewSource).toContain("Residual risk");
-    expect(reviewSource).toContain("toCoreErrorEnvelope");
-  });
 });

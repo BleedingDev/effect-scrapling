@@ -5,7 +5,7 @@ export {
   FetchServiceLive,
   runDoctor,
   type FetchClient,
-} from "./scraper";
+} from "./scraper.ts";
 export {
   AccessPreviewRequestSchema,
   AccessPreviewResponseSchema,
@@ -19,5 +19,5 @@ export {
   type BrowserWaitUntil,
   type ExtractRunRequest,
   type ExtractRunResponse,
-} from "./schemas";
-export { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors";
+} from "./schemas.ts";
+export { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors.ts";

@@ -1,24 +1,22 @@
 import { Effect, Option, Schema, ServiceMap } from "effect";
-import { AccessModeSchema, RenderingPolicySchema } from "./access-policy.js";
-import { ArtifactKindSchema, ArtifactVisibilitySchema } from "./budget-lease-artifact.js";
-import { CheckpointCorruption, ProviderUnavailable } from "./tagged-errors.js";
-import { RunCheckpointSchema } from "./run-state.js";
+import { AccessModeSchema, RenderingPolicySchema } from "./access-policy.ts";
+import { ArtifactKindSchema, ArtifactVisibilitySchema } from "./budget-lease-artifact.ts";
+import { CheckpointCorruption, ProviderUnavailable } from "./tagged-errors.ts";
+import { RunCheckpointSchema } from "./run-state.ts";
 import {
   CanonicalHttpUrlSchema,
   CanonicalIdentifierSchema,
   CanonicalKeySchema,
   IsoDateTimeSchema,
+  TimeoutMsSchema,
   type CanonicalIdentifier,
-} from "./schema-primitives.js";
+} from "./schema-primitives.ts";
 
 const PerDomainConcurrencySchema = Schema.Int.check(Schema.isGreaterThan(0)).check(
   Schema.isLessThanOrEqualTo(128),
 );
 const GlobalConcurrencySchema = Schema.Int.check(Schema.isGreaterThan(0)).check(
   Schema.isLessThanOrEqualTo(4096),
-);
-const TimeoutMsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(100)).check(
-  Schema.isLessThanOrEqualTo(600_000),
 );
 const MaxRetriesSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).check(
   Schema.isLessThanOrEqualTo(10),

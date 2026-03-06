@@ -1,8 +1,8 @@
 import { load } from "cheerio";
 import { isTag, type Element } from "domhandler";
 import { Effect, Schema } from "effect";
-import { CanonicalIdentifierSchema, CanonicalKeySchema } from "./schema-primitives.js";
-import { ParserFailure } from "./tagged-errors.js";
+import { CanonicalIdentifierSchema, CanonicalKeySchema } from "./schema-primitives.ts";
+import { ParserFailure } from "./tagged-errors.ts";
 
 const NonEmptyHtmlSchema = Schema.Trim.check(Schema.isNonEmpty());
 const HtmlAttributesSchema = Schema.Record(Schema.String, Schema.String);

@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.js";
+import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
 
 const GlobalConcurrencySchema = Schema.Int.check(Schema.isGreaterThan(0)).check(
   Schema.isLessThanOrEqualTo(4096),

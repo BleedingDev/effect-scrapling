@@ -14,9 +14,9 @@ import {
   ExtractRunResponseSchema,
   type ExtractRunRequest,
   type ExtractRunResponse,
-} from "./schemas";
-import { formatUnknownError } from "./error-guards";
-import { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors";
+} from "./schemas.ts";
+import { formatUnknownError } from "./error-guards.ts";
+import { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors.ts";
 
 const MAX_REDIRECTS = 5;
 const DEFAULT_USER_AGENT = "effect-scrapling/0.0.1";

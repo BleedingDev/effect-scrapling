@@ -1,8 +1,8 @@
 import { load } from "cheerio";
 import { Effect, Schema } from "effect";
-import { ParsedHtmlDocumentSchema } from "./extraction-parser.js";
-import { CanonicalKeySchema } from "./schema-primitives.js";
-import { ExtractionMismatch, ParserFailure } from "./tagged-errors.js";
+import { ParsedHtmlDocumentSchema } from "./extraction-parser.ts";
+import { CanonicalKeySchema } from "./schema-primitives.ts";
+import { ExtractionMismatch, ParserFailure } from "./tagged-errors.ts";
 
 const NonEmptySelectorSchema = Schema.Trim.check(Schema.isNonEmpty());
 

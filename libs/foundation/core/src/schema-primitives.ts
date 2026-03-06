@@ -63,8 +63,13 @@ export const IsoDateTimeSchema = NonEmptyTrimmedString.pipe(
   }),
 );
 
+export const TimeoutMsSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(100)).check(
+  Schema.isLessThanOrEqualTo(600_000),
+);
+
 export type CanonicalIdentifier = Schema.Schema.Type<typeof CanonicalIdentifierSchema>;
 export type CanonicalDomain = Schema.Schema.Type<typeof CanonicalDomainSchema>;
 export type CanonicalKey = Schema.Schema.Type<typeof CanonicalKeySchema>;
 export type CanonicalHttpUrl = Schema.Schema.Type<typeof CanonicalHttpUrlSchema>;
 export type IsoDateTime = Schema.Schema.Type<typeof IsoDateTimeSchema>;
+export type TimeoutMs = Schema.Schema.Type<typeof TimeoutMsSchema>;

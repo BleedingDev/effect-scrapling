@@ -42,9 +42,8 @@ Canonical identity expectations:
 Run targeted verification from repository root:
 
 ```bash
-bun test tests/libs/foundation-core.test.ts
-bun test tests/guardrails/e1-target-profile.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-e3-runtime.test.ts
+bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts
 ```
 
 Run touched-project compilation checks:
@@ -123,7 +122,7 @@ and downstream consumers in the same change.
 
 1. Prepare
 - update downstream producers to emit canonical target identity fields
-- verify local examples with `bun test tests/guardrails/e1-target-profile.verify.test.ts`
+- verify the consumer path with `bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts`
 
 2. Apply
 - land schema consumer changes that decode through `TargetProfileSchema`
@@ -135,7 +134,7 @@ and downstream consumers in the same change.
 - run `bun run check`
 
 4. Promote
-- merge only when the target profile verify test and full gates are green
+- merge only when the target profile runtime and consumer path are green
 
 ## Rollback Guidance
 
@@ -144,9 +143,8 @@ and downstream consumers in the same change.
 2. Re-run:
 
 ```bash
-bun test tests/libs/foundation-core.test.ts
-bun test tests/guardrails/e1-target-profile.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-e3-runtime.test.ts
+bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts
 bun run check
 ```
 

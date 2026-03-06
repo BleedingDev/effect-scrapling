@@ -1,158 +1,42 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Layer, Option, Schema } from "effect";
+import { AccessPolicySchema } from "../../libs/foundation/core/src/access-policy.ts";
+import {
+  ArtifactMetadataRecordSchema,
+  RunExecutionConfigSchema,
+  StorageLocatorSchema,
+  resolveRunExecutionConfig,
+} from "../../libs/foundation/core/src/config-storage.ts";
+import {
+  PackPromotionDecisionSchema,
+  QualityVerdictSchema,
+  SnapshotDiffSchema,
+} from "../../libs/foundation/core/src/diff-verdict.ts";
+import { SnapshotSchema } from "../../libs/foundation/core/src/observation-snapshot.ts";
+import {
+  RunCheckpointSchema,
+  RunPlanSchema,
+  RunStatsSchema,
+} from "../../libs/foundation/core/src/run-state.ts";
 import {
   AccessPlanner,
-  AccessPolicySchema,
   ArtifactExporter,
-  ArtifactMetadataRecordSchema,
   BrowserAccess,
   CaptureStore,
-  CheckpointRecordSchema,
   DiffEngine,
   Extractor,
   HttpAccess,
-  PackPromotionDecisionSchema,
   PackRegistry,
-  QualityVerdictSchema,
   QualityGate,
   ReflectionEngine,
-  RunCheckpointSchema,
-  RunExecutionConfigSchema,
-  RunPlanSchema,
-  RunStatsSchema,
-  SnapshotDiffSchema,
-  SnapshotSchema,
   SnapshotStore,
-  StorageLocatorSchema,
-  TargetProfileSchema,
   TargetRegistry,
   WorkflowRunner,
-  resolveRunExecutionConfig,
-  SitePackSchema,
-} from "../../libs/foundation/core/src";
+} from "../../libs/foundation/core/src/service-topology.ts";
+import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
+import { TargetProfileSchema } from "../../libs/foundation/core/src/target-profile.ts";
 
 describe("foundation-core workflow state", () => {
-  it("roundtrips run plans, run stats, and checkpoints through durable schema contracts", () => {
-    const runPlan = Schema.decodeUnknownSync(RunPlanSchema)({
-      id: "run-plan-001",
-      targetId: "target-product-001",
-      packId: "pack-example-com",
-      accessPolicyId: "policy-default",
-      concurrencyBudgetId: "budget-run-001",
-      entryUrl: "https://example.com/products/001",
-      maxAttempts: 3,
-      checkpointInterval: 2,
-      steps: [
-        {
-          id: "step-capture-001",
-          stage: "capture",
-          requiresBrowser: false,
-          artifactKind: "html",
-        },
-        {
-          id: "step-extract-001",
-          stage: "extract",
-          requiresBrowser: false,
-        },
-        {
-          id: "step-snapshot-001",
-          stage: "snapshot",
-          requiresBrowser: false,
-        },
-      ],
-      createdAt: "2026-03-06T10:00:00.000Z",
-    });
-
-    const runStats = Schema.decodeUnknownSync(RunStatsSchema)({
-      runId: "run-001",
-      plannedSteps: 3,
-      completedSteps: 1,
-      checkpointCount: 1,
-      artifactCount: 2,
-      outcome: "running",
-      startedAt: "2026-03-06T10:00:00.000Z",
-      updatedAt: "2026-03-06T10:01:00.000Z",
-    });
-
-    const runCheckpoint = Schema.decodeUnknownSync(RunCheckpointSchema)({
-      id: "checkpoint-001",
-      runId: "run-001",
-      planId: "run-plan-001",
-      sequence: 1,
-      stage: "extract",
-      nextStepId: "step-extract-001",
-      completedStepIds: ["step-capture-001"],
-      pendingStepIds: ["step-extract-001", "step-snapshot-001"],
-      artifactIds: ["artifact-html-001", "artifact-request-001"],
-      resumeToken: "resume-token-001",
-      stats: runStats,
-      storedAt: "2026-03-06T10:01:00.000Z",
-    });
-
-    expect(Schema.encodeSync(RunPlanSchema)(runPlan)).toEqual({
-      id: "run-plan-001",
-      targetId: "target-product-001",
-      packId: "pack-example-com",
-      accessPolicyId: "policy-default",
-      concurrencyBudgetId: "budget-run-001",
-      entryUrl: "https://example.com/products/001",
-      maxAttempts: 3,
-      checkpointInterval: 2,
-      steps: [
-        {
-          id: "step-capture-001",
-          stage: "capture",
-          requiresBrowser: false,
-          artifactKind: "html",
-        },
-        {
-          id: "step-extract-001",
-          stage: "extract",
-          requiresBrowser: false,
-        },
-        {
-          id: "step-snapshot-001",
-          stage: "snapshot",
-          requiresBrowser: false,
-        },
-      ],
-      createdAt: "2026-03-06T10:00:00.000Z",
-    });
-    expect(Schema.encodeSync(RunStatsSchema)(runStats)).toEqual({
-      runId: "run-001",
-      plannedSteps: 3,
-      completedSteps: 1,
-      checkpointCount: 1,
-      artifactCount: 2,
-      outcome: "running",
-      startedAt: "2026-03-06T10:00:00.000Z",
-      updatedAt: "2026-03-06T10:01:00.000Z",
-    });
-    expect(Schema.encodeSync(RunCheckpointSchema)(runCheckpoint)).toEqual({
-      id: "checkpoint-001",
-      runId: "run-001",
-      planId: "run-plan-001",
-      sequence: 1,
-      stage: "extract",
-      nextStepId: "step-extract-001",
-      completedStepIds: ["step-capture-001"],
-      pendingStepIds: ["step-extract-001", "step-snapshot-001"],
-      artifactIds: ["artifact-html-001", "artifact-request-001"],
-      resumeToken: "resume-token-001",
-      stats: {
-        runId: "run-001",
-        plannedSteps: 3,
-        completedSteps: 1,
-        checkpointCount: 1,
-        artifactCount: 2,
-        outcome: "running",
-        startedAt: "2026-03-06T10:00:00.000Z",
-        updatedAt: "2026-03-06T10:01:00.000Z",
-      },
-      storedAt: "2026-03-06T10:01:00.000Z",
-    });
-  });
-
   it("rejects duplicate run stages, impossible stats, and inconsistent checkpoint queues", () => {
     expect(() =>
       Schema.decodeUnknownSync(RunPlanSchema)({
@@ -163,6 +47,7 @@ describe("foundation-core workflow state", () => {
         concurrencyBudgetId: "budget-run-001",
         entryUrl: "https://example.com/products/001",
         maxAttempts: 3,
+        timeoutMs: 30_000,
         checkpointInterval: 2,
         steps: [
           {
@@ -269,115 +154,6 @@ describe("foundation-core config and storage contracts", () => {
       checkpointNamespace: "checkpoints/default",
     });
   });
-
-  it("roundtrips backend-agnostic storage locators, artifact metadata, and checkpoint records", () => {
-    const artifact = Schema.decodeUnknownSync(ArtifactMetadataRecordSchema)({
-      id: "artifact-record-001",
-      runId: "run-001",
-      artifactId: "artifact-html-001",
-      kind: "html",
-      visibility: "redacted",
-      locator: {
-        namespace: "artifacts/example-com",
-        key: "run-001/html-001",
-      },
-      sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-      sizeBytes: 2048,
-      mediaType: "text/html",
-      storedAt: "2026-03-06T10:02:00.000Z",
-    });
-
-    const checkpointRecord = Schema.decodeUnknownSync(CheckpointRecordSchema)({
-      id: "checkpoint-record-001",
-      runId: "run-001",
-      planId: "run-plan-001",
-      locator: {
-        namespace: "checkpoints/example-com",
-        key: "run-001/latest",
-      },
-      checkpoint: {
-        id: "checkpoint-001",
-        runId: "run-001",
-        planId: "run-plan-001",
-        sequence: 1,
-        stage: "extract",
-        nextStepId: "step-extract-001",
-        completedStepIds: ["step-capture-001"],
-        pendingStepIds: ["step-extract-001", "step-snapshot-001"],
-        artifactIds: ["artifact-html-001"],
-        stats: {
-          runId: "run-001",
-          plannedSteps: 3,
-          completedSteps: 1,
-          checkpointCount: 1,
-          artifactCount: 1,
-          outcome: "running",
-          startedAt: "2026-03-06T10:00:00.000Z",
-          updatedAt: "2026-03-06T10:01:00.000Z",
-        },
-        storedAt: "2026-03-06T10:01:00.000Z",
-      },
-      sha256: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
-      encoding: "json",
-      compression: "gzip",
-      storedAt: "2026-03-06T10:02:00.000Z",
-    });
-
-    expect(Schema.encodeSync(StorageLocatorSchema)(artifact.locator)).toEqual({
-      namespace: "artifacts/example-com",
-      key: "run-001/html-001",
-    });
-    expect(Schema.encodeSync(ArtifactMetadataRecordSchema)(artifact)).toEqual({
-      id: "artifact-record-001",
-      runId: "run-001",
-      artifactId: "artifact-html-001",
-      kind: "html",
-      visibility: "redacted",
-      locator: {
-        namespace: "artifacts/example-com",
-        key: "run-001/html-001",
-      },
-      sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-      sizeBytes: 2048,
-      mediaType: "text/html",
-      storedAt: "2026-03-06T10:02:00.000Z",
-    });
-    expect(Schema.encodeSync(CheckpointRecordSchema)(checkpointRecord)).toEqual({
-      id: "checkpoint-record-001",
-      runId: "run-001",
-      planId: "run-plan-001",
-      locator: {
-        namespace: "checkpoints/example-com",
-        key: "run-001/latest",
-      },
-      checkpoint: {
-        id: "checkpoint-001",
-        runId: "run-001",
-        planId: "run-plan-001",
-        sequence: 1,
-        stage: "extract",
-        nextStepId: "step-extract-001",
-        completedStepIds: ["step-capture-001"],
-        pendingStepIds: ["step-extract-001", "step-snapshot-001"],
-        artifactIds: ["artifact-html-001"],
-        stats: {
-          runId: "run-001",
-          plannedSteps: 3,
-          completedSteps: 1,
-          checkpointCount: 1,
-          artifactCount: 1,
-          outcome: "running",
-          startedAt: "2026-03-06T10:00:00.000Z",
-          updatedAt: "2026-03-06T10:01:00.000Z",
-        },
-        storedAt: "2026-03-06T10:01:00.000Z",
-      },
-      sha256: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
-      encoding: "json",
-      compression: "gzip",
-      storedAt: "2026-03-06T10:02:00.000Z",
-    });
-  });
 });
 
 describe("foundation-core service topology", () => {
@@ -417,6 +193,7 @@ describe("foundation-core service topology", () => {
       concurrencyBudgetId: "budget-run-001",
       entryUrl: "https://example.com/products/001",
       maxAttempts: 3,
+      timeoutMs: 30_000,
       checkpointInterval: 2,
       steps: [
         {

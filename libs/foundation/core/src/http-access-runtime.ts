@@ -1,11 +1,18 @@
 import { createHash } from "node:crypto";
 import { Effect, Layer, Schema } from "effect";
-import { ArtifactKindSchema, ArtifactVisibilitySchema } from "./budget-lease-artifact.js";
-import { ArtifactMetadataRecordSchema, StorageLocatorSchema } from "./config-storage.js";
-import { RunPlanSchema } from "./run-state.js";
-import { HttpAccess } from "./service-topology.js";
-import { IsoDateTimeSchema } from "./schema-primitives.js";
-import { PolicyViolation, ProviderUnavailable } from "./tagged-errors.js";
+import {
+  AccessRetryDecisionSchema,
+  deriveAccessRetryPolicy,
+  executeWithAccessRetry,
+  isRetryableAccessFailure,
+} from "./access-retry-runtime.ts";
+import { tryAbortableAccess, withAccessTimeout } from "./access-timeout-runtime.ts";
+import { ArtifactKindSchema, ArtifactVisibilitySchema } from "./budget-lease-artifact.ts";
+import { ArtifactMetadataRecordSchema, StorageLocatorSchema } from "./config-storage.ts";
+import { RunPlanSchema } from "./run-state.ts";
+import { HttpAccess } from "./service-topology.ts";
+import { IsoDateTimeSchema } from "./schema-primitives.ts";
+import { PolicyViolation, ProviderUnavailable } from "./tagged-errors.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 
@@ -101,6 +108,12 @@ export function captureHttpArtifacts(
   fetchImpl: HttpFetch = fetch,
   now: () => Date = () => new Date(),
   perfNow: () => number = () => performance.now(),
+  onRetryDecision: (
+    decision: Schema.Schema.Type<typeof AccessRetryDecisionSchema>,
+  ) => Effect.Effect<void, never, never> = (decision) =>
+    Effect.log(
+      `Retrying access operation attempt ${decision.attempt} -> ${decision.nextAttempt} after ${decision.delayMs}ms: ${decision.reason}`,
+    ),
 ) {
   return Effect.gen(function* () {
     const decodedPlan = yield* Effect.try({
@@ -131,24 +144,42 @@ export function captureHttpArtifacts(
       accept: "text/html,application/xhtml+xml",
     };
     const startedAt = perfNow();
-    const response = yield* Effect.tryPromise({
-      try: () =>
-        fetchImpl(decodedPlan.entryUrl, {
-          method: "GET",
-          headers: requestHeaders,
+    const retryPolicy = yield* deriveAccessRetryPolicy(decodedPlan);
+    const response = yield* executeWithAccessRetry({
+      policy: retryPolicy,
+      effect: () =>
+        tryAbortableAccess({
+          policy: {
+            timeoutMs: decodedPlan.timeoutMs,
+            timeoutMessage: `HTTP access timed out for ${decodedPlan.entryUrl}.`,
+          },
+          try: (signal) =>
+            fetchImpl(decodedPlan.entryUrl, {
+              method: "GET",
+              headers: requestHeaders,
+              signal,
+            }),
+          catch: (cause) =>
+            new ProviderUnavailable({
+              message: readCauseMessage(cause, "HTTP access request failed."),
+            }),
         }),
-      catch: (cause) =>
-        new ProviderUnavailable({
-          message: readCauseMessage(cause, "HTTP access request failed."),
-        }),
-    });
-    const body = yield* Effect.tryPromise({
-      try: () => response.text(),
-      catch: (cause) =>
-        new ProviderUnavailable({
-          message: readCauseMessage(cause, "HTTP access response body could not be read."),
-        }),
-    });
+      shouldRetry: isRetryableAccessFailure,
+      onDecision: onRetryDecision,
+    }).pipe(Effect.map(({ value }) => value));
+    const body = yield* withAccessTimeout(
+      Effect.tryPromise({
+        try: () => response.text(),
+        catch: (cause) =>
+          new ProviderUnavailable({
+            message: readCauseMessage(cause, "HTTP access response body could not be read."),
+          }),
+      }),
+      {
+        timeoutMs: decodedPlan.timeoutMs,
+        timeoutMessage: `HTTP access body read timed out for ${decodedPlan.entryUrl}.`,
+      },
+    );
     const durationMs = Math.max(0, perfNow() - startedAt);
     const storedAt = now().toISOString();
     const responseMediaType = response.headers.get("content-type") ?? "application/octet-stream";

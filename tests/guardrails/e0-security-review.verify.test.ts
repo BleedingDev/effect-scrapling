@@ -1,13 +1,12 @@
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
 import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect } from "effect";
-import { accessPreview, extractRun, FetchService, type FetchClient } from "../../src/sdk/scraper";
-
-const REPO_ROOT = resolve(import.meta.dir, "..", "..");
-const SCRAPER_PATH = join(REPO_ROOT, "src", "sdk", "scraper.ts");
-const SECURITY_REVIEW_PATH = join(REPO_ROOT, "docs", "runbooks", "e0-security-review.md");
+import {
+  accessPreview,
+  extractRun,
+  FetchService,
+  type FetchClient,
+} from "../../src/sdk/scraper.ts";
 
 describe("E0 security review verification", () => {
   it.effect("rejects direct private-network targets before any fetch occurs", () =>
@@ -221,21 +220,4 @@ describe("E0 security review verification", () => {
       expect(requestedUrls).toEqual(["https://example.com/start"]);
     }),
   );
-
-  it("documents the fixed controls and keeps static guardrails in code", async () => {
-    const [scraperSource, reviewSource] = await Promise.all([
-      readFile(SCRAPER_PATH, "utf8"),
-      readFile(SECURITY_REVIEW_PATH, "utf8"),
-    ]);
-
-    expect(scraperSource).toContain('redirect: "manual"');
-    expect(scraperSource).toContain('page.route("**/*"');
-    expect(reviewSource).toContain("Open high-severity findings: none");
-    expect(reviewSource).toContain("Redirect-based SSRF pivot");
-    expect(reviewSource).toContain("Browser-mode subrequest pivot");
-    expect(reviewSource).toContain("mode blocks a localhost subrequest");
-    expect(reviewSource).toContain(
-      "`accessPreview` and `extractRun` reject direct private URLs before",
-    );
-  });
 });

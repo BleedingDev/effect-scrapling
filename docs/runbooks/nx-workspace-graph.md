@@ -141,7 +141,7 @@ Expected result:
 Automated verification gate:
 
 ```bash
-bun test tests/guardrails/nx-workspace.verify.test.ts
+bun run check:e0-capability-slice
 ```
 
 ## Troubleshooting
@@ -171,8 +171,8 @@ bun test tests/guardrails/nx-workspace.verify.test.ts
 3. Confirm `.oxlintrc.json` still contains `@nx/enforce-module-boundaries`.
 4. Verify command targets only the fixture:
    `bunx --bun oxlint apps/api/src/__nx-boundary-fixture.ts`.
-5. Re-run guardrail test:
-   `bun test tests/guardrails/nx-workspace.verify.test.ts`.
+5. Re-run the full affected-target gate:
+   `bun run check:e0-capability-slice`.
 
 ### `nx affected` selects the wrong projects or none at all
 
@@ -201,7 +201,7 @@ bun test tests/guardrails/nx-workspace.verify.test.ts
 1. Baseline
 - Run `bun run nx:show-projects`.
 - Run `bun run nx:graph`.
-- Run `bun test tests/guardrails/nx-workspace.verify.test.ts`.
+- Run `bun run check:e0-capability-slice`.
 - Compute `NX_BASE`/`NX_HEAD` for the PR range and run all four affected targets locally.
 
 2. Apply change
@@ -237,7 +237,7 @@ If rollout introduces boundary regressions:
    - `bun run nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --parallel=1`
    - `bun run nx affected -t typecheck --base="$NX_BASE" --head="$NX_HEAD" --parallel=1`
    - `bun run nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --parallel=1`
-   - `bun test tests/guardrails/nx-workspace.verify.test.ts`
+   - `bun run check:e0-capability-slice`
 4. Re-attempt rollout with corrected project boundaries.
 
 Forbidden rollback actions:

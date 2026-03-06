@@ -1,11 +1,12 @@
 import { Schema } from "effect";
-import { ArtifactKindSchema } from "./budget-lease-artifact.js";
+import { ArtifactKindSchema } from "./budget-lease-artifact.ts";
 import {
   CanonicalHttpUrlSchema,
   CanonicalIdentifierSchema,
   IsoDateTimeSchema,
+  TimeoutMsSchema,
   type CanonicalIdentifier,
-} from "./schema-primitives.js";
+} from "./schema-primitives.ts";
 
 const PositiveCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const PositiveSequenceSchema = Schema.Int.check(Schema.isGreaterThan(0));
@@ -16,6 +17,7 @@ const CheckpointIntervalSchema = Schema.Int.check(Schema.isGreaterThan(0)).check
   Schema.isLessThanOrEqualTo(10_000),
 );
 const ResumeTokenSchema = Schema.Trim.check(Schema.isNonEmpty());
+const RunTimeoutMsSchema = TimeoutMsSchema;
 
 export const RunStageSchema = Schema.Literals([
   "capture",
@@ -61,6 +63,7 @@ export class RunPlan extends Schema.Class<RunPlan>("RunPlan")({
   concurrencyBudgetId: CanonicalIdentifierSchema,
   entryUrl: CanonicalHttpUrlSchema,
   maxAttempts: MaxAttemptsSchema,
+  timeoutMs: RunTimeoutMsSchema,
   checkpointInterval: CheckpointIntervalSchema,
   steps: RunStepsSchema,
   createdAt: IsoDateTimeSchema,

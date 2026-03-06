@@ -95,14 +95,14 @@ For the `html-normalizer` example:
 bun test tests/generated-modules/foundation-core/generated-modules/html-normalizer.test.ts
 ```
 
-### 3. Run the generator contract verification
+### 3. Run repository tests after generation
 
 ```bash
-bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts
+bun run test
 ```
 
-This validates that generated modules stay lintable, typecheckable, runnable,
-and deterministic.
+This validates that the generated module still passes the repository's active
+runtime and integration suite.
 
 ### 4. Run repository gates before merge
 
@@ -170,7 +170,7 @@ Actions:
 1. Run the failing command directly (`bun run ultracite`, `bun run oxlint`, `bun run oxfmt`, `bun run test`, or `bun run build`).
 2. Confirm you did not hand-edit generated files into a non-compliant shape.
 3. If the issue is generator output drift, fix the generator implementation instead of weakening lint, type, or test policy.
-4. Re-run `bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts`.
+4. Re-run `bun run test`.
 5. If the failure came from PR affected execution, rerun `bun run check:e0-capability-slice`.
 
 ## Rollout Guidance
@@ -180,7 +180,7 @@ Actions:
 3. Run the generator with an explicit `--project`, `--name`, and, when needed, `--directory`.
 4. Review the generated source and test files before any hand edits.
 5. Run the verification flow in this runbook.
-6. Merge only when the generator contract test and repository gates are green.
+6. Merge only when the generated module test and repository gates are green.
 
 ## Rollback Guidance
 
@@ -204,7 +204,7 @@ rm -f tests/generated-modules/foundation-core/generated-modules/html-normalizer.
 ### Roll back a generator behavior change
 
 1. Revert the offending generator implementation or schema change.
-2. Re-run `bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts`.
+2. Re-run `bun run test`.
 3. Re-run `bun run check`.
 4. Re-issue the scaffold only after the generator contract is green again.
 

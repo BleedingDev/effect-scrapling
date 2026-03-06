@@ -1,8 +1,6 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "outDir": "../../dist/out-tsc/apps/cli",
     "tsBuildInfoFile": "../../dist/out-tsc/apps/cli/tsconfig.tsbuildinfo"
   },

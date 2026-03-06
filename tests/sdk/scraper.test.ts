@@ -1,13 +1,13 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
-import { AccessPreviewRequestSchema, ExtractRunRequestSchema } from "../../src/sdk/schemas";
+import { AccessPreviewRequestSchema, ExtractRunRequestSchema } from "../../src/sdk/schemas.ts";
 import {
   accessPreview,
   extractRun,
   FetchService,
   type FetchClient,
   runDoctor,
-} from "../../src/sdk/scraper";
+} from "../../src/sdk/scraper.ts";
 
 describe("scraper guardrails", () => {
   const mockFetch: FetchClient = async (_input, _init) =>

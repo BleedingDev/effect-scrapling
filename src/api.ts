@@ -1,26 +1,27 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
-import { normalizePayload } from "./api-request-payload";
+import { normalizePayload } from "./api-request-payload.ts";
 import {
   isBrowserError,
   isExtractionError,
   isInvalidInputError,
   isNetworkError,
-} from "./sdk/error-guards";
+} from "./sdk/error-guards.ts";
 import {
   InvalidInputError,
   type BrowserError,
   type ExtractionError,
   type NetworkError,
-} from "./sdk/errors";
+} from "./sdk/errors.ts";
 import {
   accessPreview,
   extractRun,
   FetchService,
   FetchServiceLive,
+  type FetchClient,
   runDoctor,
-} from "./sdk/scraper";
+} from "./sdk/scraper.ts";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), {
@@ -115,6 +116,21 @@ function knownRoutes(): string[] {
   return ["GET /health", "GET /doctor", "POST /access/preview", "POST /extract/run"];
 }
 
+function provideFetchService<A, E>(
+  effect: Effect.Effect<A, E, FetchService>,
+  fetchClient?: FetchClient,
+): Effect.Effect<A, E, never> {
+  if (fetchClient) {
+    return effect.pipe(
+      Effect.provideService(FetchService, {
+        fetch: fetchClient,
+      }),
+    );
+  }
+
+  return effect.pipe(Effect.provide(FetchServiceLive));
+}
+
 async function runRouteEffect<A>(
   req: Request,
   kind: "access" | "extract",
@@ -125,59 +141,69 @@ async function runRouteEffect<A>(
     InvalidInputError | NetworkError | BrowserError | ExtractionError,
     FetchService
   >,
+  fetchClient?: FetchClient,
 ): Promise<Response> {
   try {
     const rawPayload = await readBody(req);
     const payload = normalizePayload(kind, rawPayload);
-    const response = await runEffect(runner(payload).pipe(Effect.provide(FetchServiceLive)));
+    const response = await runEffect(provideFetchService(runner(payload), fetchClient));
     return json(response);
   } catch (error) {
     return toErrorResponse(error);
   }
 }
 
-const port = Number(process.env.PORT || "3000");
+export async function handleApiRequest(req: Request, fetchClient?: FetchClient): Promise<Response> {
+  const url = new URL(req.url);
 
-Bun.serve({
-  port,
-  async fetch(req) {
-    const url = new URL(req.url);
+  if (req.method === "GET" && url.pathname === "/health") {
+    return json({
+      ok: true,
+      service: "effect-scrapling-api",
+      version: "0.0.1",
+    });
+  }
 
-    if (req.method === "GET" && url.pathname === "/health") {
-      return json({
-        ok: true,
-        service: "effect-scrapling-api",
-        version: "0.0.1",
-      });
-    }
+  if (req.method === "GET" && url.pathname === "/doctor") {
+    const doctor = await runEffect(runDoctor());
+    return json({
+      ok: doctor.ok,
+      command: "doctor",
+      data: doctor,
+      warnings: doctor.ok ? [] : ["One or more runtime checks failed"],
+    });
+  }
 
-    if (req.method === "GET" && url.pathname === "/doctor") {
-      const doctor = await runEffect(runDoctor());
-      return json({
-        ok: doctor.ok,
-        command: "doctor",
-        data: doctor,
-        warnings: doctor.ok ? [] : ["One or more runtime checks failed"],
-      });
-    }
+  if (req.method === "POST" && url.pathname === "/access/preview") {
+    return runRouteEffect(req, "access", accessPreview, fetchClient);
+  }
 
-    if (req.method === "POST" && url.pathname === "/access/preview") {
-      return runRouteEffect(req, "access", accessPreview);
-    }
+  if (req.method === "POST" && url.pathname === "/extract/run") {
+    return runRouteEffect(req, "extract", extractRun, fetchClient);
+  }
 
-    if (req.method === "POST" && url.pathname === "/extract/run") {
-      return runRouteEffect(req, "extract", extractRun);
-    }
+  return json(
+    {
+      ok: false,
+      message: "Not found",
+      routes: knownRoutes(),
+    },
+    404,
+  );
+}
 
-    return json(
-      {
-        ok: false,
-        message: "Not found",
-        routes: knownRoutes(),
-      },
-      404,
-    );
-  },
-});
+export function startApiServer(port = Number(process.env.PORT || "3000")) {
+  const server = Bun.serve({
+    port,
+    fetch(req) {
+      return handleApiRequest(req);
+    },
+  });
 
-console.log(`effect-scrapling api listening on :${port}`);
+  console.log(`effect-scrapling api listening on :${port}`);
+  return server;
+}
+
+if (import.meta.main) {
+  startApiServer();
+}

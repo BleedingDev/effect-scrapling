@@ -1,12 +1,12 @@
 import { Effect, Layer, Schema } from "effect";
-import { AccessPolicySchema } from "./access-policy.js";
-import { ConcurrencyBudgetSchema } from "./budget-lease-artifact.js";
-import { RunPlanSchema } from "./run-state.js";
-import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.js";
-import { AccessPlanner } from "./service-topology.js";
-import { SitePackSchema } from "./site-pack.js";
-import { PolicyViolation } from "./tagged-errors.js";
-import { TargetProfileSchema } from "./target-profile.js";
+import { AccessPolicySchema } from "./access-policy.ts";
+import { ConcurrencyBudgetSchema } from "./budget-lease-artifact.ts";
+import { RunPlanSchema } from "./run-state.ts";
+import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
+import { AccessPlanner } from "./service-topology.ts";
+import { SitePackSchema } from "./site-pack.ts";
+import { PolicyViolation } from "./tagged-errors.ts";
+import { TargetProfileSchema } from "./target-profile.ts";
 
 export class PlannerRationaleEntry extends Schema.Class<PlannerRationaleEntry>(
   "PlannerRationaleEntry",
@@ -156,6 +156,7 @@ export function planAccessExecution(input: unknown) {
       concurrencyBudgetId: concurrencyBudget.id,
       entryUrl,
       maxAttempts: decoded.accessPolicy.maxRetries + 1,
+      timeoutMs: decoded.accessPolicy.timeoutMs,
       checkpointInterval: 1,
       steps: [
         {

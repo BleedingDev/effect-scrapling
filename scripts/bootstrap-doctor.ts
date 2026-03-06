@@ -2,7 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import process from "node:process";
-import { printPreflightReport, runPreflightBootstrap } from "./preflight-bootstrap";
+import { printPreflightReport, runPreflightBootstrap } from "./preflight-bootstrap.ts";
 
 type CommandResult = {
   readonly status: number | null;

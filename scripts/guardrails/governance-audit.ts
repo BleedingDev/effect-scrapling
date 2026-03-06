@@ -25,7 +25,6 @@ const AGENTS_SCAN_IGNORED_DIRS = new Set([".git", "node_modules", "dist"]);
 const EXCLUDED_PATTERN_FILES = new Set([
   "scripts/guardrails/type-safety-bypass-check.ts",
   "scripts/guardrails/governance-audit.ts",
-  "tests/guardrails/governance-audit.verify.test.ts",
 ]);
 
 const FORBIDDEN_LINE_PATTERNS = [

@@ -9,10 +9,21 @@ const GUARDRAILS_CONFIG_FILE = "tsconfig.guardrails.json";
 const WORKSPACE_PROJECT_ROOTS = ["apps", "libs", "tools"] as const;
 const WORKSPACE_TSCONFIG_FILE = "tsconfig.json";
 
+const ALLOW_IMPORTING_TS_EXTENSIONS_OPTION = "allowImportingTsExtensions";
 const EXACT_OPTION = "exactOptionalPropertyTypes";
+const MODULE_DETECTION_OPTION = "moduleDetection";
+const MODULE_OPTION = "module";
+const MODULE_RESOLUTION_OPTION = "moduleResolution";
 const NO_IMPLICIT_ANY_OPTION = "noImplicitAny";
+const NO_IMPLICIT_OVERRIDE_OPTION = "noImplicitOverride";
+const NO_EMIT_OPTION = "noEmit";
+const NO_FALLTHROUGH_CASES_IN_SWITCH_OPTION = "noFallthroughCasesInSwitch";
 const NO_UNCHECKED_INDEXED_ACCESS_OPTION = "noUncheckedIndexedAccess";
+const REWRITE_RELATIVE_IMPORT_EXTENSIONS_OPTION = "rewriteRelativeImportExtensions";
 const STRICT_OPTION = "strict";
+const TARGET_OPTION = "target";
+const USE_UNKNOWN_IN_CATCH_VARIABLES_OPTION = "useUnknownInCatchVariables";
+const VERBATIM_MODULE_SYNTAX_OPTION = "verbatimModuleSyntax";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -38,6 +49,41 @@ function toRepoPath(absolutePath: string): string {
 
 function toBoolean(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
+}
+
+function toString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function normalizeCompilerOptionValue(value: unknown): string | undefined {
+  return toString(value)?.trim().toLowerCase();
+}
+
+function expectResolvedBooleanOption(
+  violations: string[],
+  configPath: string,
+  compilerOptions: JsonRecord,
+  optionName: string,
+): void {
+  if (toBoolean(compilerOptions[optionName]) !== true) {
+    violations.push(
+      `${toRepoPath(configPath)}#compilerOptions.${optionName} must resolve to true.`,
+    );
+  }
+}
+
+function expectResolvedStringOption(
+  violations: string[],
+  configPath: string,
+  compilerOptions: JsonRecord,
+  optionName: string,
+  expectedValue: string,
+): void {
+  if (normalizeCompilerOptionValue(compilerOptions[optionName]) !== expectedValue.toLowerCase()) {
+    violations.push(
+      `${toRepoPath(configPath)}#compilerOptions.${optionName} must resolve to "${expectedValue}".`,
+    );
+  }
 }
 
 function normalizeGlobPattern(pattern: string): string {
@@ -259,14 +305,83 @@ async function main(): Promise<void> {
 
   if (baseConfigResolution) {
     const baseCompilerOptions = baseConfigResolution.mergedCompilerOptions;
-    if (toBoolean(baseCompilerOptions[STRICT_OPTION]) !== true) {
-      violations.push(`${BASE_CONFIG_FILE}#compilerOptions.strict must be true.`);
-    }
+    expectResolvedBooleanOption(violations, baseConfigPath, baseCompilerOptions, STRICT_OPTION);
     if (!resolveNoImplicitAny(baseCompilerOptions)) {
       violations.push(
         `${BASE_CONFIG_FILE} must enforce compilerOptions.noImplicitAny via compilerOptions.strict=true or noImplicitAny=true.`,
       );
     }
+    expectResolvedBooleanOption(violations, baseConfigPath, baseCompilerOptions, EXACT_OPTION);
+    expectResolvedBooleanOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      NO_UNCHECKED_INDEXED_ACCESS_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      NO_IMPLICIT_OVERRIDE_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      NO_FALLTHROUGH_CASES_IN_SWITCH_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      USE_UNKNOWN_IN_CATCH_VARIABLES_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      VERBATIM_MODULE_SYNTAX_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      ALLOW_IMPORTING_TS_EXTENSIONS_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      REWRITE_RELATIVE_IMPORT_EXTENSIONS_OPTION,
+    );
+    expectResolvedStringOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      TARGET_OPTION,
+      "ESNext",
+    );
+    expectResolvedStringOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      MODULE_OPTION,
+      "preserve",
+    );
+    expectResolvedStringOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      MODULE_RESOLUTION_OPTION,
+      "Bundler",
+    );
+    expectResolvedStringOption(
+      violations,
+      baseConfigPath,
+      baseCompilerOptions,
+      MODULE_DETECTION_OPTION,
+      "force",
+    );
   }
 
   let guardrailsConfigResolution: ResolvedTsConfig | undefined;
@@ -291,21 +406,75 @@ async function main(): Promise<void> {
     }
 
     const guardrailsCompilerOptions = guardrailsConfigResolution.mergedCompilerOptions;
+    expectResolvedBooleanOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      NO_EMIT_OPTION,
+    );
     if (!resolveNoImplicitAny(guardrailsCompilerOptions)) {
       violations.push(
         `${GUARDRAILS_CONFIG_FILE}#compilerOptions.noImplicitAny must resolve to true.`,
       );
     }
-
-    if (toBoolean(guardrailsCompilerOptions[EXACT_OPTION]) !== true) {
-      violations.push(`${GUARDRAILS_CONFIG_FILE}#compilerOptions.${EXACT_OPTION} must be true.`);
-    }
-
-    if (toBoolean(guardrailsCompilerOptions[NO_UNCHECKED_INDEXED_ACCESS_OPTION]) !== true) {
-      violations.push(
-        `${GUARDRAILS_CONFIG_FILE}#compilerOptions.${NO_UNCHECKED_INDEXED_ACCESS_OPTION} must be true.`,
-      );
-    }
+    expectResolvedBooleanOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      EXACT_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      NO_UNCHECKED_INDEXED_ACCESS_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      VERBATIM_MODULE_SYNTAX_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      ALLOW_IMPORTING_TS_EXTENSIONS_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      REWRITE_RELATIVE_IMPORT_EXTENSIONS_OPTION,
+    );
+    expectResolvedStringOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      TARGET_OPTION,
+      "ESNext",
+    );
+    expectResolvedStringOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      MODULE_OPTION,
+      "preserve",
+    );
+    expectResolvedStringOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      MODULE_RESOLUTION_OPTION,
+      "Bundler",
+    );
+    expectResolvedStringOption(
+      violations,
+      guardrailsConfigPath,
+      guardrailsCompilerOptions,
+      MODULE_DETECTION_OPTION,
+      "force",
+    );
 
     try {
       guardrailsIncludePatterns = readStringArray(
@@ -358,6 +527,64 @@ async function main(): Promise<void> {
     if (!resolveNoImplicitAny(workspaceCompilerOptions)) {
       violations.push(`${repoPath}#compilerOptions.noImplicitAny must resolve to true.`);
     }
+    expectResolvedBooleanOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      EXACT_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      NO_UNCHECKED_INDEXED_ACCESS_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      VERBATIM_MODULE_SYNTAX_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      ALLOW_IMPORTING_TS_EXTENSIONS_OPTION,
+    );
+    expectResolvedBooleanOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      REWRITE_RELATIVE_IMPORT_EXTENSIONS_OPTION,
+    );
+    expectResolvedStringOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      TARGET_OPTION,
+      "ESNext",
+    );
+    expectResolvedStringOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      MODULE_OPTION,
+      "preserve",
+    );
+    expectResolvedStringOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      MODULE_RESOLUTION_OPTION,
+      "Bundler",
+    );
+    expectResolvedStringOption(
+      violations,
+      workspaceTsConfigPath,
+      workspaceCompilerOptions,
+      MODULE_DETECTION_OPTION,
+      "force",
+    );
 
     if (readLocalCompilerOptionBoolean(workspaceResolution.localConfig, EXACT_OPTION) === false) {
       violations.push(`${repoPath} must not disable compilerOptions.${EXACT_OPTION}.`);

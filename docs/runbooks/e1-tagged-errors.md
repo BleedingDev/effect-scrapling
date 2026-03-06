@@ -50,7 +50,6 @@ Run repository-root validation:
 
 ```bash
 bun test tests/libs/foundation-core-run-state.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
 ```
 
 Run touched-project compilation checks:
@@ -145,7 +144,6 @@ through a generic fallback code if the failure reason is distinct.
 
 ```bash
 bun test tests/libs/foundation-core-run-state.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
 bun run check
 ```
 

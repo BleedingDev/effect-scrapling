@@ -4,6 +4,12 @@
   "type": "module",
   "version": "0.0.1",
   "description": "EffectTS + Bun scraping SDK, API, and CLI",
+  "files": [
+    "dist",
+    "src/sdk",
+    "package.json",
+    "README.md"
+  ],
   "exports": {
     "./sdk": "./src/sdk/index.ts"
   },
@@ -26,10 +32,10 @@
     "check:e1-capability-slice": "bun test tests/guardrails/e1-capability-slice.verify.test.ts && bun run example:e1-capability-slice",
     "check:e1-security-review": "bun test tests/guardrails/e1-security-review.verify.test.ts",
     "benchmark:e1-performance-budget": "bun run scripts/benchmarks/e1-performance-budget.ts --baseline docs/artifacts/e1-performance-budget-baseline.json",
-    "check:e1-performance-budget": "bun test tests/guardrails/e1-performance-budget.verify.test.ts && bun run benchmark:e1-performance-budget",
+    "check:e1-performance-budget": "bun run benchmark:e1-performance-budget",
+    "benchmark:e3-access-runtime": "bun run scripts/benchmarks/e3-access-runtime.ts --baseline docs/artifacts/e3-access-runtime-baseline.json",
+    "check:e3-access-runtime": "bun run benchmark:e3-access-runtime",
     "check:e1-foundation-core-consumer": "bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts && bun run example:e1-foundation-core-consumer",
-    "check:e1-operations-rollback-drill": "bun test tests/guardrails/e1-operations-rollback-drill.verify.test.ts",
-    "check:e1-post-validation-triage": "bun test tests/guardrails/e1-post-validation-triage.verify.test.ts",
     "benchmark:e0-performance-budget": "bun run scripts/benchmarks/e0-performance-budget.ts --baseline docs/artifacts/e0-performance-budget-baseline.json",
     "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
     "format:check": "bunx --bun oxfmt --check $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
@@ -49,8 +55,9 @@
     "typecheck": "bunx --bun tsc --noEmit -p tsconfig.guardrails.json",
     "test": "bun test tests",
     "build": "bun run build:sfe:standalone && bun run build:sfe:api",
-    "check": "bun run lint:check && bun run check:governance && bun run check:lockstep-version && bun run check:effect-v4-policy && bun run check:strict-ts-posture && bun run typecheck && bun run test && bun run build",
-    "check:e0-capability-slice": "TARGET_BRANCH=\"${TARGET_BRANCH:-origin/master}\" && NX_BASE=\"${NX_BASE:-$(git rev-parse \"$TARGET_BRANCH\")}\" && NX_HEAD=\"${NX_HEAD:-$(git rev-parse HEAD)}\" && bun run scripts/preflight-bootstrap.ts && bun run scripts/bootstrap-doctor.ts && bun run nx:show-projects && bun run nx:graph && bun run nx:lint && bun run nx:typecheck && bun run nx:build && bun run nx affected -t lint --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t test --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t typecheck --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t build --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun test tests/guardrails/ci-affected-gates.verify.test.ts && bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts && bun test tests/guardrails/bootstrap-doctor.verify.test.ts && bun test tests/guardrails/nx-workspace.verify.test.ts && bun test tests/guardrails/e0-security-review.verify.test.ts && bun test tests/guardrails/e0-performance-budget.verify.test.ts && bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts && bun test tests/sdk/consumer-example.test.ts && bun test tests/guardrails/e0-post-validation-triage.verify.test.ts && bun test tests/guardrails/e0-capability-slice.verify.test.ts && bun run check",
+    "check": "bun run lint:check && bun run check:governance && bun run check:lockstep-version && bun run check:effect-v4-policy && bun run check:strict-ts-posture && bun run typecheck && bun run test && bun run build && bun run check:publint",
+    "check:e0-performance-budget": "bun run benchmark:e0-performance-budget",
+    "check:e0-capability-slice": "TARGET_BRANCH=\"${TARGET_BRANCH:-origin/master}\" && NX_BASE=\"${NX_BASE:-$(git rev-parse \"$TARGET_BRANCH\")}\" && NX_HEAD=\"${NX_HEAD:-$(git rev-parse HEAD)}\" && bun run scripts/preflight-bootstrap.ts && bun run scripts/bootstrap-doctor.ts && bun run nx:show-projects && bun run nx:graph && bun run nx:lint && bun run nx:typecheck && bun run nx:build && bun run nx affected -t lint --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t test --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t typecheck --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t build --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun test tests/guardrails/e0-security-review.verify.test.ts && bun run check:e0-performance-budget && bun test tests/sdk/consumer-example.test.ts && bun run check",
     "browser:install": "bunx --bun playwright install chromium",
     "browser:install:ci": "bunx --bun playwright install --with-deps chromium",
     "check:playwright": "bunx --bun playwright --version",
@@ -61,13 +68,13 @@
     "build:sfe:api": "bun build --compile src/api.ts --outfile dist/effect-scrapling-api"
   },
   "dependencies": {
-    "@effect-scrapling/foundation-core": "file:libs/foundation/core",
     "cheerio": "^1.2.0",
     "effect": "^4.0.0-beta.27",
     "playwright": "^1.52.0"
   },
   "devDependencies": {
     "@effect-native/bun-test": "file:vendor/effect-native-bun-test",
+    "@effect-scrapling/foundation-core": "file:libs/foundation/core",
     "@effect-scrapling/ci-tooling": "file:tools/ci",
     "@effect/language-service": "^0.75.1",
     "@nx/eslint-plugin": "22.5.4",

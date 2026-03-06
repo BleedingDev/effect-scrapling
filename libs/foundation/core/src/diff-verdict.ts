@@ -1,5 +1,5 @@
 import { Effect, Schema, SchemaGetter } from "effect";
-import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.js";
+import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
 
 const RATE_DELTA_SCHEMA = Schema.Number.check(Schema.isGreaterThanOrEqualTo(-1)).check(
   Schema.isLessThanOrEqualTo(1),

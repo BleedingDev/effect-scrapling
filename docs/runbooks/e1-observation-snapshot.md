@@ -42,8 +42,8 @@ Additional invariants:
 Run targeted verification from repository root:
 
 ```bash
-bun test tests/guardrails/e1-observation-snapshot.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-workflow.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 ```
 
 Run touched-project compilation checks:
@@ -127,7 +127,7 @@ rejected. Normalize timestamps before schema decode and keep storage UTC-only.
 - update extractors and snapshot writers to decode through `ObservationSchema`
   and `SnapshotSchema`
 - verify representative payloads with
-  `bun test tests/guardrails/e1-observation-snapshot.verify.test.ts`
+  `bun test tests/guardrails/e1-capability-slice.verify.test.ts`
 
 2. Apply
 - remove parallel ad hoc snapshot DTO validation
@@ -139,7 +139,7 @@ rejected. Normalize timestamps before schema decode and keep storage UTC-only.
 - run `bun run check`
 
 4. Promote
-- merge only when observation verification and full gates are green
+- merge only when workflow and capability-slice verification are green
 
 ## Rollback Guidance
 
@@ -148,8 +148,8 @@ rejected. Normalize timestamps before schema decode and keep storage UTC-only.
 2. Re-run:
 
 ```bash
-bun test tests/guardrails/e1-observation-snapshot.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-workflow.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 bun run check
 ```
 

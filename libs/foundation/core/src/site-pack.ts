@@ -1,5 +1,5 @@
 import { Effect, Schema, SchemaGetter } from "effect";
-import { CanonicalIdentifierSchema } from "./schema-primitives.js";
+import { CanonicalIdentifierSchema } from "./schema-primitives.ts";
 
 const DOMAIN_PATTERN_SCHEMA = Schema.Trim.pipe(
   Schema.check(Schema.isNonEmpty()),

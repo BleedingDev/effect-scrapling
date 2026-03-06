@@ -8,8 +8,8 @@ import type * as Layer from "effect/Layer"
 import type * as Schema from "effect/Schema"
 import type * as Scope from "effect/Scope"
 import type * as FC from "effect/testing/FastCheck"
-import * as internal from "./internal/internal.js"
-import type { BunTest, TestServices } from "./types.js"
+import * as internal from "./internal/internal.ts"
+import type { BunTest, TestServices } from "./types.ts"
 
 // Re-export Bun test hooks and assertion API
 export const afterAll = B.afterAll
@@ -29,7 +29,7 @@ export const test = B.test
 export type * from "bun:test"
 
 // Public types namespace (for consumers who want explicit types)
-export type { BunTest } from "./types.js"
+export type { BunTest } from "./types.ts"
 
 // Public API
 export const addEqualityTesters: () => void = internal.addEqualityTesters
@@ -74,4 +74,4 @@ const methods = { effect, live, flakyTest, scoped, scopedLive, layer, prop } as 
 export const it = Object.assign(B.test, methods) as any as BunTest.Methods
 
 // Optional namespaced re-exports for consistency with codegen
-export * as types from "./types.js"
+export * as types from "./types.ts"

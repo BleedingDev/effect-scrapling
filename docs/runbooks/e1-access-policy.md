@@ -51,9 +51,8 @@ service policy code, not in this schema contract.
 Run targeted verification from repository root:
 
 ```bash
-bun test tests/libs/foundation-core.test.ts
-bun test tests/guardrails/e1-access-policy.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-e3-runtime.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 ```
 
 Run touched-project compilation checks:
@@ -125,7 +124,7 @@ Do not silently clamp values. Fix the upstream source and keep the schema strict
 
 1. Prepare
 - update planners and config producers to emit only supported mode/render pairs
-- verify local examples with `bun test tests/guardrails/e1-access-policy.verify.test.ts`
+- verify the runtime path with `bun test tests/guardrails/e1-capability-slice.verify.test.ts`
 
 2. Apply
 - decode policy payloads through `AccessPolicySchema`
@@ -137,7 +136,7 @@ Do not silently clamp values. Fix the upstream source and keep the schema strict
 - run `bun run check`
 
 4. Promote
-- merge only when the access policy verify test and full gates are green
+- merge only when the access runtime and capability slice are green
 
 ## Rollback Guidance
 
@@ -146,9 +145,8 @@ Do not silently clamp values. Fix the upstream source and keep the schema strict
 2. Re-run:
 
 ```bash
-bun test tests/libs/foundation-core.test.ts
-bun test tests/guardrails/e1-access-policy.verify.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/libs/foundation-core-e3-runtime.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 bun run check
 ```
 

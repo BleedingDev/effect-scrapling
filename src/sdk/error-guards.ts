@@ -1,5 +1,5 @@
 import { Predicate } from "effect";
-import type { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors";
+import type { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors.ts";
 
 type ErrorShape = {
   readonly message: string;

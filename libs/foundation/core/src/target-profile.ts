@@ -4,7 +4,7 @@ import {
   CanonicalHttpUrlSchema,
   CanonicalIdentifierSchema,
   CanonicalKeySchema,
-} from "./schema-primitives.js";
+} from "./schema-primitives.ts";
 
 export const TargetKindSchema = Schema.Literals([
   "productPage",

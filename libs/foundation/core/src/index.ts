@@ -1,4 +1,4 @@
-export { buildWorkspaceBanner } from "./workspace-banner.js";
+export { buildWorkspaceBanner } from "./workspace-banner.ts";
 export {
   AccessModeSchema,
   AccessPolicySchema,
@@ -7,14 +7,14 @@ export {
   type AccessPolicy,
   type AccessPolicyEncoded,
   type RenderingPolicy,
-} from "./access-policy.js";
+} from "./access-policy.ts";
 export {
   TargetKindSchema,
   TargetProfile,
   TargetProfileSchema,
   type TargetKind,
   type TargetProfileEncoded,
-} from "./target-profile.js";
+} from "./target-profile.ts";
 export {
   CanonicalDomainSchema,
   CanonicalHttpUrlSchema,
@@ -26,7 +26,7 @@ export {
   type CanonicalIdentifier,
   type CanonicalKey,
   type IsoDateTime,
-} from "./schema-primitives.js";
+} from "./schema-primitives.ts";
 export {
   ArtifactKindSchema,
   ArtifactRef,
@@ -43,7 +43,7 @@ export {
   type ConcurrencyBudget,
   type EgressLeaseEncoded,
   type IdentityLeaseEncoded,
-} from "./budget-lease-artifact.js";
+} from "./budget-lease-artifact.ts";
 export {
   PackPromotionDecision,
   PackPromotionDecisionSchema,
@@ -52,7 +52,7 @@ export {
   type PackPromotionDecisionEncoded,
   type QualityVerdict,
   type SnapshotDiff,
-} from "./diff-verdict.js";
+} from "./diff-verdict.ts";
 export {
   RunCheckpoint,
   RunCheckpointSchema,
@@ -67,7 +67,7 @@ export {
   type RunPlanEncoded,
   type RunStage,
   type RunStatsEncoded,
-} from "./run-state.js";
+} from "./run-state.ts";
 export {
   CheckpointCorruption,
   CoreErrorCodeSchema,
@@ -83,7 +83,7 @@ export {
   type CoreErrorCode,
   type CoreErrorEnvelope,
   type CoreTaggedError,
-} from "./tagged-errors.js";
+} from "./tagged-errors.ts";
 export {
   Observation,
   ObservationSchema,
@@ -91,7 +91,7 @@ export {
   SnapshotSchema,
   type ObservationEncoded,
   type SnapshotEncoded,
-} from "./observation-snapshot.js";
+} from "./observation-snapshot.ts";
 export {
   PackLifecycleTransitionSchema,
   PackStateSchema,
@@ -100,7 +100,7 @@ export {
   type PackLifecycleTransition,
   type PackState,
   type SitePackEncoded,
-} from "./site-pack.js";
+} from "./site-pack.ts";
 export {
   DeterministicParserInputSchema,
   ParsedHtmlDocument,
@@ -108,7 +108,7 @@ export {
   ParsedHtmlNode,
   ParsedHtmlNodeSchema,
   parseDeterministicHtml,
-} from "./extraction-parser.js";
+} from "./extraction-parser.ts";
 export {
   SelectorCandidate,
   SelectorCandidateSchema,
@@ -116,7 +116,7 @@ export {
   SelectorResolution,
   SelectorResolutionSchema,
   resolveSelectorPrecedence,
-} from "./selector-engine.js";
+} from "./selector-engine.ts";
 export {
   ArtifactMetadataRecord,
   ArtifactMetadataRecordSchema,
@@ -138,7 +138,7 @@ export {
   type CheckpointRecordEncoded,
   type RunConfigSource,
   type RunExecutionConfigEncoded,
-} from "./config-storage.js";
+} from "./config-storage.ts";
 export {
   AccessPlannerDecision,
   AccessPlannerDecisionSchema,
@@ -148,7 +148,7 @@ export {
   PlannerRationaleEntrySchema,
   makeAccessPlanner,
   planAccessExecution,
-} from "./access-planner-runtime.js";
+} from "./access-planner-runtime.ts";
 export {
   HttpCaptureBundle,
   HttpCaptureBundleSchema,
@@ -157,7 +157,7 @@ export {
   HttpAccessLive,
   captureHttpArtifacts,
   makeHttpAccess,
-} from "./http-access-runtime.js";
+} from "./http-access-runtime.ts";
 export {
   AccessPlanner,
   ArtifactExporter,
@@ -172,4 +172,4 @@ export {
   SnapshotStore,
   TargetRegistry,
   WorkflowRunner,
-} from "./service-topology.js";
+} from "./service-topology.ts";

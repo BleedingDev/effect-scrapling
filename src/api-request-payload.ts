@@ -1,5 +1,5 @@
 import { Schema } from "effect";
-import { InvalidInputError } from "./sdk/errors";
+import { InvalidInputError } from "./sdk/errors.ts";
 
 const JSON_OBJECT_SCHEMA = Schema.Record(Schema.String, Schema.Unknown);
 type JsonObject = Schema.Schema.Type<typeof JSON_OBJECT_SCHEMA>;

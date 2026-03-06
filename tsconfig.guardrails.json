@@ -1,15 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "noEmit": true,
-    "types": ["bun-types"],
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitOverride": true,
-    "noFallthroughCasesInSwitch": true,
-    "useUnknownInCatchVariables": true
+    "types": ["bun-types"]
   },
   "include": [
     "src/**/*.ts",

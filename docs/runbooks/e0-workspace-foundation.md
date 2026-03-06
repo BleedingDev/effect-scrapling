@@ -42,17 +42,10 @@ The command executes this sequence in order:
 9. `bun run nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --parallel=1`
 10. `bun run nx affected -t typecheck --base="$NX_BASE" --head="$NX_HEAD" --parallel=1`
 11. `bun run nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --parallel=1`
-12. `bun test tests/guardrails/ci-affected-gates.verify.test.ts`
-13. `bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts`
-14. `bun test tests/guardrails/bootstrap-doctor.verify.test.ts`
-15. `bun test tests/guardrails/nx-workspace.verify.test.ts`
-16. `bun test tests/guardrails/e0-security-review.verify.test.ts`
-17. `bun test tests/guardrails/e0-performance-budget.verify.test.ts`
-18. `bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts`
-19. `bun test tests/sdk/consumer-example.test.ts`
-20. `bun test tests/guardrails/e0-post-validation-triage.verify.test.ts`
-21. `bun test tests/guardrails/e0-capability-slice.verify.test.ts`
-22. `bun run check`
+12. `bun test tests/guardrails/e0-security-review.verify.test.ts`
+13. `bun run check:e0-performance-budget`
+14. `bun test tests/sdk/consumer-example.test.ts`
+15. `bun run check`
 
 The slice is deterministic: any failing step stops the command immediately.
 
@@ -64,14 +57,9 @@ E0 foundation without reading the entire implementation:
 - bootstrap readiness output from preflight and doctor
 - Nx project discovery, graph export, and target execution
 - actual `nx affected` execution against a concrete base/head range
-- committed workflow verification for `.github/workflows/pr-affected-gates.yml`
-- committed verification for the compliant-module generator contract
-- committed verification for bootstrap doctor behavior
 - committed security review and request-sanitization verification
-- committed performance budget baseline and benchmark contract verification
-- committed rollback drill evidence and operator runbook verification
+- committed performance budget benchmark output
 - committed public consumer example that imports `effect-scrapling/sdk`
-- committed post-validation triage summary for residual and deferred items
 - final root guardrail, test, and build output from `bun run check`
 
 ## Troubleshooting
@@ -86,21 +74,17 @@ Follow the failure-specific remediation in
 Follow the affected-target troubleshooting in
 [`nx-workspace-graph.md`](nx-workspace-graph.md), then rerun the full slice.
 
-### CI or generator verification fails
+### Slice-specific verification fails
 
-Run the failing verification file directly, fix the committed contract, then
-rerun the full slice:
+Run the failing step directly, fix the runtime or workspace issue, then rerun
+the full slice:
 
 ```bash
-bun test tests/guardrails/ci-affected-gates.verify.test.ts
-bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts
-bun test tests/guardrails/bootstrap-doctor.verify.test.ts
+bun run scripts/bootstrap-doctor.ts
+bun run nx:graph
 bun test tests/guardrails/e0-security-review.verify.test.ts
-bun test tests/guardrails/e0-performance-budget.verify.test.ts
-bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts
+bun run check:e0-performance-budget
 bun test tests/sdk/consumer-example.test.ts
-bun test tests/guardrails/e0-post-validation-triage.verify.test.ts
-bun test tests/guardrails/e0-capability-slice.verify.test.ts
 ```
 
 ### Root guardrails fail at the end

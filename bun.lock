@@ -5,7 +5,6 @@
     "": {
       "name": "effect-scrapling-tooling",
       "dependencies": {
-        "@effect-scrapling/foundation-core": "file:libs/foundation/core",
         "cheerio": "^1.2.0",
         "effect": "^4.0.0-beta.27",
         "playwright": "^1.52.0",
@@ -13,6 +12,7 @@
       "devDependencies": {
         "@effect-native/bun-test": "file:vendor/effect-native-bun-test",
         "@effect-scrapling/ci-tooling": "file:tools/ci",
+        "@effect-scrapling/foundation-core": "file:libs/foundation/core",
         "@effect/language-service": "^0.75.1",
         "@nx/eslint-plugin": "22.5.4",
         "@swc-node/register": "~1.11.1",

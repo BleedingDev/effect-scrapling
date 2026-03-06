@@ -1,6 +1,6 @@
 import { Effect, Option, ServiceMap } from "effect";
-import type { AccessPolicy } from "./access-policy.js";
-import type { ArtifactMetadataRecord, StorageLocator } from "./config-storage.js";
+import type { AccessPolicy } from "./access-policy.ts";
+import type { ArtifactMetadataRecord, StorageLocator } from "./config-storage.ts";
 import {
   CheckpointCorruption,
   DriftDetected,
@@ -10,13 +10,13 @@ import {
   ProviderUnavailable,
   RenderCrashError,
   TimeoutError,
-} from "./tagged-errors.js";
-import type { SitePack } from "./site-pack.js";
-import type { Snapshot } from "./observation-snapshot.js";
-import type { TargetProfile } from "./target-profile.js";
-import type { CanonicalDomain, CanonicalIdentifier } from "./schema-primitives.js";
-import type { PackPromotionDecisionEncoded, QualityVerdict, SnapshotDiff } from "./diff-verdict.js";
-import type { RunCheckpointEncoded, RunPlan, RunStats } from "./run-state.js";
+} from "./tagged-errors.ts";
+import type { SitePack } from "./site-pack.ts";
+import type { Snapshot } from "./observation-snapshot.ts";
+import type { TargetProfile } from "./target-profile.ts";
+import type { CanonicalDomain, CanonicalIdentifier } from "./schema-primitives.ts";
+import type { PackPromotionDecisionEncoded, QualityVerdict, SnapshotDiff } from "./diff-verdict.ts";
+import type { RunCheckpointEncoded, RunPlan, RunStats } from "./run-state.ts";
 
 export class TargetRegistry extends ServiceMap.Service<
   TargetRegistry,

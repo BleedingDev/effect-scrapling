@@ -47,8 +47,7 @@ Supported decision actions:
 Run targeted verification from repository root:
 
 ```bash
-bun test tests/libs/foundation-core-quality.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 bun run example:e1-capability-slice
 ```
 
@@ -159,7 +158,7 @@ decision payloads instead of re-inventing local enums or string maps.
 1. Prepare
 - update comparison and reflection code to emit only public quality contracts
 - verify representative diffs and verdicts with
-  `bun test tests/libs/foundation-core-quality.test.ts`
+  `bun test tests/guardrails/e1-capability-slice.verify.test.ts`
 
 2. Apply
 - remove duplicate local decision DTOs or gate lists
@@ -180,8 +179,7 @@ decision payloads instead of re-inventing local enums or string maps.
 2. Re-run:
 
 ```bash
-bun test tests/libs/foundation-core-quality.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
+bun test tests/guardrails/e1-capability-slice.verify.test.ts
 bun run example:e1-capability-slice
 bun run check
 ```

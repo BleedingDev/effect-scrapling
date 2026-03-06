@@ -6,20 +6,23 @@ import {
   isExtractionError,
   isInvalidInputError,
   isNetworkError,
-} from "./sdk/error-guards";
-import { InvalidInputError } from "./sdk/errors";
-import { accessPreview, extractRun, FetchServiceLive, runDoctor } from "./sdk/scraper";
-
-const ACCESS_MODES = new Set(["http", "browser"]);
-const BROWSER_WAIT_UNTIL_VALUES = new Set(["load", "domcontentloaded", "networkidle", "commit"]);
+} from "./sdk/error-guards.ts";
+import { InvalidInputError } from "./sdk/errors.ts";
+import {
+  accessPreview,
+  extractRun,
+  FetchService,
+  FetchServiceLive,
+  type FetchClient,
+  runDoctor,
+} from "./sdk/scraper.ts";
 
 type ParsedArgs = {
   readonly positionals: string[];
   readonly options: Record<string, string | boolean>;
 };
 
-function usage(): void {
-  console.log(`effect-scrapling (EffectTS + Bun)
+const USAGE_TEXT = `effect-scrapling (EffectTS + Bun)
 
 Usage:
   effect-scrapling doctor
@@ -31,8 +34,7 @@ Examples:
   effect-scrapling access preview --url "https://example.com" --mode browser --wait-until networkidle --wait-ms 300
   effect-scrapling extract run --url "https://example.com" --selector "h1"
   effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --mode browser --wait-until load
-`);
-}
+`;
 
 function parseArgs(args: string[]): ParsedArgs {
   const positionals: string[] = [];
@@ -107,110 +109,22 @@ function parseNonEmptyString(
   return trimmed;
 }
 
-function parsePositiveInt(name: string, value: string | boolean | undefined): number | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value === "boolean") {
-    throw new InvalidInputError({
-      message: `Option --${name} requires a value`,
-    });
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new InvalidInputError({
-      message: `Option --${name} must be a positive integer`,
-      details: `received: ${value}`,
-    });
-  }
-  return parsed;
-}
-
-function parseBooleanOption(
+function parseFlagOrValue(
   name: string,
   value: string | boolean | undefined,
-): boolean | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  if (typeof value === "boolean") {
+): string | boolean | undefined {
+  if (value === undefined || typeof value === "boolean") {
     return value;
   }
 
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "true") return true;
-  if (normalized === "false") return false;
-
-  throw new InvalidInputError({
-    message: `Option --${name} must be a boolean`,
-    details: `Use --${name}, --${name}=true, or --${name}=false`,
-  });
-}
-
-type BrowserOptions = {
-  readonly mode?: string;
-  readonly waitUntil?: string;
-  readonly timeoutMs?: number;
-  readonly userAgent?: string;
-};
-
-function parseMode(value: string | boolean | undefined): string | undefined {
-  const mode = parseNonEmptyString("mode", value);
-  if (mode === undefined) {
-    return undefined;
-  }
-
-  if (!ACCESS_MODES.has(mode)) {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
     throw new InvalidInputError({
-      message: `Option --mode must be one of: ${Array.from(ACCESS_MODES).join(", ")}`,
-      details: `received: ${mode}`,
+      message: `Option --${name} cannot be empty`,
     });
   }
 
-  return mode;
-}
-
-function parseWaitUntil(value: string | boolean | undefined): string | undefined {
-  const waitUntil = parseNonEmptyString("wait-until", value);
-  if (waitUntil === undefined) {
-    return undefined;
-  }
-
-  if (!BROWSER_WAIT_UNTIL_VALUES.has(waitUntil)) {
-    throw new InvalidInputError({
-      message: `Option --wait-until must be one of: ${Array.from(BROWSER_WAIT_UNTIL_VALUES).join(", ")}`,
-      details: `received: ${waitUntil}`,
-    });
-  }
-
-  return waitUntil;
-}
-
-function parseBrowserOptions(options: Record<string, string | boolean>): BrowserOptions {
-  const mode = parseMode(getOption(options, "mode"));
-  const waitUntil = parseWaitUntil(getOption(options, "wait-until", "waitUntil"));
-  const timeoutMs = parsePositiveInt(
-    "wait-ms",
-    getOption(options, "wait-ms", "waitMs", "browser-timeout-ms", "browserTimeoutMs"),
-  );
-  const userAgent = parseNonEmptyString(
-    "browser-user-agent",
-    getOption(options, "browser-user-agent", "browserUserAgent"),
-  );
-
-  return {
-    ...(mode !== undefined ? { mode } : {}),
-    ...(waitUntil !== undefined ? { waitUntil } : {}),
-    ...(timeoutMs !== undefined ? { timeoutMs } : {}),
-    ...(userAgent !== undefined ? { userAgent } : {}),
-  };
-}
-
-function printJson(payload: unknown): void {
-  console.log(JSON.stringify(payload, null, 2));
+  return trimmed;
 }
 
 function unwrapFailure(cause: Cause.Cause<unknown>): unknown {
@@ -225,183 +139,217 @@ async function runEffect<A, E>(effect: Effect.Effect<A, E, never>): Promise<A> {
   throw unwrapFailure(exit.cause);
 }
 
-function printError(error: unknown): never {
+function provideFetchService<A, E>(
+  effect: Effect.Effect<A, E, FetchService>,
+  fetchClient?: FetchClient,
+): Effect.Effect<A, E, never> {
+  if (fetchClient) {
+    return effect.pipe(
+      Effect.provideService(FetchService, {
+        fetch: fetchClient,
+      }),
+    );
+  }
+
+  return effect.pipe(Effect.provide(FetchServiceLive));
+}
+
+function encodeCliJson(payload: unknown): string {
+  return JSON.stringify(payload, null, 2);
+}
+
+export type CliExecutionResult = {
+  readonly exitCode: number;
+  readonly output: string;
+};
+
+function toCliErrorResult(error: unknown): CliExecutionResult {
   if (isInvalidInputError(error)) {
-    printJson({
-      ok: false,
-      code: "InvalidInputError",
-      message: error.message,
-      details: error.details ?? null,
-    });
-    process.exit(2);
+    return {
+      exitCode: 2,
+      output: encodeCliJson({
+        ok: false,
+        code: "InvalidInputError",
+        message: error.message,
+        details: error.details ?? null,
+      }),
+    };
   }
 
   if (isNetworkError(error)) {
-    printJson({
-      ok: false,
-      code: "NetworkError",
-      message: error.message,
-      details: error.details ?? null,
-    });
-    process.exit(1);
+    return {
+      exitCode: 1,
+      output: encodeCliJson({
+        ok: false,
+        code: "NetworkError",
+        message: error.message,
+        details: error.details ?? null,
+      }),
+    };
   }
 
   if (isBrowserError(error)) {
-    printJson({
-      ok: false,
-      code: "BrowserError",
-      message: error.message,
-      details: error.details ?? null,
-    });
-    process.exit(1);
+    return {
+      exitCode: 1,
+      output: encodeCliJson({
+        ok: false,
+        code: "BrowserError",
+        message: error.message,
+        details: error.details ?? null,
+      }),
+    };
   }
 
   if (isExtractionError(error)) {
-    printJson({
-      ok: false,
-      code: "ExtractionError",
-      message: error.message,
-      details: error.details ?? null,
-    });
-    process.exit(1);
+    return {
+      exitCode: 1,
+      output: encodeCliJson({
+        ok: false,
+        code: "ExtractionError",
+        message: error.message,
+        details: error.details ?? null,
+      }),
+    };
   }
 
-  printJson({
-    ok: false,
-    code: "UnknownError",
-    message: String(error),
-  });
-  process.exit(1);
+  return {
+    exitCode: 1,
+    output: encodeCliJson({
+      ok: false,
+      code: "UnknownError",
+      message: String(error),
+    }),
+  };
 }
 
-async function main(): Promise<void> {
-  const parsed = parseArgs(process.argv.slice(2));
+export async function executeCli(
+  args: string[],
+  fetchClient?: FetchClient,
+): Promise<CliExecutionResult> {
+  const parsed = parseArgs(args);
   const [command, subcommand, action] = parsed.positionals;
 
-  if (!command || command === "help" || command === "--help" || command === "-h") {
-    usage();
-    return;
-  }
+  try {
+    if (!command || command === "help" || command === "--help" || command === "-h") {
+      return { exitCode: 0, output: USAGE_TEXT };
+    }
 
-  if (command === "doctor") {
-    const doctor = await runEffect(runDoctor());
-    printJson({
-      ok: doctor.ok,
-      command: "doctor",
-      data: doctor,
-      warnings: doctor.ok ? [] : ["One or more runtime checks failed"],
+    if (command === "doctor") {
+      const doctor = await runEffect(runDoctor());
+      return {
+        exitCode: doctor.ok ? 0 : 1,
+        output: encodeCliJson({
+          ok: doctor.ok,
+          command: "doctor",
+          data: doctor,
+          warnings: doctor.ok ? [] : ["One or more runtime checks failed"],
+        }),
+      };
+    }
+
+    if (command === "access" && subcommand === "preview") {
+      const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
+      const timeoutMs = parseNonEmptyString(
+        "timeout-ms",
+        getOption(parsed.options, "timeout-ms", "timeoutMs"),
+      );
+      const userAgent = parseNonEmptyString(
+        "user-agent",
+        getOption(parsed.options, "user-agent", "userAgent"),
+      );
+      const mode = parseNonEmptyString("mode", getOption(parsed.options, "mode"));
+      const waitUntil = parseNonEmptyString(
+        "wait-until",
+        getOption(parsed.options, "wait-until", "waitUntil"),
+      );
+      const waitMs = parseNonEmptyString(
+        "wait-ms",
+        getOption(parsed.options, "wait-ms", "waitMs", "browser-timeout-ms", "browserTimeoutMs"),
+      );
+      const browserUserAgent = parseNonEmptyString(
+        "browser-user-agent",
+        getOption(parsed.options, "browser-user-agent", "browserUserAgent"),
+      );
+      if (url === undefined) {
+        throw new InvalidInputError({ message: "Missing required option: --url" });
+      }
+
+      const payload: Record<string, unknown> = { url };
+      if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
+      if (userAgent !== undefined) payload.userAgent = userAgent;
+      if (mode !== undefined) payload.mode = mode;
+
+      const browser: Record<string, unknown> = {};
+      if (waitUntil !== undefined) browser.waitUntil = waitUntil;
+      if (waitMs !== undefined) browser.timeoutMs = waitMs;
+      if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
+      if (Object.keys(browser).length > 0) payload.browser = browser;
+
+      const result = await runEffect(provideFetchService(accessPreview(payload), fetchClient));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if ((command === "extract" && subcommand === "run") || command === "scrape") {
+      const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
+      const selector = parseNonEmptyString("selector", getOption(parsed.options, "selector"));
+      const attr = parseNonEmptyString("attr", getOption(parsed.options, "attr"));
+      const all = parseFlagOrValue("all", getOption(parsed.options, "all"));
+      const limit = parseNonEmptyString("limit", getOption(parsed.options, "limit"));
+      const timeoutMs = parseNonEmptyString(
+        "timeout-ms",
+        getOption(parsed.options, "timeout-ms", "timeoutMs"),
+      );
+      const userAgent = parseNonEmptyString(
+        "user-agent",
+        getOption(parsed.options, "user-agent", "userAgent"),
+      );
+      const mode = parseNonEmptyString("mode", getOption(parsed.options, "mode"));
+      const waitUntil = parseNonEmptyString(
+        "wait-until",
+        getOption(parsed.options, "wait-until", "waitUntil"),
+      );
+      const waitMs = parseNonEmptyString(
+        "wait-ms",
+        getOption(parsed.options, "wait-ms", "waitMs", "browser-timeout-ms", "browserTimeoutMs"),
+      );
+      const browserUserAgent = parseNonEmptyString(
+        "browser-user-agent",
+        getOption(parsed.options, "browser-user-agent", "browserUserAgent"),
+      );
+      if (url === undefined) {
+        throw new InvalidInputError({ message: "Missing required option: --url" });
+      }
+
+      const payload: Record<string, unknown> = { url };
+      if (selector !== undefined) payload.selector = selector;
+      if (attr !== undefined) payload.attr = attr;
+      if (all !== undefined) payload.all = all;
+      if (limit !== undefined) payload.limit = limit;
+      if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
+      if (userAgent !== undefined) payload.userAgent = userAgent;
+      if (mode !== undefined) payload.mode = mode;
+
+      const browser: Record<string, unknown> = {};
+      if (waitUntil !== undefined) browser.waitUntil = waitUntil;
+      if (waitMs !== undefined) browser.timeoutMs = waitMs;
+      if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
+      if (Object.keys(browser).length > 0) payload.browser = browser;
+
+      const result = await runEffect(provideFetchService(extractRun(payload), fetchClient));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    throw new InvalidInputError({
+      message: `Unknown command: ${[command, subcommand, action].filter(Boolean).join(" ")}`,
+      details: "Run `effect-scrapling help` to list valid commands",
     });
-    process.exit(doctor.ok ? 0 : 1);
+  } catch (error) {
+    return toCliErrorResult(error);
   }
-
-  if (command === "access" && subcommand === "preview") {
-    const timeoutMs = parsePositiveInt(
-      "timeout-ms",
-      getOption(parsed.options, "timeout-ms", "timeoutMs"),
-    );
-    const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
-    const userAgent = parseNonEmptyString(
-      "user-agent",
-      getOption(parsed.options, "user-agent", "userAgent"),
-    );
-    const browserOptions = parseBrowserOptions(parsed.options);
-    if (url === undefined) {
-      throw new InvalidInputError({ message: "Missing required option: --url" });
-    }
-
-    const payload: Record<string, unknown> = { url };
-    if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
-    if (userAgent !== undefined) payload.userAgent = userAgent;
-    if (browserOptions.mode !== undefined) payload.mode = browserOptions.mode;
-
-    const browser: Record<string, unknown> = {};
-    if (browserOptions.waitUntil !== undefined) browser.waitUntil = browserOptions.waitUntil;
-    if (browserOptions.timeoutMs !== undefined) browser.timeoutMs = browserOptions.timeoutMs;
-    if (browserOptions.userAgent !== undefined) browser.userAgent = browserOptions.userAgent;
-    if (Object.keys(browser).length > 0) payload.browser = browser;
-
-    const result = await runEffect(accessPreview(payload).pipe(Effect.provide(FetchServiceLive)));
-    printJson(result);
-    return;
-  }
-
-  if (command === "extract" && subcommand === "run") {
-    const timeoutMs = parsePositiveInt(
-      "timeout-ms",
-      getOption(parsed.options, "timeout-ms", "timeoutMs"),
-    );
-    const limit = parsePositiveInt("limit", getOption(parsed.options, "limit"));
-    const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
-    const selector = parseNonEmptyString("selector", getOption(parsed.options, "selector"));
-    const attr = parseNonEmptyString("attr", getOption(parsed.options, "attr"));
-    const userAgent = parseNonEmptyString(
-      "user-agent",
-      getOption(parsed.options, "user-agent", "userAgent"),
-    );
-    const all = parseBooleanOption("all", getOption(parsed.options, "all"));
-    const browserOptions = parseBrowserOptions(parsed.options);
-    if (url === undefined) {
-      throw new InvalidInputError({ message: "Missing required option: --url" });
-    }
-
-    const payload: Record<string, unknown> = { url };
-    if (selector !== undefined) payload.selector = selector;
-    if (attr !== undefined) payload.attr = attr;
-    if (all !== undefined) payload.all = all;
-    if (limit !== undefined) payload.limit = limit;
-    if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
-    if (userAgent !== undefined) payload.userAgent = userAgent;
-    if (browserOptions.mode !== undefined) payload.mode = browserOptions.mode;
-
-    const browser: Record<string, unknown> = {};
-    if (browserOptions.waitUntil !== undefined) browser.waitUntil = browserOptions.waitUntil;
-    if (browserOptions.timeoutMs !== undefined) browser.timeoutMs = browserOptions.timeoutMs;
-    if (browserOptions.userAgent !== undefined) browser.userAgent = browserOptions.userAgent;
-    if (Object.keys(browser).length > 0) payload.browser = browser;
-
-    const result = await runEffect(extractRun(payload).pipe(Effect.provide(FetchServiceLive)));
-    printJson(result);
-    return;
-  }
-
-  if (command === "scrape") {
-    const timeoutMs = parsePositiveInt(
-      "timeout-ms",
-      getOption(parsed.options, "timeout-ms", "timeoutMs"),
-    );
-    const limit = parsePositiveInt("limit", getOption(parsed.options, "limit"));
-    const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
-    const selector = parseNonEmptyString("selector", getOption(parsed.options, "selector"));
-    const attr = parseNonEmptyString("attr", getOption(parsed.options, "attr"));
-    const all = parseBooleanOption("all", getOption(parsed.options, "all"));
-    const browserOptions = parseBrowserOptions(parsed.options);
-    if (url === undefined) {
-      throw new InvalidInputError({ message: "Missing required option: --url" });
-    }
-
-    const payload: Record<string, unknown> = { url };
-    if (selector !== undefined) payload.selector = selector;
-    if (attr !== undefined) payload.attr = attr;
-    if (all !== undefined) payload.all = all;
-    if (limit !== undefined) payload.limit = limit;
-    if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
-    if (browserOptions.mode !== undefined) payload.mode = browserOptions.mode;
-
-    const browser: Record<string, unknown> = {};
-    if (browserOptions.waitUntil !== undefined) browser.waitUntil = browserOptions.waitUntil;
-    if (browserOptions.timeoutMs !== undefined) browser.timeoutMs = browserOptions.timeoutMs;
-    if (browserOptions.userAgent !== undefined) browser.userAgent = browserOptions.userAgent;
-    if (Object.keys(browser).length > 0) payload.browser = browser;
-
-    const result = await runEffect(extractRun(payload).pipe(Effect.provide(FetchServiceLive)));
-    printJson(result);
-    return;
-  }
-
-  throw new InvalidInputError({
-    message: `Unknown command: ${[command, subcommand, action].filter(Boolean).join(" ")}`,
-    details: "Run `effect-scrapling help` to list valid commands",
-  });
 }
 
-main().catch(printError);
+if (import.meta.main) {
+  const result = await executeCli(process.argv.slice(2));
+  console.log(result.output);
+  process.exit(result.exitCode);
+}

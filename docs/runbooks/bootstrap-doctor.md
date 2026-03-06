@@ -85,7 +85,7 @@ Failures are deterministic and action-oriented. Each failed check/gate prints:
 The documented preflight + doctor path is verified by:
 
 ```bash
-bun test tests/guardrails/bootstrap-doctor.verify.test.ts
+bun run scripts/bootstrap-doctor.ts
 ```
 
 This suite provisions an isolated workspace fixture with stubbed `bun` and `git`

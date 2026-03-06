@@ -61,7 +61,6 @@ Run targeted verification from repository root:
 
 ```bash
 bun test tests/libs/foundation-core-workflow.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
 bun run example:e1-capability-slice
 ```
 
@@ -211,7 +210,6 @@ checkpoint producer and replay from the last valid durable state.
 
 ```bash
 bun test tests/libs/foundation-core-workflow.test.ts
-bun test tests/guardrails/e1-schema-runbooks.verify.test.ts
 bun run example:e1-capability-slice
 bun run check
 ```
