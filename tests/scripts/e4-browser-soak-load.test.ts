@@ -40,7 +40,24 @@ describe("e4 browser soak/load benchmark harness", () => {
     });
   });
 
-  it("produces a passing artifact for the default bounded soak/load suite", async () => {
+  it("runs the shipped default soak/load profile without counting warmup toward steady-state captures", async () => {
+    const artifact = await runSoakLoadSuite();
+
+    expect(artifact.status).toBe("pass");
+    expect(artifact.rounds).toBe(DEFAULT_ROUNDS);
+    expect(artifact.concurrency).toBe(DEFAULT_CONCURRENCY);
+    expect(artifact.warmupIterations).toBe(DEFAULT_WARMUP_ITERATIONS);
+    expect(artifact.measurements.roundDurationMs.samples).toBe(DEFAULT_ROUNDS);
+    expect(artifact.captures.totalRuns).toBe(DEFAULT_ROUNDS * DEFAULT_CONCURRENCY);
+    expect(artifact.captures.totalArtifacts).toBe(DEFAULT_ROUNDS * DEFAULT_CONCURRENCY * 4);
+    expect(artifact.peaks).toEqual({
+      openBrowsers: 1,
+      openContexts: DEFAULT_CONCURRENCY,
+      openPages: DEFAULT_CONCURRENCY,
+    });
+  });
+
+  it("produces a passing artifact for a bounded reduced soak/load suite", async () => {
     const artifact = await runSoakLoadSuite({
       rounds: 3,
       concurrency: 4,
