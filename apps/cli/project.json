@@ -18,6 +18,12 @@
         "command": "tsc --noEmit -p apps/cli/tsconfig.json"
       }
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test tests/apps/cli-app.test.ts"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "options": {

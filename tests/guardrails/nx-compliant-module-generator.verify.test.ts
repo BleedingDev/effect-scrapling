@@ -23,8 +23,15 @@ type GeneratedFixture = {
   readonly testFilePath: string;
 };
 
+type GeneratorOptions = {
+  readonly name: string;
+  readonly project?: string;
+  readonly directory?: string;
+};
+
 const REPO_ROOT = resolve(import.meta.dir, "..", "..");
 const TEMP_PATHS = new Set<string>();
+const DEFAULT_PROJECT = "foundation-core";
 const MODULE_DIRECTORY_NAME = "generated-modules";
 const SOURCE_ROOT = join(REPO_ROOT, "libs", "foundation", "core", "src", MODULE_DIRECTORY_NAME);
 const TEST_ROOT = join(
@@ -79,18 +86,35 @@ function modulePaths(moduleName: string): GeneratedFixture {
   };
 }
 
-function runGenerator(moduleName: string): CommandResult {
-  return runCommand([
+function runGeneratorWithOptions(options: GeneratorOptions): CommandResult {
+  const command: [string, ...string[]] = [
     "bunx",
     "--bun",
     "nx",
     "g",
     "@effect-scrapling/ci-tooling:compliant-module",
-    `--project=foundation-core`,
-    `--name=${moduleName}`,
-    `--directory=${MODULE_DIRECTORY_NAME}`,
     "--no-interactive",
-  ]);
+  ];
+
+  if (options.project !== undefined) {
+    command.push(`--project=${options.project}`);
+  }
+
+  command.push(`--name=${options.name}`);
+
+  if (options.directory !== undefined) {
+    command.push(`--directory=${options.directory}`);
+  }
+
+  return runCommand(command);
+}
+
+function runGenerator(moduleName: string): CommandResult {
+  return runGeneratorWithOptions({
+    project: DEFAULT_PROJECT,
+    name: moduleName,
+    directory: MODULE_DIRECTORY_NAME,
+  });
 }
 
 async function readGeneratedContents(paths: readonly string[]): Promise<Record<string, string>> {
@@ -106,10 +130,10 @@ function assertGeneratorSucceeded(result: CommandResult): void {
   }
 }
 
-async function createTypecheckConfig(moduleName: string): Promise<string> {
+async function createTypecheckConfig(fixture: GeneratedFixture): Promise<string> {
   await mkdir(TMP_ROOT, { recursive: true });
   const tsconfigPath = trackPath(
-    join(TMP_ROOT, `tsconfig-generated-module-${moduleName}-${randomUUID()}.json`),
+    join(TMP_ROOT, `tsconfig-generated-module-${fixture.moduleName}-${randomUUID()}.json`),
   );
   const tsconfigRelative = relative(REPO_ROOT, tsconfigPath);
 
@@ -124,7 +148,8 @@ async function createTypecheckConfig(moduleName: string): Promise<string> {
     "exactOptionalPropertyTypes": true
   },
   "include": [
-    "../libs/foundation/core/src/${MODULE_DIRECTORY_NAME}/${moduleName}/**/*.ts"
+    "../${relative(REPO_ROOT, fixture.moduleDirectory)}/**/*.ts",
+    "../${relative(REPO_ROOT, fixture.testFilePath)}"
   ]
 }
 `;
@@ -170,7 +195,7 @@ describe("nx compliant-module generator verification", () => {
     const lintRun = runCommand(["bunx", "--bun", "oxlint", ...fileArgs]);
     expect(lintRun.status).toBe(0);
 
-    const typecheckConfigPath = await createTypecheckConfig(moduleName);
+    const typecheckConfigPath = await createTypecheckConfig(fixture);
     const typecheckRun = runCommand([
       "bunx",
       "--bun",
@@ -202,5 +227,51 @@ describe("nx compliant-module generator verification", () => {
     ]);
 
     expect(secondRunContents).toEqual(firstRunContents);
+  });
+
+  it("fails deterministically when the module name cannot normalize to a compliant identifier", () => {
+    const invalidName = "123 broken";
+
+    const firstRun = runGeneratorWithOptions({
+      project: DEFAULT_PROJECT,
+      name: invalidName,
+      directory: MODULE_DIRECTORY_NAME,
+    });
+    const secondRun = runGeneratorWithOptions({
+      project: DEFAULT_PROJECT,
+      name: invalidName,
+      directory: MODULE_DIRECTORY_NAME,
+    });
+
+    expect(firstRun.status).toBe(1);
+    expect(secondRun.status).toBe(1);
+    expect(getOutput(firstRun)).toBe(getOutput(secondRun));
+    expect(getOutput(firstRun)).toContain(
+      `The "name" option must normalize to kebab-case with a leading letter (received "${invalidName}").`,
+    );
+    expect(getOutput(firstRun)).not.toContain("CREATE ");
+  });
+
+  it("fails deterministically when a directory segment cannot normalize to a compliant identifier", () => {
+    const invalidDirectory = "generated-modules/123 broken";
+
+    const firstRun = runGeneratorWithOptions({
+      project: DEFAULT_PROJECT,
+      name: "directory-sentinel",
+      directory: invalidDirectory,
+    });
+    const secondRun = runGeneratorWithOptions({
+      project: DEFAULT_PROJECT,
+      name: "directory-sentinel",
+      directory: invalidDirectory,
+    });
+
+    expect(firstRun.status).toBe(1);
+    expect(secondRun.status).toBe(1);
+    expect(getOutput(firstRun)).toBe(getOutput(secondRun));
+    expect(getOutput(firstRun)).toContain(
+      'The "directory" option must normalize to kebab-case with a leading letter (received "123 broken").',
+    );
+    expect(getOutput(firstRun)).not.toContain("CREATE ");
   });
 });

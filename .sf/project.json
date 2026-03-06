@@ -17,6 +17,12 @@
         "command": "node -e \"process.exit(0)\""
       }
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun run scripts/guardrails/validate-sf-assets.ts"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "options": {

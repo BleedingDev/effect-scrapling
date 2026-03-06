@@ -17,6 +17,12 @@
         "command": "tsc --noEmit -p libs/foundation/core/tsconfig.json"
       }
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test tests/libs/foundation-core.test.ts"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "options": {

@@ -232,8 +232,6 @@ export function ${options.moduleEffectFunctionName}(
 }
 
 function buildTestSource(options: NormalizedOptions): string {
-  const resultTypeName = options.moduleResultSchemaName.replace(/Schema$/u, "");
-
   return `import { Effect } from "effect";
 import { describe, expect, it } from "@effect-native/bun-test";
 import { ${options.moduleEffectFunctionName} } from "${options.effectImportPathFromTest}";
@@ -245,13 +243,15 @@ describe("${options.moduleEffectFunctionName} scaffold", () => {
       ${options.moduleEffectFunctionName}({ input: "hello world" }).pipe(Effect.provide(${options.moduleLayerName})),
     );
 
-    expect(result).toEqual<${resultTypeName}>({
+    expect(result).toEqual({
       output: "HELLO WORLD",
     });
   });
 
   it("fails decoding invalid payloads", async () => {
-    const exit = await Effect.runPromiseExit(${options.moduleEffectFunctionName}({}));
+    const exit = await Effect.runPromiseExit(
+      ${options.moduleEffectFunctionName}({}).pipe(Effect.provide(${options.moduleLayerName})),
+    );
     expect(exit._tag).toBe("Failure");
   });
 

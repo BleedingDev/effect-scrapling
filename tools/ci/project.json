@@ -18,6 +18,12 @@
         "command": "tsc --noEmit -p tools/ci/tsconfig.json"
       }
     },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bun test tests/tools/ci-tooling.test.ts tests/guardrails"
+      }
+    },
     "build": {
       "executor": "nx:run-commands",
       "options": {
