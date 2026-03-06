@@ -3,6 +3,8 @@ import { Schema } from "effect";
 const DOMAIN_PATTERN =
   /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/u;
 const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
+const CANONICAL_KEY_PATTERN =
+  /^(?!\/)(?!.*\/\/)(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u;
 
 const NonEmptyTrimmedString = Schema.Trim.check(Schema.isNonEmpty());
 const LowercasedNonEmptyTrimmedString = NonEmptyTrimmedString.check(Schema.isLowercased());
@@ -42,8 +44,9 @@ export const CanonicalDomainSchema = LowercasedNonEmptyTrimmedString.pipe(
 );
 
 export const CanonicalKeySchema = NonEmptyTrimmedString.pipe(
-  Schema.refine((value): value is string => !/\s/gu.test(value), {
-    message: "Expected a canonical key without whitespace.",
+  Schema.refine((value): value is string => CANONICAL_KEY_PATTERN.test(value), {
+    message:
+      "Expected a canonical key with safe path segments and without whitespace, dot segments, duplicate slashes, or a leading slash.",
   }),
 );
 
