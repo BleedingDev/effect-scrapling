@@ -29,6 +29,7 @@
     "check:e1-performance-budget": "bun test tests/guardrails/e1-performance-budget.verify.test.ts && bun run benchmark:e1-performance-budget",
     "check:e1-foundation-core-consumer": "bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts && bun run example:e1-foundation-core-consumer",
     "check:e1-operations-rollback-drill": "bun test tests/guardrails/e1-operations-rollback-drill.verify.test.ts",
+    "check:e1-post-validation-triage": "bun test tests/guardrails/e1-post-validation-triage.verify.test.ts",
     "benchmark:e0-performance-budget": "bun run scripts/benchmarks/e0-performance-budget.ts --baseline docs/artifacts/e0-performance-budget-baseline.json",
     "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
     "format:check": "bunx --bun oxfmt --check $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
