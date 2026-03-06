@@ -2,6 +2,10 @@ import { describe, expect, it } from "@effect-native/bun-test";
 import { Schema } from "effect";
 import {
   AccessPolicySchema,
+  ObservationSchema,
+  PackLifecycleTransitionSchema,
+  SitePackSchema,
+  SnapshotSchema,
   buildWorkspaceBanner,
   TargetProfileSchema,
 } from "../../libs/foundation/core/src";
@@ -191,5 +195,103 @@ describe("foundation-core", () => {
       maxRetries: 10,
       render: "always",
     });
+  });
+
+  it("roundtrips site packs and snapshots through public schema contracts", () => {
+    const sitePack = Schema.decodeUnknownSync(SitePackSchema)({
+      id: "pack-example-com",
+      domainPattern: "*.example.com",
+      state: "guarded",
+      accessPolicyId: "policy-default",
+      version: "2026.03.06",
+    });
+    const snapshot = Schema.decodeUnknownSync(SnapshotSchema)({
+      id: "snapshot-001",
+      targetId: "target-product-001",
+      observations: [
+        {
+          field: "price",
+          normalizedValue: {
+            amount: 19.99,
+            currency: "USD",
+          },
+          confidence: 0.9,
+          evidenceRefs: ["artifact-price-001"],
+        },
+      ],
+      qualityScore: 0.88,
+      createdAt: "2026-03-06T00:00:00.000Z",
+    });
+
+    expect(Schema.encodeSync(SitePackSchema)(sitePack)).toEqual({
+      id: "pack-example-com",
+      domainPattern: "*.example.com",
+      state: "guarded",
+      accessPolicyId: "policy-default",
+      version: "2026.03.06",
+    });
+    expect(Schema.encodeSync(SnapshotSchema)(snapshot)).toEqual({
+      id: "snapshot-001",
+      targetId: "target-product-001",
+      observations: [
+        {
+          field: "price",
+          normalizedValue: {
+            amount: 19.99,
+            currency: "USD",
+          },
+          confidence: 0.9,
+          evidenceRefs: ["artifact-price-001"],
+        },
+      ],
+      qualityScore: 0.88,
+      createdAt: "2026-03-06T00:00:00.000Z",
+    });
+  });
+
+  it("rejects unsupported lifecycle transitions and incomplete observations", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(PackLifecycleTransitionSchema)({
+        from: "draft",
+        to: "active",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(ObservationSchema)({
+        field: "headline",
+        normalizedValue: "Example headline",
+        confidence: 0.92,
+        evidenceRefs: [],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(ObservationSchema)({
+        field: "price",
+        normalizedValue: {
+          amount: 19.99,
+        },
+        confidence: 0.9,
+        evidenceRefs: ["artifact-price-001"],
+      }),
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(SnapshotSchema)({
+        id: "snapshot-001",
+        targetId: "target-product-001",
+        observations: [
+          {
+            field: "headline",
+            normalizedValue: "Example headline",
+            confidence: 0.92,
+            evidenceRefs: ["artifact-html-001"],
+          },
+        ],
+        qualityScore: 0.88,
+        createdAt: "March 6 2026",
+      }),
+    ).toThrow();
   });
 });
