@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
-import { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./sdk/errors";
+import {
+  isBrowserError,
+  isExtractionError,
+  isInvalidInputError,
+  isNetworkError,
+} from "./sdk/error-guards";
+import { InvalidInputError } from "./sdk/errors";
 import { accessPreview, extractRun, FetchServiceLive, runDoctor } from "./sdk/scraper";
 
 const ACCESS_MODES = new Set(["http", "browser"]);
@@ -220,24 +226,40 @@ async function runEffect<A, E>(effect: Effect.Effect<A, E, never>): Promise<A> {
 }
 
 function printError(error: unknown): never {
-  if (error instanceof InvalidInputError) {
+  if (isInvalidInputError(error)) {
     printJson({
       ok: false,
-      code: error._tag,
+      code: "InvalidInputError",
       message: error.message,
       details: error.details ?? null,
     });
     process.exit(2);
   }
 
-  if (
-    error instanceof NetworkError ||
-    error instanceof BrowserError ||
-    error instanceof ExtractionError
-  ) {
+  if (isNetworkError(error)) {
     printJson({
       ok: false,
-      code: error._tag,
+      code: "NetworkError",
+      message: error.message,
+      details: error.details ?? null,
+    });
+    process.exit(1);
+  }
+
+  if (isBrowserError(error)) {
+    printJson({
+      ok: false,
+      code: "BrowserError",
+      message: error.message,
+      details: error.details ?? null,
+    });
+    process.exit(1);
+  }
+
+  if (isExtractionError(error)) {
+    printJson({
+      ok: false,
+      code: "ExtractionError",
       message: error.message,
       details: error.details ?? null,
     });

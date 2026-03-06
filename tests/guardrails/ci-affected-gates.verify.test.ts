@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "@effect-native/bun-test";
+import { Predicate } from "effect";
 
 type GateDefinition = {
   readonly name: string;
@@ -236,7 +237,7 @@ function validatePrAffectedGatesWorkflow(content: string): readonly string[] {
   try {
     parsedGates = parseGateMatrix(content);
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Unable to parse PR gate matrix.");
+    errors.push(Predicate.isError(error) ? error.message : "Unable to parse PR gate matrix.");
   }
 
   for (const requiredGate of REQUIRED_PR_GATES) {
@@ -342,7 +343,7 @@ function validateBuildSfeWorkflow(content: string): readonly string[] {
   try {
     parsedTargets = parseBuildTargets(content);
   } catch (error) {
-    errors.push(error instanceof Error ? error.message : "Unable to parse build target matrix.");
+    errors.push(Predicate.isError(error) ? error.message : "Unable to parse build target matrix.");
   }
 
   for (const requiredTarget of REQUIRED_BUILD_TARGETS) {

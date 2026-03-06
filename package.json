@@ -4,6 +4,9 @@
   "type": "module",
   "version": "0.0.1",
   "description": "EffectTS + Bun scraping SDK, API, and CLI",
+  "exports": {
+    "./sdk": "./src/sdk/index.ts"
+  },
   "engines": {
     "bun": ">=1.3.10"
   },
@@ -17,10 +20,12 @@
     "cli": "bun run src/standalone.ts",
     "standalone": "bun run src/standalone.ts",
     "api": "bun run src/api.ts",
-    "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts -g '*.ts')",
-    "format:check": "bunx --bun oxfmt --check $(rg --files src tests apps libs tools scripts -g '*.ts')",
-    "ultracite": "bunx --bun ultracite check $(rg --files src tests apps libs tools scripts -g '*.ts')",
-    "oxlint": "bunx --bun oxlint $(rg --files src tests apps libs tools scripts -g '*.ts')",
+    "example:sdk-consumer": "bun run examples/sdk-consumer.ts",
+    "benchmark:e0-performance-budget": "bun run scripts/benchmarks/e0-performance-budget.ts --baseline docs/artifacts/e0-performance-budget-baseline.json",
+    "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
+    "format:check": "bunx --bun oxfmt --check $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
+    "ultracite": "bunx --bun ultracite check $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
+    "oxlint": "bunx --bun oxlint $(rg --files src tests apps libs tools scripts examples -g '*.ts')",
     "oxfmt": "bun run format:check",
     "check:governance": "bun run scripts/guardrails/governance-audit.ts",
     "check:lockstep-version": "bun run scripts/guardrails/version-lockstep-policy.ts",
@@ -33,7 +38,7 @@
     "test": "bun test tests",
     "build": "bun run build:sfe:standalone && bun run build:sfe:api",
     "check": "bun run ultracite && bun run oxlint && bun run oxfmt && bun run lint:typesafety && bun run check:governance && bun run check:lockstep-version && bun run check:effect-v4-policy && bun run check:strict-ts-posture && bun run typecheck && bun run test && bun run build",
-    "check:e0-capability-slice": "TARGET_BRANCH=\"${TARGET_BRANCH:-origin/master}\" && NX_BASE=\"${NX_BASE:-$(git rev-parse \"$TARGET_BRANCH\")}\" && NX_HEAD=\"${NX_HEAD:-$(git rev-parse HEAD)}\" && bun run scripts/preflight-bootstrap.ts && bun run scripts/bootstrap-doctor.ts && bun run nx:show-projects && bun run nx:graph && bun run nx:lint && bun run nx:typecheck && bun run nx:build && bun run nx affected -t lint --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t test --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t typecheck --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t build --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun test tests/guardrails/ci-affected-gates.verify.test.ts && bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts && bun test tests/guardrails/bootstrap-doctor.verify.test.ts && bun test tests/guardrails/nx-workspace.verify.test.ts && bun test tests/guardrails/e0-capability-slice.verify.test.ts && bun run check",
+    "check:e0-capability-slice": "TARGET_BRANCH=\"${TARGET_BRANCH:-origin/master}\" && NX_BASE=\"${NX_BASE:-$(git rev-parse \"$TARGET_BRANCH\")}\" && NX_HEAD=\"${NX_HEAD:-$(git rev-parse HEAD)}\" && bun run scripts/preflight-bootstrap.ts && bun run scripts/bootstrap-doctor.ts && bun run nx:show-projects && bun run nx:graph && bun run nx:lint && bun run nx:typecheck && bun run nx:build && bun run nx affected -t lint --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t test --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t typecheck --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t build --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun test tests/guardrails/ci-affected-gates.verify.test.ts && bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts && bun test tests/guardrails/bootstrap-doctor.verify.test.ts && bun test tests/guardrails/nx-workspace.verify.test.ts && bun test tests/guardrails/e0-security-review.verify.test.ts && bun test tests/guardrails/e0-performance-budget.verify.test.ts && bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts && bun test tests/sdk/consumer-example.test.ts && bun test tests/guardrails/e0-capability-slice.verify.test.ts && bun run check",
     "browser:install": "bunx --bun playwright install chromium",
     "browser:install:ci": "bunx --bun playwright install --with-deps chromium",
     "check:playwright": "bunx --bun playwright --version",

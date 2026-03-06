@@ -17,7 +17,8 @@
     "apps/**/*.ts",
     "libs/**/*.ts",
     "tools/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "examples/**/*.ts"
   ],
   "exclude": ["dist", "node_modules", "Scrapling", ".beads", "tmp"]
 }

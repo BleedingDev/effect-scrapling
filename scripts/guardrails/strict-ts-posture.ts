@@ -2,6 +2,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { Predicate } from "effect";
 
 const BASE_CONFIG_FILE = "tsconfig.base.json";
 const GUARDRAILS_CONFIG_FILE = "tsconfig.guardrails.json";
@@ -252,7 +253,7 @@ async function main(): Promise<void> {
   try {
     baseConfigResolution = await resolveTsConfig(baseConfigPath, readCache, resolutionCache);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = Predicate.isError(error) ? error.message : String(error);
     violations.push(message);
   }
 
@@ -276,7 +277,7 @@ async function main(): Promise<void> {
       resolutionCache,
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = Predicate.isError(error) ? error.message : String(error);
     violations.push(message);
   }
 
@@ -313,7 +314,7 @@ async function main(): Promise<void> {
         "include",
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = Predicate.isError(error) ? error.message : String(error);
       violations.push(message);
     }
   }
@@ -339,7 +340,7 @@ async function main(): Promise<void> {
         resolutionCache,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = Predicate.isError(error) ? error.message : String(error);
       violations.push(message);
       continue;
     }

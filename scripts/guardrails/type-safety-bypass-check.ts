@@ -3,7 +3,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 
-const INCLUDED_ROOTS = ["src", "tests", "apps", "libs", "tools", "scripts"] as const;
+const INCLUDED_ROOTS = ["src", "tests", "apps", "libs", "tools", "scripts", "examples"] as const;
 const EXCLUDED_FILES = new Set([
   "scripts/guardrails/type-safety-bypass-check.ts",
   "scripts/guardrails/governance-audit.ts",

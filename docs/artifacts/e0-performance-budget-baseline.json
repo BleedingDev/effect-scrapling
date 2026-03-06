@@ -1,0 +1,51 @@
+{
+  "benchmark": "e0-performance-budget",
+  "generatedAt": "2026-03-06T02:19:13.148Z",
+  "environment": {
+    "bun": "1.3.10",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "sampleSize": 12,
+  "warmupIterations": 3,
+  "budgets": {
+    "accessPreviewP95Ms": 50,
+    "extractRunP95Ms": 50,
+    "runDoctorP95Ms": 10,
+    "heapDeltaKiB": 16384
+  },
+  "measurements": {
+    "accessPreview": {
+      "samples": 12,
+      "minMs": 0.051,
+      "meanMs": 0.074,
+      "p95Ms": 0.113,
+      "maxMs": 0.113
+    },
+    "extractRun": {
+      "samples": 12,
+      "minMs": 0.086,
+      "meanMs": 0.147,
+      "p95Ms": 0.218,
+      "maxMs": 0.218
+    },
+    "runDoctor": {
+      "samples": 12,
+      "minMs": 0.003,
+      "meanMs": 0.005,
+      "p95Ms": 0.008,
+      "maxMs": 0.008
+    },
+    "heapDeltaKiB": 0
+  },
+  "comparison": {
+    "baselinePath": null,
+    "deltas": {
+      "accessPreviewP95Ms": null,
+      "extractRunP95Ms": null,
+      "runDoctorP95Ms": null,
+      "heapDeltaKiB": null
+    }
+  },
+  "status": "pass"
+}

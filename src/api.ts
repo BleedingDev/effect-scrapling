@@ -1,7 +1,18 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
-import { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./sdk/errors";
+import {
+  isBrowserError,
+  isExtractionError,
+  isInvalidInputError,
+  isNetworkError,
+} from "./sdk/error-guards";
+import {
+  InvalidInputError,
+  type BrowserError,
+  type ExtractionError,
+  type NetworkError,
+} from "./sdk/errors";
 import {
   accessPreview,
   extractRun,
@@ -21,11 +32,11 @@ function json(body: unknown, status = 200): Response {
 }
 
 function toErrorResponse(error: unknown): Response {
-  if (error instanceof InvalidInputError) {
+  if (isInvalidInputError(error)) {
     return json(
       {
         ok: false,
-        code: error._tag,
+        code: "InvalidInputError",
         message: error.message,
         details: error.details ?? null,
       },
@@ -33,11 +44,11 @@ function toErrorResponse(error: unknown): Response {
     );
   }
 
-  if (error instanceof NetworkError || error instanceof BrowserError) {
+  if (isNetworkError(error)) {
     return json(
       {
         ok: false,
-        code: error._tag,
+        code: "NetworkError",
         message: error.message,
         details: error.details ?? null,
       },
@@ -45,11 +56,23 @@ function toErrorResponse(error: unknown): Response {
     );
   }
 
-  if (error instanceof ExtractionError) {
+  if (isBrowserError(error)) {
     return json(
       {
         ok: false,
-        code: error._tag,
+        code: "BrowserError",
+        message: error.message,
+        details: error.details ?? null,
+      },
+      502,
+    );
+  }
+
+  if (isExtractionError(error)) {
+    return json(
+      {
+        ok: false,
+        code: "ExtractionError",
         message: error.message,
         details: error.details ?? null,
       },

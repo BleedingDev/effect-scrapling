@@ -2,6 +2,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { Predicate } from "effect";
 
 const EXCLUDED_DIRECTORIES = new Set([".git", "vendor", "node_modules", "tmp", ".beads", "dist"]);
 const PACKAGE_FILE_NAME = "package.json";
@@ -75,7 +76,7 @@ async function main(): Promise<void> {
   try {
     rootPackage = await readPackageJson(rootPackagePath);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = Predicate.isError(error) ? error.message : String(error);
     console.error(`Failed to read root package.json: ${message}`);
     process.exit(1);
   }
@@ -90,7 +91,7 @@ async function main(): Promise<void> {
   try {
     packageFiles = await findWorkspacePackageJsonFiles(workspaceRoot);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = Predicate.isError(error) ? error.message : String(error);
     console.error(`Failed to enumerate workspace package.json files: ${message}`);
     process.exit(1);
   }
@@ -102,7 +103,7 @@ async function main(): Promise<void> {
     try {
       packageJson = await readPackageJson(packagePath);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = Predicate.isError(error) ? error.message : String(error);
       console.error(`Failed to read ${relative(workspaceRoot, packagePath)}: ${message}`);
       process.exit(1);
     }

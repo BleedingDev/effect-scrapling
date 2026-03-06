@@ -79,6 +79,9 @@ Operator runbooks:
 - [Lint and format policy](docs/runbooks/lint-format-policy.md)
 - [Nx workspace graph and affected targets](docs/runbooks/nx-workspace-graph.md)
 - [E0 workspace foundation capability slice](docs/runbooks/e0-workspace-foundation.md)
+- [E0 security review](docs/runbooks/e0-security-review.md)
+- [E0 performance budget](docs/runbooks/e0-performance-budget.md)
+- [E0 operations and rollback drill](docs/runbooks/e0-operations-rollback-drill.md)
 
 ## CLI
 
@@ -141,7 +144,7 @@ Use SDK effects directly from TypeScript:
 
 ```ts
 import { Effect } from "effect";
-import { extractRun } from "./src/sdk/scraper";
+import { extractRun } from "effect-scrapling/sdk";
 
 const result = await Effect.runPromise(
   extractRun({
@@ -151,6 +154,12 @@ const result = await Effect.runPromise(
 );
 
 console.log(result.data.values);
+```
+
+Public consumer example:
+
+```bash
+bun run example:sdk-consumer
 ```
 
 ## Nx Compliant Module Generator
@@ -187,3 +196,9 @@ bun run check:e0-capability-slice
 
 The execution contract and evidence expectations are documented in
 [`docs/runbooks/e0-workspace-foundation.md`](docs/runbooks/e0-workspace-foundation.md).
+
+Performance and recovery evidence for the same slice:
+
+- `bun run benchmark:e0-performance-budget`
+- `docs/artifacts/e0-performance-budget-baseline.json`
+- `docs/artifacts/e0-rollback-drill.md`

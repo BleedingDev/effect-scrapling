@@ -2,6 +2,7 @@
 
 import { readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
+import { Predicate } from "effect";
 
 const DEFAULT_PARITY_REPORT_PATH = join("docs", "guardrail-parity.md");
 
@@ -304,7 +305,7 @@ async function main(): Promise<void> {
   try {
     markdown = await readFile(targetPath, "utf8");
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = Predicate.isError(error) ? error.message : String(error);
     console.error(
       `Guardrail parity verification failed for ${displayPath}: unable to read file (${reason}).`,
     );

@@ -27,6 +27,10 @@ const E0_CAPABILITY_SLICE_STEPS = [
   "bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts",
   "bun test tests/guardrails/bootstrap-doctor.verify.test.ts",
   "bun test tests/guardrails/nx-workspace.verify.test.ts",
+  "bun test tests/guardrails/e0-security-review.verify.test.ts",
+  "bun test tests/guardrails/e0-performance-budget.verify.test.ts",
+  "bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts",
+  "bun test tests/sdk/consumer-example.test.ts",
   "bun test tests/guardrails/e0-capability-slice.verify.test.ts",
   "bun run check",
 ] as const;

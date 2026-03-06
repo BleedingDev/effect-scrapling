@@ -9,6 +9,7 @@ Run one deterministic command that exercises the full E0 workspace foundation:
 - Nx workspace project discovery and target execution
 - CI workflow contract verification
 - compliant-module generator verification
+- E0 security, performance, rollback, and consumer-contract verification
 - root guardrail, test, and build gates
 
 Use this when you need a single executable evidence path for promotion,
@@ -44,8 +45,12 @@ The command executes this sequence in order:
 13. `bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts`
 14. `bun test tests/guardrails/bootstrap-doctor.verify.test.ts`
 15. `bun test tests/guardrails/nx-workspace.verify.test.ts`
-16. `bun test tests/guardrails/e0-capability-slice.verify.test.ts`
-17. `bun run check`
+16. `bun test tests/guardrails/e0-security-review.verify.test.ts`
+17. `bun test tests/guardrails/e0-performance-budget.verify.test.ts`
+18. `bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts`
+19. `bun test tests/sdk/consumer-example.test.ts`
+20. `bun test tests/guardrails/e0-capability-slice.verify.test.ts`
+21. `bun run check`
 
 The slice is deterministic: any failing step stops the command immediately.
 
@@ -60,6 +65,10 @@ E0 foundation without reading the entire implementation:
 - committed workflow verification for `.github/workflows/pr-affected-gates.yml`
 - committed verification for the compliant-module generator contract
 - committed verification for bootstrap doctor behavior
+- committed security review and request-sanitization verification
+- committed performance budget baseline and benchmark contract verification
+- committed rollback drill evidence and operator runbook verification
+- committed public consumer example that imports `effect-scrapling/sdk`
 - final root guardrail, test, and build output from `bun run check`
 
 ## Troubleshooting
@@ -83,6 +92,10 @@ rerun the full slice:
 bun test tests/guardrails/ci-affected-gates.verify.test.ts
 bun test tests/guardrails/nx-compliant-module-generator.verify.test.ts
 bun test tests/guardrails/bootstrap-doctor.verify.test.ts
+bun test tests/guardrails/e0-security-review.verify.test.ts
+bun test tests/guardrails/e0-performance-budget.verify.test.ts
+bun test tests/guardrails/e0-operations-rollback-drill.verify.test.ts
+bun test tests/sdk/consumer-example.test.ts
 bun test tests/guardrails/e0-capability-slice.verify.test.ts
 ```
 

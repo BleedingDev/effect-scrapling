@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect } from "effect";
-import { InvalidInputError } from "../../src/sdk/errors";
 import {
   accessPreview,
   extractRun,
@@ -26,14 +25,15 @@ describe("scraper guardrails", () => {
 
   it.effect("accessPreview rejects malformed payloads with typed errors", () =>
     Effect.gen(function* () {
-      const failure = yield* Effect.flip(
-        accessPreview({}).pipe(
-          Effect.provideService(FetchService, {
-            fetch: globalThis.fetch,
-          }),
-        ),
+      const failureMessage = yield* accessPreview({}).pipe(
+        Effect.flatMap(() => Effect.die(new Error("Expected InvalidInputError failure"))),
+        Effect.catchTag("InvalidInputError", ({ message }) => Effect.succeed(message)),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+        Effect.orDie,
       );
-      expect(failure).toBeInstanceOf(InvalidInputError);
+      expect(failureMessage).toContain("Invalid access preview payload");
     }),
   );
 

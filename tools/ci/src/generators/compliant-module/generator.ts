@@ -206,7 +206,7 @@ function buildEffectSource(options: NormalizedOptions): string {
   const requestTypeName = options.moduleRequestSchemaName.replace(/Schema$/u, "");
   const resultTypeName = options.moduleResultSchemaName.replace(/Schema$/u, "");
 
-  return `import { Effect, Schema } from "effect";
+  return `import { Effect, Predicate, Schema } from "effect";
 import { ${options.moduleDecodeErrorClassName}, type ${options.moduleExecutionErrorClassName} } from "./${options.moduleName}.errors";
 import { ${options.moduleRequestSchemaName}, type ${requestTypeName}, type ${resultTypeName} } from "./${options.moduleName}.schema";
 import { ${options.moduleTagClassName} } from "./${options.moduleName}.tag";
@@ -220,7 +220,7 @@ export function ${options.moduleEffectFunctionName}(
       catch: (cause) =>
         new ${options.moduleDecodeErrorClassName}({
           message: "Unable to decode module request payload.",
-          details: cause instanceof Error ? \`\${cause.name}: \${cause.message}\` : String(cause),
+          details: Predicate.isError(cause) ? \`\${cause.name}: \${cause.message}\` : String(cause),
         }),
     });
 
@@ -232,7 +232,7 @@ export function ${options.moduleEffectFunctionName}(
 }
 
 function buildTestSource(options: NormalizedOptions): string {
-  return `import { Effect } from "effect";
+  return `import { Effect, Exit } from "effect";
 import { describe, expect, it } from "@effect-native/bun-test";
 import { ${options.moduleEffectFunctionName} } from "${options.effectImportPathFromTest}";
 import { ${options.moduleLayerName} } from "${options.layerImportPathFromTest}";
@@ -252,14 +252,14 @@ describe("${options.moduleEffectFunctionName} scaffold", () => {
     const exit = await Effect.runPromiseExit(
       ${options.moduleEffectFunctionName}({}).pipe(Effect.provide(${options.moduleLayerName})),
     );
-    expect(exit._tag).toBe("Failure");
+    expect(Exit.isFailure(exit)).toBe(true);
   });
 
   it("fails deterministically on runtime sentinel payload", async () => {
     const exit = await Effect.runPromiseExit(
       ${options.moduleEffectFunctionName}({ input: "fail" }).pipe(Effect.provide(${options.moduleLayerName})),
     );
-    expect(exit._tag).toBe("Failure");
+    expect(Exit.isFailure(exit)).toBe(true);
   });
 });
 `;
