@@ -128,7 +128,15 @@ Operator runbooks:
 - [E4 security review](docs/runbooks/e4-security-review.md)
 - [E4 performance budget](docs/runbooks/e4-performance-budget.md)
 - [E4 operations and rollback drill](docs/runbooks/e4-operations-rollback-drill.md)
+- [E5 workflow simulation](docs/runbooks/e5-workflow-simulation.md)
 - `docs/artifacts/e0-post-validation-triage.md`
+
+E5 workflow simulation operators can run
+`bun run benchmark:e5-workflow-simulation`,
+`bun run check:e5-workflow-simulation`, or
+`bun test tests/scripts/e5-workflow-simulation.test.ts`. The default scorecard
+artifact is
+[`docs/artifacts/e5-workflow-simulation-scorecard.json`](docs/artifacts/e5-workflow-simulation-scorecard.json).
 
 ## CLI
 

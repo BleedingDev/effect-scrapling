@@ -19,6 +19,7 @@ import {
 import { SnapshotSchema } from "../../libs/foundation/core/src/observation-snapshot.ts";
 import {
   RunCheckpointSchema,
+  WorkflowControlResultSchema,
   WorkflowInspectionSnapshotSchema,
 } from "../../libs/foundation/core/src/run-state.ts";
 import {
@@ -332,7 +333,7 @@ function makeTestLayer(options?: { readonly extractorFailureMessage?: string }) 
 
 describe("foundation-core durable workflow runtime", () => {
   it.effect(
-    "starts and resumes through the full durable workflow with deterministic checkpoints",
+    "starts and operates through explicit resume and replay commands with stable identifiers",
     () =>
       Effect.gen(function* () {
         const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
@@ -341,23 +342,74 @@ describe("foundation-core durable workflow runtime", () => {
           throw new Error("Expected a compiled crawl plan.");
         }
         const harness = yield* makeTestLayer();
-        const { finished, inspected, resumed, started, startedInspection } = yield* Effect.gen(
-          function* () {
-            const workflowRunner = yield* WorkflowRunner;
-            const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
-            const startedInspection = yield* workflowRunner.inspect(compiledPlan.plan.id);
-            const resumedEncoded = yield* workflowRunner.resume(startedEncoded);
-            const finishedEncoded = yield* workflowRunner.resume(resumedEncoded);
+        const {
+          finished,
+          finishedResume,
+          inspected,
+          replayInspection,
+          replayedStarted,
+          resumed,
+          resumedRun,
+          started,
+          startedInspection,
+        } = yield* Effect.gen(function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+          const started = Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded);
+          const startedInspection = yield* workflowRunner.inspect(compiledPlan.plan.id);
+          const replayedStarted = yield* workflowRunner.replayRun(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(new Error("Expected durable workflow replayRun to resolve a run")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+          const replayInspection = yield* workflowRunner
+            .inspect(replayedStarted.resolvedRunId)
+            .pipe(
+              Effect.flatMap(
+                Option.match({
+                  onNone: () =>
+                    Effect.fail(
+                      new Error("Expected replayed durable workflow inspection to resolve"),
+                    ),
+                  onSome: Effect.succeed,
+                }),
+              ),
+            );
+          const resumedRun = yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(new Error("Expected durable workflow resumeRun to resolve a run")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+          const finishedResume = yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(new Error("Expected second durable workflow resumeRun to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
 
-            return {
-              finished: Schema.decodeUnknownSync(RunCheckpointSchema)(finishedEncoded),
-              inspected: yield* workflowRunner.inspect(compiledPlan.plan.id),
-              resumed: Schema.decodeUnknownSync(RunCheckpointSchema)(resumedEncoded),
-              started: Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded),
-              startedInspection,
-            };
-          },
-        ).pipe(Effect.provide(harness.layer));
+          return {
+            finished: finishedResume.checkpoint,
+            finishedResume,
+            inspected: yield* workflowRunner.inspect(compiledPlan.plan.id),
+            replayedStarted,
+            replayInspection,
+            resumed: resumedRun.checkpoint,
+            resumedRun,
+            started,
+            startedInspection,
+          };
+        }).pipe(Effect.provide(harness.layer));
 
         expect(started.sequence).toBe(1);
         expect(started.stage).toBe("snapshot");
@@ -368,6 +420,38 @@ describe("foundation-core durable workflow runtime", () => {
           "step-quality",
           "step-reflect",
         ]);
+
+        const replayedStartedEncoded = Schema.encodeSync(WorkflowControlResultSchema)(
+          replayedStarted,
+        );
+        expect(replayedStartedEncoded.operation).toBe("replay");
+        expect(replayedStartedEncoded.requestedRunId).toBe(compiledPlan.plan.id);
+        expect(replayedStartedEncoded.sourceCheckpointId).toBe(started.id);
+        expect(replayedStartedEncoded.resolvedRunId).not.toBe(compiledPlan.plan.id);
+        expect(
+          replayedStartedEncoded.resolvedRunId.startsWith(`${compiledPlan.plan.id}-replay-`),
+        ).toBe(true);
+        expect(replayedStartedEncoded.checkpoint.runId).toBe(replayedStartedEncoded.resolvedRunId);
+        expect(replayedStartedEncoded.checkpoint.sequence).toBe(1);
+        expect(replayedStartedEncoded.checkpoint.stage).toBe("snapshot");
+        expect(replayedStartedEncoded.checkpoint.completedStepIds).toEqual([
+          "step-capture",
+          "step-extract",
+        ]);
+        expect(replayedStartedEncoded.checkpoint.pendingStepIds).toEqual([
+          "step-snapshot",
+          "step-diff",
+          "step-quality",
+          "step-reflect",
+        ]);
+        expect(Schema.encodeSync(WorkflowInspectionSnapshotSchema)(replayInspection)).toMatchObject(
+          {
+            runId: replayedStartedEncoded.resolvedRunId,
+            status: "running",
+            stage: "snapshot",
+            nextStepId: "step-snapshot",
+          },
+        );
 
         expect(Option.isSome(startedInspection)).toBe(true);
         if (Option.isSome(startedInspection)) {
@@ -429,11 +513,31 @@ describe("foundation-core durable workflow runtime", () => {
         ]);
         expect(resumed.pendingStepIds).toEqual(["step-quality", "step-reflect"]);
 
+        const resumedRunEncoded = Schema.encodeSync(WorkflowControlResultSchema)(resumedRun);
+        expect(resumedRunEncoded.operation).toBe("resume");
+        expect(resumedRunEncoded.requestedRunId).toBe(compiledPlan.plan.id);
+        expect(resumedRunEncoded.resolvedRunId).toBe(compiledPlan.plan.id);
+        expect(resumedRunEncoded.sourceCheckpointId).toBe(started.id);
+        expect(resumedRunEncoded.checkpoint).toEqual(
+          Schema.encodeSync(RunCheckpointSchema)(resumed),
+        );
+
         expect(finished.sequence).toBe(3);
         expect(finished.stage).toBe("reflect");
         expect(finished.pendingStepIds).toEqual([]);
         expect(finished.stats.outcome).toBe("succeeded");
         expect(finished.stats.completedSteps).toBe(6);
+
+        const finishedResumeEncoded = Schema.encodeSync(WorkflowControlResultSchema)(
+          finishedResume,
+        );
+        expect(finishedResumeEncoded.operation).toBe("resume");
+        expect(finishedResumeEncoded.requestedRunId).toBe(compiledPlan.plan.id);
+        expect(finishedResumeEncoded.resolvedRunId).toBe(compiledPlan.plan.id);
+        expect(finishedResumeEncoded.sourceCheckpointId).toBe(resumed.id);
+        expect(finishedResumeEncoded.checkpoint).toEqual(
+          Schema.encodeSync(RunCheckpointSchema)(finished),
+        );
 
         expect(Option.isSome(inspected)).toBe(true);
         if (Option.isSome(inspected)) {
@@ -448,8 +552,8 @@ describe("foundation-core durable workflow runtime", () => {
             status: "succeeded",
             stage: "reflect",
             startedAt: CREATED_AT,
-            updatedAt: "2026-03-07T12:30:02.000Z",
-            storedAt: "2026-03-07T12:30:02.000Z",
+            updatedAt: "2026-03-07T12:30:04.000Z",
+            storedAt: "2026-03-07T12:30:04.000Z",
             stats: {
               runId: compiledPlan.plan.id,
               plannedSteps: 6,
@@ -458,7 +562,7 @@ describe("foundation-core durable workflow runtime", () => {
               artifactCount: 1,
               outcome: "succeeded",
               startedAt: CREATED_AT,
-              updatedAt: "2026-03-07T12:30:02.000Z",
+              updatedAt: "2026-03-07T12:30:04.000Z",
             },
             progress: {
               plannedSteps: 6,
@@ -480,23 +584,42 @@ describe("foundation-core durable workflow runtime", () => {
             budget: {
               maxAttempts: 3,
               configuredTimeoutMs: 20_000,
-              elapsedMs: 2_000,
-              remainingTimeoutMs: 18_000,
-              timeoutUtilization: 0.1,
+              elapsedMs: 4_000,
+              remainingTimeoutMs: 16_000,
+              timeoutUtilization: 0.2,
               checkpointInterval: 2,
               stepsUntilNextCheckpoint: 0,
             },
           });
         }
 
-        expect(yield* Ref.get(harness.browserCallsRef)).toEqual(["target-search-001"]);
+        expect(yield* Ref.get(harness.browserCallsRef)).toEqual([
+          "target-search-001",
+          "target-search-001",
+        ]);
         expect(yield* Ref.get(harness.httpCallsRef)).toEqual([]);
         expect((yield* Ref.get(harness.artifactStoreRef)).size).toBe(1);
-        expect(yield* Ref.get(harness.checkpointStoreRef)).toHaveLength(3);
+        expect(yield* Ref.get(harness.checkpointStoreRef)).toHaveLength(4);
         expect(yield* Ref.get(harness.reflectionCallsRef)).toEqual([
           "verdict-diff-snapshot-target-search-001",
         ]);
       }),
+  );
+
+  it.effect("returns none for explicit resume and replay operations on unknown run ids", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeTestLayer();
+      const { replayed, resumed } = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        return {
+          replayed: yield* workflowRunner.replayRun("run-missing"),
+          resumed: yield* workflowRunner.resumeRun("run-missing"),
+        };
+      }).pipe(Effect.provide(harness.layer));
+
+      expect(Option.isNone(replayed)).toBe(true);
+      expect(Option.isNone(resumed)).toBe(true);
+    }),
   );
 
   it.effect("rejects resume attempts when the checkpoint token is missing", () =>

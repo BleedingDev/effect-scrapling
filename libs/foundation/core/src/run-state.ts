@@ -44,6 +44,8 @@ export const RunOutcomeSchema = Schema.Literals([
   "cancelled",
 ] as const);
 
+export const WorkflowControlOperationSchema = Schema.Literals(["resume", "replay"] as const);
+
 class RunStep extends Schema.Class<RunStep>("RunStep")({
   id: CanonicalIdentifierSchema,
   stage: RunStageSchema,
@@ -282,15 +284,40 @@ export const WorkflowInspectionSnapshotSchema = WorkflowInspectionSnapshotBase.p
   ),
 );
 
+class WorkflowControlResultBase extends Schema.Class<WorkflowControlResultBase>(
+  "WorkflowControlResult",
+)({
+  operation: WorkflowControlOperationSchema,
+  requestedRunId: CanonicalIdentifierSchema,
+  resolvedRunId: CanonicalIdentifierSchema,
+  sourceCheckpointId: CanonicalIdentifierSchema,
+  checkpoint: RunCheckpointSchema,
+}) {}
+
+export const WorkflowControlResultSchema = WorkflowControlResultBase.pipe(
+  Schema.refine(
+    (result): result is Schema.Schema.Type<typeof WorkflowControlResultBase> =>
+      result.checkpoint.runId === result.resolvedRunId &&
+      ((result.operation === "resume" && result.resolvedRunId === result.requestedRunId) ||
+        (result.operation === "replay" && result.resolvedRunId !== result.requestedRunId)),
+    {
+      message:
+        "Expected workflow control results with a checkpoint aligned to the resolved run id and operation-specific run identity semantics.",
+    },
+  ),
+);
+
 export const RunPlanSchema = RunPlan;
 export const RunStats = RunStatsSchema;
 export const RunCheckpoint = RunCheckpointSchema;
 export const RunProgressView = RunProgressViewSchema;
 export const RunBudgetUtilization = RunBudgetUtilizationSchema;
 export const WorkflowInspectionSnapshot = WorkflowInspectionSnapshotSchema;
+export const WorkflowControlResult = WorkflowControlResultSchema;
 
 export type RunStage = Schema.Schema.Type<typeof RunStageSchema>;
 export type RunOutcome = Schema.Schema.Type<typeof RunOutcomeSchema>;
+export type WorkflowControlOperation = Schema.Schema.Type<typeof WorkflowControlOperationSchema>;
 export type RunStats = Schema.Schema.Type<typeof RunStatsSchema>;
 export type RunCheckpoint = Schema.Schema.Type<typeof RunCheckpointSchema>;
 export type RunProgressView = Schema.Schema.Type<typeof RunProgressViewSchema>;
@@ -298,9 +325,11 @@ export type RunBudgetUtilization = Schema.Schema.Type<typeof RunBudgetUtilizatio
 export type WorkflowInspectionSnapshot = Schema.Schema.Type<
   typeof WorkflowInspectionSnapshotSchema
 >;
+export type WorkflowControlResult = Schema.Schema.Type<typeof WorkflowControlResultSchema>;
 export type RunPlanEncoded = Schema.Codec.Encoded<typeof RunPlanSchema>;
 export type RunStatsEncoded = Schema.Codec.Encoded<typeof RunStatsSchema>;
 export type RunCheckpointEncoded = Schema.Codec.Encoded<typeof RunCheckpointSchema>;
 export type WorkflowInspectionSnapshotEncoded = Schema.Codec.Encoded<
   typeof WorkflowInspectionSnapshotSchema
 >;
+export type WorkflowControlResultEncoded = Schema.Codec.Encoded<typeof WorkflowControlResultSchema>;

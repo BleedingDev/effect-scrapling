@@ -6,6 +6,7 @@ import {
   CrawlPlanCompilerInputSchema,
   CrawlPlanCompilerLive,
   CompiledCrawlPlansSchema,
+  compileCrawlPlan,
   compileCrawlPlans,
 } from "../../libs/foundation/core/src/crawl-plan-runtime.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
@@ -106,19 +107,24 @@ describe("foundation-core crawl plan runtime", () => {
     () =>
       Effect.gen(function* () {
         const input = makeCompileInput();
+        const encodedInput = encodeCompilerInput(input);
         const reversedInput = {
-          ...encodeCompilerInput(input),
-          entries: [...encodeCompilerInput(input).entries].reverse(),
+          ...encodedInput,
+          entries: [...encodedInput.entries].reverse(),
         };
 
         const compiled = yield* compileCrawlPlans(input);
         const reversedCompiled = yield* compileCrawlPlans(reversedInput);
+        const firstCompiledByHelper = yield* compileCrawlPlan(reversedInput);
         const compiledByService = yield* Effect.gen(function* () {
           const compiler = yield* CrawlPlanCompiler;
           return yield* compiler.compile(input);
         }).pipe(Effect.provide(CrawlPlanCompilerLive()));
 
         expect(encodeCompiledPlans(compiled)).toEqual(encodeCompiledPlans(reversedCompiled));
+        expect(encodeCompiledPlans([firstCompiledByHelper])).toEqual(
+          encodeCompiledPlans([compiled[0]!]),
+        );
         expect(encodeCompiledPlans(compiledByService)).toEqual(encodeCompiledPlans(compiled));
         expect(compiled.map(({ plan }) => plan.targetId)).toEqual([
           "target-search-001",
@@ -160,6 +166,71 @@ describe("foundation-core crawl plan runtime", () => {
         expect(secondPlan?.plan.checkpointInterval).toBe(2);
         expect(secondPlan?.checkpoint.nextStepId).toBe("step-capture");
       }),
+  );
+
+  it.effect("compiles exact-domain site packs without requiring wildcard domain patterns", () =>
+    Effect.gen(function* () {
+      const exactPack = Schema.decodeUnknownSync(SitePackSchema)({
+        ...Schema.encodeSync(SitePackSchema)(pack),
+        id: "pack-root-example-com",
+        domainPattern: "example.com",
+      });
+      const exactTarget = Schema.decodeUnknownSync(TargetProfileSchema)({
+        ...Schema.encodeSync(TargetProfileSchema)(searchTarget),
+        id: "target-root-domain-003",
+        canonicalKey: "search/root-domain",
+        packId: exactPack.id,
+      });
+
+      const compiled = yield* compileCrawlPlan({
+        createdAt: CREATED_AT,
+        entries: [
+          {
+            target: exactTarget,
+            pack: exactPack,
+            accessPolicy: hybridPolicy,
+          },
+        ],
+      });
+
+      const entryUrl = exactTarget.seedUrls[0];
+      if (entryUrl === undefined) {
+        throw new Error("Expected exact-domain target fixture to include a seed URL.");
+      }
+
+      expect(compiled.plan.targetId).toBe(exactTarget.id);
+      expect(compiled.resolvedConfig.packId).toBe(exactPack.id);
+      expect(compiled.resolvedConfig.entryUrl).toBe(entryUrl);
+      expect(compiled.checkpoint.pendingStepIds).toEqual([
+        "step-capture",
+        "step-extract",
+        "step-snapshot",
+        "step-diff",
+        "step-quality",
+        "step-reflect",
+      ]);
+    }),
+  );
+
+  it.effect("rejects malformed compiler inputs through shared contracts", () =>
+    Effect.gen(function* () {
+      const encodedInput = encodeCompilerInput(makeCompileInput());
+      const error = yield* compileCrawlPlans({
+        ...encodedInput,
+        entries: [encodedInput.entries[0]!, encodedInput.entries[0]!],
+      }).pipe(Effect.flip);
+
+      yield* Match.value(error).pipe(
+        Match.tag("PolicyViolation", ({ message }) =>
+          Effect.sync(() => {
+            expect(message).toBe(
+              "Failed to decode crawl-plan compiler input through shared contracts.",
+            );
+          }),
+        ),
+        Match.exhaustive,
+      );
+    }),
   );
 
   it.effect("rejects configs that drift target ownership identifiers", () =>

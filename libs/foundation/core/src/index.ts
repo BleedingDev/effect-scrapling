@@ -66,6 +66,9 @@ export {
   RunStageSchema,
   RunStats,
   RunStatsSchema,
+  WorkflowControlOperationSchema,
+  WorkflowControlResult,
+  WorkflowControlResultSchema,
   WorkflowInspectionSnapshot,
   WorkflowInspectionSnapshotSchema,
 } from "./run-state.ts";
@@ -75,6 +78,8 @@ export type {
   RunPlanEncoded,
   RunStage,
   RunStatsEncoded,
+  WorkflowControlOperation,
+  WorkflowControlResultEncoded,
   WorkflowInspectionSnapshotEncoded,
 } from "./run-state.ts";
 export {

@@ -341,7 +341,9 @@ function provideServices() {
     Layer.succeed(WorkflowRunner)(
       WorkflowRunner.of({
         inspect: () => Effect.succeed(Option.some(inspection)),
+        replayRun: () => Effect.succeed(Option.none()),
         resume: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
+        resumeRun: () => Effect.succeed(Option.none()),
         start: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
       }),
     ),
