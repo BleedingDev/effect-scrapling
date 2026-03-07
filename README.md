@@ -46,6 +46,13 @@ guidance live in
 [`docs/runbooks/e4-browser-access-lifecycle.md`](docs/runbooks/e4-browser-access-lifecycle.md).
 Browser security isolation and capability-slice validation guidance live in
 [`docs/runbooks/e4-browser-security-isolation.md`](docs/runbooks/e4-browser-security-isolation.md).
+E4 threat-review and redaction-hardening guidance live in
+[`docs/runbooks/e4-security-review.md`](docs/runbooks/e4-security-review.md).
+E4 performance budgets and scorecard usage live in
+[`docs/runbooks/e4-performance-budget.md`](docs/runbooks/e4-performance-budget.md).
+E4 rollout, rollback, and recovery-drill evidence live in
+[`docs/runbooks/e4-operations-rollback-drill.md`](docs/runbooks/e4-operations-rollback-drill.md)
+and [`docs/artifacts/e4-rollback-drill.md`](docs/artifacts/e4-rollback-drill.md).
 Render preview command, API route, and SDK usage guidance live in
 [`docs/runbooks/e4-render-preview.md`](docs/runbooks/e4-render-preview.md).
 Browser capture completeness, redacted export verification, and crash recovery
@@ -100,6 +107,9 @@ Operator runbooks:
 - [E3 HTTP access execution](docs/runbooks/e3-http-access-execution.md)
 - [E3 egress lease management](docs/runbooks/e3-egress-lease-management.md)
 - [E4 browser security isolation](docs/runbooks/e4-browser-security-isolation.md)
+- [E4 security review](docs/runbooks/e4-security-review.md)
+- [E4 performance budget](docs/runbooks/e4-performance-budget.md)
+- [E4 operations and rollback drill](docs/runbooks/e4-operations-rollback-drill.md)
 - `docs/artifacts/e0-post-validation-triage.md`
 
 ## CLI
@@ -203,6 +213,7 @@ In-repo demo for the public consumer integration:
 ```bash
 bun install --frozen-lockfile
 bun run example:sdk-consumer
+bun run example:e4-sdk-consumer
 ```
 
 The example at `examples/sdk-consumer.ts` is the supported consumer-facing SDK
@@ -215,12 +226,29 @@ public contract surface:
 - `pitfalls`, the integration mistakes the example is designed to prevent
 - `payload.expectedError`, an intentionally triggered `InvalidInputError`
 
+The browser-oriented E4 example at `examples/e4-sdk-consumer.ts` stays on the
+same public package boundary and demonstrates:
+
+- browser-mode `accessPreview` through `effect-scrapling/sdk`
+- browser-only `renderPreview` with typed artifact output
+- prerequisite and pitfall reporting for real browser-mode consumers
+- one intentional `InvalidInputError` path for invalid private-network targets
+
+Replay it with:
+
+```bash
+bun run check:e4-sdk-consumer
+```
+
 To run the in-repo example:
 
 - Bun `>= 1.3.10` and a successful `bun install --frozen-lockfile`
 - `bun run example:sdk-consumer` does not require Playwright or live network
   access because it injects a mock `FetchService`
-- Browser-mode setup in this repository uses `bun run browser:install`
+- `bun run example:e4-sdk-consumer` uses the browser-facing public SDK
+  contracts; replay `bun run check:e4-sdk-consumer` for the deterministic
+  synthetic-browser path or install Chromium with `bun run browser:install` for
+  real browser-mode usage
 
 Public SDK contract notes:
 

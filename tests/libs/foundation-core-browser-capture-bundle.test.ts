@@ -429,7 +429,7 @@ describe("foundation-core browser capture bundle", () => {
           },
           mediaType: "text/html",
           encoding: "utf8",
-          body: `<html><head><title>Prompt Export</title></head><body><main>Bearer dom-secret token=prompt-secret</main><a href="https://example.com/account?session=session-secret#frag">account</a></body></html>`,
+          body: `<html><head><title>Prompt Export token=title-secret Bearer title-secret</title></head><body><main>Bearer dom-secret token=prompt-secret</main><a href="/account?session=session-secret#frag">account</a><form action="?token=form-secret#frag"></form></body></html>`,
         },
         {
           locator: {
@@ -503,11 +503,14 @@ describe("foundation-core browser capture bundle", () => {
       "redacted",
     ]);
     expect(renderedDomExport).toMatchObject({
-      title: "Prompt Export",
-      linkTargets: ["https://example.com/account?session=%5BREDACTED%5D"],
+      title: "Prompt Export token=[REDACTED] Bearer [REDACTED]",
+      linkTargets: ["/account?session=%5BREDACTED%5D", "?token=%5BREDACTED%5D"],
     });
     expect(exportBundle.exports[0]?.body).toContain("Bearer [REDACTED]");
     expect(exportBundle.exports[0]?.body).toContain("token=[REDACTED]");
+    expect(exportBundle.exports[0]?.body).not.toContain("title-secret");
+    expect(exportBundle.exports[0]?.body).not.toContain("session-secret");
+    expect(exportBundle.exports[0]?.body).not.toContain("form-secret");
     expect(exportBundle.exports[1]?.body).toContain("Binary screenshot payload omitted");
     expect(exportBundle.exports[1]?.body).not.toContain(screenshotBody);
     expect(networkExport).toEqual({

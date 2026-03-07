@@ -1,0 +1,86 @@
+{
+  "benchmark": "e4-performance-budget",
+  "generatedAt": "2026-03-07T03:34:20.185Z",
+  "environment": {
+    "bun": "1.3.10",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "sampleSize": 12,
+  "warmupIterations": 3,
+  "soakRounds": 8,
+  "soakConcurrency": 6,
+  "soakWarmupIterations": 1,
+  "budgets": {
+    "capabilitySliceP95Ms": 40,
+    "soakRoundDurationP95Ms": 40,
+    "minimumThroughputRunsPerSecond": 150,
+    "heapDeltaKiB": 16384,
+    "maxPeakOpenBrowsers": 1,
+    "maxPeakOpenContexts": 6,
+    "maxPeakOpenPages": 6,
+    "maxFinalOpenBrowsers": 0,
+    "maxFinalOpenContexts": 0,
+    "maxFinalOpenPages": 0,
+    "maxLeakAlarms": 0,
+    "maxCrashTelemetry": 0
+  },
+  "measurements": {
+    "capabilitySlice": {
+      "samples": 12,
+      "minMs": 3.89,
+      "meanMs": 5.747,
+      "p95Ms": 12.726,
+      "maxMs": 12.726
+    },
+    "soakRoundDurationMs": {
+      "samples": 8,
+      "minMs": 12.116,
+      "meanMs": 14.055,
+      "p95Ms": 16.486,
+      "maxMs": 16.486
+    },
+    "soakSteadyStateDurationMs": 112.44,
+    "throughputRunsPerSecond": 426.894,
+    "heapDeltaKiB": 14356.433
+  },
+  "resources": {
+    "captures": {
+      "totalRuns": 48,
+      "totalArtifacts": 192,
+      "artifactKinds": [
+        "renderedDom",
+        "screenshot",
+        "networkSummary",
+        "timings"
+      ]
+    },
+    "peaks": {
+      "openBrowsers": 1,
+      "openContexts": 6,
+      "openPages": 6
+    },
+    "finalSnapshot": {
+      "openBrowsers": 0,
+      "openContexts": 0,
+      "openPages": 0,
+      "consecutiveViolationCount": 0,
+      "sampleCount": 234,
+      "lastPlanId": "plan-browser-soak-7-0",
+      "recordedAt": "2026-03-07T00:00:00.882Z"
+    },
+    "alarms": [],
+    "crashTelemetry": []
+  },
+  "comparison": {
+    "baselinePath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e4-performance-budget-baseline.json",
+    "deltas": {
+      "capabilitySliceP95Ms": 0.811,
+      "soakRoundDurationP95Ms": -0.923,
+      "throughputRunsPerSecond": 34.993,
+      "heapDeltaKiB": -84.527
+    }
+  },
+  "violations": [],
+  "status": "pass"
+}

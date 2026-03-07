@@ -284,22 +284,45 @@ function sanitizeInlineSecrets(value: string) {
     .replace(bearerTokenPattern, `Bearer ${redactedExportValue}`);
 }
 
+function sanitizeArtifactSearchParams(searchParams: URLSearchParams) {
+  for (const [name] of searchParams.entries()) {
+    if (sensitiveArtifactNamePattern.test(name)) {
+      searchParams.set(name, redactedExportValue);
+    }
+  }
+}
+
+function sanitizeRelativeArtifactUrl(value: string) {
+  const withoutFragment = value.split("#", 1)[0] ?? "";
+  const queryIndex = withoutFragment.indexOf("?");
+  if (queryIndex === -1) {
+    return withoutFragment;
+  }
+
+  const path = withoutFragment.slice(0, queryIndex);
+  const searchParams = new URLSearchParams(withoutFragment.slice(queryIndex + 1));
+  sanitizeArtifactSearchParams(searchParams);
+
+  const encodedQuery = searchParams.toString();
+  return encodedQuery === "" ? path : `${path}?${encodedQuery}`;
+}
+
 function sanitizeArtifactUrl(value: string) {
+  const trimmedValue = value.trim();
+  if (trimmedValue === "") {
+    return trimmedValue;
+  }
+
   try {
-    const parsed = new URL(value);
+    const parsed = new URL(trimmedValue);
     parsed.username = "";
     parsed.password = "";
     parsed.hash = "";
-
-    for (const [name] of parsed.searchParams.entries()) {
-      if (sensitiveArtifactNamePattern.test(name)) {
-        parsed.searchParams.set(name, redactedExportValue);
-      }
-    }
+    sanitizeArtifactSearchParams(parsed.searchParams);
 
     return parsed.toString();
   } catch {
-    return value;
+    return sanitizeRelativeArtifactUrl(trimmedValue);
   }
 }
 
@@ -336,6 +359,10 @@ function summarizeRenderedDomForExport(renderedDom: string) {
     }
 
     const sanitizedTarget = sanitizeArtifactUrl(target.trim());
+    if (sanitizedTarget === "") {
+      continue;
+    }
+
     if (!seenTargets.has(sanitizedTarget)) {
       seenTargets.add(sanitizedTarget);
       linkTargets.push(sanitizedTarget);
@@ -344,7 +371,7 @@ function summarizeRenderedDomForExport(renderedDom: string) {
 
   const textPreview = sanitizeInlineSecrets(normalizeText($("body").text() || $.root().text()));
   const hiddenFieldCount = $("input[type='hidden'][value], meta[content]").length;
-  const title = normalizeText($("title").first().text());
+  const title = sanitizeInlineSecrets(normalizeText($("title").first().text()));
 
   return `${JSON.stringify(
     {

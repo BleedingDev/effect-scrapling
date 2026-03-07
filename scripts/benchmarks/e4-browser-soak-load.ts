@@ -2,7 +2,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { Effect, Schema, SchemaGetter } from "effect";
+import { Effect, Logger, Schema, SchemaGetter } from "effect";
 import {
   type BrowserAccessEngine,
   BrowserAccessLive,
@@ -101,6 +101,8 @@ type SoakLoadOptions = {
   readonly warmupIterations: number;
   readonly policy?: Partial<BrowserLeakPolicyEncoded>;
 };
+
+const quietLoggers = new Set<Logger.Logger<unknown, unknown>>();
 
 function delay(milliseconds: number) {
   return new Promise<void>((resolvePromise) => {
@@ -388,7 +390,11 @@ async function measureRounds(
   ) => Effect.Effect<ReadonlyArray<ReadonlyArray<{ kind: string }>>, unknown>,
 ) {
   for (let iteration = 0; iteration < warmupIterations; iteration += 1) {
-    await Effect.runPromise(effectFactory(-1 - iteration));
+    await Effect.runPromise(
+      effectFactory(-1 - iteration).pipe(
+        Effect.provideService(Logger.CurrentLoggers, quietLoggers),
+      ),
+    );
   }
 
   const durations = new Array<number>();
@@ -396,7 +402,9 @@ async function measureRounds(
 
   for (let round = 0; round < rounds; round += 1) {
     const startedAt = performance.now();
-    const roundArtifacts = await Effect.runPromise(effectFactory(round));
+    const roundArtifacts = await Effect.runPromise(
+      effectFactory(round).pipe(Effect.provideService(Logger.CurrentLoggers, quietLoggers)),
+    );
     durations.push(performance.now() - startedAt);
     artifacts.push(roundArtifacts);
   }
