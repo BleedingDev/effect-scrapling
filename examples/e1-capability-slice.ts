@@ -26,6 +26,7 @@ import {
   StorageLocatorSchema,
   TargetProfileSchema,
   TargetRegistry,
+  WorkflowInspectionSnapshotSchema,
   WorkflowRunner,
   resolveRunExecutionConfig,
   toCoreErrorEnvelope,
@@ -232,6 +233,42 @@ const checkpoint = Schema.decodeUnknownSync(RunCheckpointSchema)({
   storedAt: "2026-03-06T10:02:00.000Z",
 });
 
+const inspection = Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)({
+  runId: "run-001",
+  planId: plan.id,
+  targetId: targetProfile.id,
+  packId: sitePack.id,
+  accessPolicyId: accessPolicy.id,
+  concurrencyBudgetId: plan.concurrencyBudgetId,
+  entryUrl: plan.entryUrl,
+  status: "running",
+  stage: "extract",
+  nextStepId: "step-extract-001",
+  startedAt: checkpoint.stats.startedAt,
+  updatedAt: checkpoint.stats.updatedAt,
+  storedAt: checkpoint.storedAt,
+  stats: checkpoint.stats,
+  progress: {
+    plannedSteps: 3,
+    completedSteps: 1,
+    pendingSteps: 2,
+    checkpointCount: 1,
+    artifactCount: 1,
+    completionRatio: 1 / 3,
+    completedStepIds: ["step-capture-001"],
+    pendingStepIds: ["step-extract-001", "step-snapshot-001"],
+  },
+  budget: {
+    maxAttempts: 3,
+    configuredTimeoutMs: 30_000,
+    elapsedMs: 120_000,
+    remainingTimeoutMs: 0,
+    timeoutUtilization: 1,
+    checkpointInterval: 2,
+    stepsUntilNextCheckpoint: 2,
+  },
+});
+
 const exportedLocator = Schema.decodeUnknownSync(StorageLocatorSchema)({
   namespace: "exports/example-com",
   key: "run-001/html-001",
@@ -303,7 +340,7 @@ function provideServices() {
     ),
     Layer.succeed(WorkflowRunner)(
       WorkflowRunner.of({
-        inspect: () => Effect.succeed(Option.some(checkpoint.stats)),
+        inspect: () => Effect.succeed(Option.some(inspection)),
         resume: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
         start: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
       }),
@@ -364,10 +401,10 @@ export function runE1CapabilitySlice() {
     const promotionDecision = yield* reflectionEngine.decide(resolvedPack, evaluatedVerdict);
     const startedCheckpoint = yield* workflowRunner.start(resolvedPlan);
     const resumedCheckpoint = yield* workflowRunner.resume(startedCheckpoint);
-    const inspectedStats = yield* workflowRunner.inspect(checkpoint.runId).pipe(
+    const inspectedRun = yield* workflowRunner.inspect(checkpoint.runId).pipe(
       Effect.flatMap(
         Option.match({
-          onNone: () => Effect.die(new Error("Expected workflow stats to resolve")),
+          onNone: () => Effect.die(new Error("Expected workflow inspection to resolve")),
           onSome: Effect.succeed,
         }),
       ),
@@ -385,7 +422,8 @@ export function runE1CapabilitySlice() {
       resolvedConfig: Schema.encodeSync(RunExecutionConfigSchema)(resolvedConfig),
       plan: Schema.encodeSync(RunPlanSchema)(resolvedPlan),
       checkpoint: resumedCheckpoint,
-      stats: Schema.encodeSync(RunStatsSchema)(inspectedStats),
+      stats: Schema.encodeSync(RunStatsSchema)(inspectedRun.stats),
+      inspection: Schema.encodeSync(WorkflowInspectionSnapshotSchema)(inspectedRun),
       artifacts: persistedArtifacts.map((item) =>
         Schema.encodeSync(ArtifactMetadataRecordSchema)(item),
       ),

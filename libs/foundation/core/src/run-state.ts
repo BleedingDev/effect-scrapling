@@ -7,6 +7,7 @@ import {
   TimeoutMsSchema,
   type CanonicalIdentifier,
 } from "./schema-primitives.ts";
+import { CoreErrorEnvelopeSchema } from "./tagged-errors.ts";
 
 const PositiveCountSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const PositiveSequenceSchema = Schema.Int.check(Schema.isGreaterThan(0));
@@ -18,6 +19,9 @@ const CheckpointIntervalSchema = Schema.Int.check(Schema.isGreaterThan(0)).check
 );
 const ResumeTokenSchema = Schema.Trim.check(Schema.isNonEmpty());
 const RunTimeoutMsSchema = TimeoutMsSchema;
+const UnitIntervalSchema = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)).check(
+  Schema.isLessThanOrEqualTo(1),
+);
 
 export const RunStageSchema = Schema.Literals([
   "capture",
@@ -113,6 +117,54 @@ const ArtifactIdListSchema = Schema.Array(CanonicalIdentifierSchema).pipe(
   ),
 );
 
+class RunProgressViewBase extends Schema.Class<RunProgressViewBase>("RunProgressView")({
+  plannedSteps: PositiveCountSchema,
+  completedSteps: PositiveCountSchema,
+  pendingSteps: PositiveCountSchema,
+  checkpointCount: PositiveCountSchema,
+  artifactCount: PositiveCountSchema,
+  completionRatio: UnitIntervalSchema,
+  completedStepIds: StepIdListSchema,
+  pendingStepIds: StepIdListSchema,
+}) {}
+
+export const RunProgressViewSchema = RunProgressViewBase.pipe(
+  Schema.refine(
+    (progress): progress is Schema.Schema.Type<typeof RunProgressViewBase> =>
+      progress.plannedSteps === progress.completedSteps + progress.pendingSteps &&
+      progress.completedStepIds.length === progress.completedSteps &&
+      progress.pendingStepIds.length === progress.pendingSteps,
+    {
+      message:
+        "Expected run progress views with deterministic completed and pending step accounting.",
+    },
+  ),
+);
+
+class RunBudgetUtilizationBase extends Schema.Class<RunBudgetUtilizationBase>(
+  "RunBudgetUtilization",
+)({
+  maxAttempts: MaxAttemptsSchema,
+  configuredTimeoutMs: RunTimeoutMsSchema,
+  elapsedMs: PositiveCountSchema,
+  remainingTimeoutMs: PositiveCountSchema,
+  timeoutUtilization: UnitIntervalSchema,
+  checkpointInterval: CheckpointIntervalSchema,
+  stepsUntilNextCheckpoint: PositiveCountSchema,
+}) {}
+
+export const RunBudgetUtilizationSchema = RunBudgetUtilizationBase.pipe(
+  Schema.refine(
+    (budget): budget is Schema.Schema.Type<typeof RunBudgetUtilizationBase> =>
+      budget.remainingTimeoutMs <= budget.configuredTimeoutMs &&
+      budget.stepsUntilNextCheckpoint <= budget.checkpointInterval,
+    {
+      message:
+        "Expected run budget utilization views with bounded timeout and checkpoint budget metrics.",
+    },
+  ),
+);
+
 class RunCheckpointBase extends Schema.Class<RunCheckpointBase>("RunCheckpoint")({
   id: CanonicalIdentifierSchema,
   runId: CanonicalIdentifierSchema,
@@ -124,6 +176,7 @@ class RunCheckpointBase extends Schema.Class<RunCheckpointBase>("RunCheckpoint")
   pendingStepIds: StepIdListSchema,
   artifactIds: ArtifactIdListSchema,
   resumeToken: Schema.optional(ResumeTokenSchema),
+  failure: Schema.optional(CoreErrorEnvelopeSchema),
   stats: RunStatsSchema,
   storedAt: IsoDateTimeSchema,
 }) {}
@@ -140,6 +193,8 @@ export const RunCheckpointSchema = RunCheckpointBase.pipe(
         checkpoint.stats.runId === checkpoint.runId &&
         checkpoint.stats.plannedSteps === checkpoint.completedStepIds.length + pendingCount &&
         checkpoint.stats.completedSteps === checkpoint.completedStepIds.length &&
+        ((checkpoint.stats.outcome === "failed" && checkpoint.failure !== undefined) ||
+          (checkpoint.stats.outcome !== "failed" && checkpoint.failure === undefined)) &&
         (checkpoint.nextStepId === undefined ||
           checkpoint.pendingStepIds.includes(checkpoint.nextStepId))
       );
@@ -151,14 +206,67 @@ export const RunCheckpointSchema = RunCheckpointBase.pipe(
   ),
 );
 
+class WorkflowInspectionSnapshotBase extends Schema.Class<WorkflowInspectionSnapshotBase>(
+  "WorkflowInspectionSnapshot",
+)({
+  runId: CanonicalIdentifierSchema,
+  planId: CanonicalIdentifierSchema,
+  targetId: CanonicalIdentifierSchema,
+  packId: CanonicalIdentifierSchema,
+  accessPolicyId: CanonicalIdentifierSchema,
+  concurrencyBudgetId: CanonicalIdentifierSchema,
+  entryUrl: CanonicalHttpUrlSchema,
+  status: RunOutcomeSchema,
+  stage: RunStageSchema,
+  nextStepId: Schema.optional(CanonicalIdentifierSchema),
+  startedAt: IsoDateTimeSchema,
+  updatedAt: IsoDateTimeSchema,
+  storedAt: IsoDateTimeSchema,
+  stats: RunStatsSchema,
+  progress: RunProgressViewSchema,
+  budget: RunBudgetUtilizationSchema,
+  error: Schema.optional(CoreErrorEnvelopeSchema),
+}) {}
+
+export const WorkflowInspectionSnapshotSchema = WorkflowInspectionSnapshotBase.pipe(
+  Schema.refine(
+    (inspection): inspection is Schema.Schema.Type<typeof WorkflowInspectionSnapshotBase> =>
+      inspection.runId === inspection.stats.runId &&
+      inspection.status === inspection.stats.outcome &&
+      inspection.startedAt === inspection.stats.startedAt &&
+      inspection.updatedAt === inspection.stats.updatedAt &&
+      inspection.progress.plannedSteps === inspection.stats.plannedSteps &&
+      inspection.progress.completedSteps === inspection.stats.completedSteps &&
+      inspection.progress.checkpointCount === inspection.stats.checkpointCount &&
+      inspection.progress.artifactCount === inspection.stats.artifactCount &&
+      ((inspection.status === "failed" && inspection.error !== undefined) ||
+        (inspection.status !== "failed" && inspection.error === undefined)),
+    {
+      message:
+        "Expected workflow inspection snapshots with aligned run stats, progress accounting, and failure metadata.",
+    },
+  ),
+);
+
 export const RunPlanSchema = RunPlan;
 export const RunStats = RunStatsSchema;
 export const RunCheckpoint = RunCheckpointSchema;
+export const RunProgressView = RunProgressViewSchema;
+export const RunBudgetUtilization = RunBudgetUtilizationSchema;
+export const WorkflowInspectionSnapshot = WorkflowInspectionSnapshotSchema;
 
 export type RunStage = Schema.Schema.Type<typeof RunStageSchema>;
 export type RunOutcome = Schema.Schema.Type<typeof RunOutcomeSchema>;
 export type RunStats = Schema.Schema.Type<typeof RunStatsSchema>;
 export type RunCheckpoint = Schema.Schema.Type<typeof RunCheckpointSchema>;
+export type RunProgressView = Schema.Schema.Type<typeof RunProgressViewSchema>;
+export type RunBudgetUtilization = Schema.Schema.Type<typeof RunBudgetUtilizationSchema>;
+export type WorkflowInspectionSnapshot = Schema.Schema.Type<
+  typeof WorkflowInspectionSnapshotSchema
+>;
 export type RunPlanEncoded = Schema.Codec.Encoded<typeof RunPlanSchema>;
 export type RunStatsEncoded = Schema.Codec.Encoded<typeof RunStatsSchema>;
 export type RunCheckpointEncoded = Schema.Codec.Encoded<typeof RunCheckpointSchema>;
+export type WorkflowInspectionSnapshotEncoded = Schema.Codec.Encoded<
+  typeof WorkflowInspectionSnapshotSchema
+>;

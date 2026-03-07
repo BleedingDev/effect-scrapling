@@ -1,0 +1,62 @@
+{
+  "benchmark": "e5-workflow-simulation",
+  "generatedAt": "2026-03-07T12:45:19.035Z",
+  "environment": {
+    "bun": "1.3.10",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "sampleSize": 2,
+  "warmupIterations": 1,
+  "profile": {
+    "targetCount": 100,
+    "observationsPerTarget": 2000,
+    "totalObservations": 200000
+  },
+  "budgets": {
+    "workflowDurationP95Ms": 10000,
+    "observationsPerSecondMin": 20000,
+    "checkpointsPerSecondMin": 60
+  },
+  "measurements": {
+    "workflowDurationMs": {
+      "samples": 2,
+      "min": 4313.541,
+      "mean": 4373.491,
+      "p95": 4433.441,
+      "max": 4433.441
+    },
+    "observationsPerSecond": {
+      "samples": 2,
+      "min": 45111.688,
+      "mean": 45738.655,
+      "p95": 46365.621,
+      "max": 46365.621
+    },
+    "checkpointsPerSecond": {
+      "samples": 2,
+      "min": 67.668,
+      "mean": 68.608,
+      "p95": 69.548,
+      "max": 69.548
+    }
+  },
+  "stability": {
+    "expectedCheckpointCount": 300,
+    "observedCheckpointCount": 300,
+    "consistentCheckpointCount": true,
+    "expectedStageFingerprint": "snapshot>quality>reflect",
+    "observedStageFingerprint": "snapshot>quality>reflect",
+    "consistentStageFingerprint": true
+  },
+  "comparison": {
+    "baselinePath": null,
+    "deltas": {
+      "workflowDurationP95Ms": null,
+      "observationsPerSecondMean": null,
+      "checkpointsPerSecondMean": null
+    }
+  },
+  "violations": [],
+  "status": "pass"
+}

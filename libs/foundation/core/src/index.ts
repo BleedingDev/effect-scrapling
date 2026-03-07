@@ -54,19 +54,28 @@ export {
   type SnapshotDiff,
 } from "./diff-verdict.ts";
 export {
+  RunBudgetUtilization,
+  RunBudgetUtilizationSchema,
   RunCheckpoint,
   RunCheckpointSchema,
   RunOutcomeSchema,
   RunPlan,
   RunPlanSchema,
+  RunProgressView,
+  RunProgressViewSchema,
   RunStageSchema,
   RunStats,
   RunStatsSchema,
-  type RunCheckpointEncoded,
-  type RunOutcome,
-  type RunPlanEncoded,
-  type RunStage,
-  type RunStatsEncoded,
+  WorkflowInspectionSnapshot,
+  WorkflowInspectionSnapshotSchema,
+} from "./run-state.ts";
+export type {
+  RunCheckpointEncoded,
+  RunOutcome,
+  RunPlanEncoded,
+  RunStage,
+  RunStatsEncoded,
+  WorkflowInspectionSnapshotEncoded,
 } from "./run-state.ts";
 export {
   CheckpointCorruption,

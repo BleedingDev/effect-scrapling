@@ -17,7 +17,10 @@ import {
   SnapshotDiffSchema,
 } from "../../libs/foundation/core/src/diff-verdict.ts";
 import { SnapshotSchema } from "../../libs/foundation/core/src/observation-snapshot.ts";
-import { RunCheckpointSchema } from "../../libs/foundation/core/src/run-state.ts";
+import {
+  RunCheckpointSchema,
+  WorkflowInspectionSnapshotSchema,
+} from "../../libs/foundation/core/src/run-state.ts";
 import {
   BrowserAccess,
   CaptureStore,
@@ -31,6 +34,7 @@ import {
   WorkflowRunner,
 } from "../../libs/foundation/core/src/service-topology.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
+import { ParserFailure } from "../../libs/foundation/core/src/tagged-errors.ts";
 
 const CREATED_AT = "2026-03-07T12:30:00.000Z";
 
@@ -114,7 +118,7 @@ function makeSnapshot(targetId: string, artifactId: string, snapshotId: string) 
   });
 }
 
-function makeTestLayer() {
+function makeTestLayer(options?: { readonly extractorFailureMessage?: string }) {
   return Effect.gen(function* () {
     let nowTick = 0;
     const browserCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
@@ -178,9 +182,19 @@ function makeTestLayer() {
       Layer.succeed(Extractor)(
         Extractor.of({
           extract: (plan, artifacts) =>
-            Effect.succeed(
-              makeSnapshot(plan.targetId, artifacts[0]!.artifactId, `snapshot-${plan.targetId}`),
-            ),
+            options?.extractorFailureMessage === undefined
+              ? Effect.succeed(
+                  makeSnapshot(
+                    plan.targetId,
+                    artifacts[0]!.artifactId,
+                    `snapshot-${plan.targetId}`,
+                  ),
+                )
+              : Effect.fail(
+                  new ParserFailure({
+                    message: options.extractorFailureMessage,
+                  }),
+                ),
         }),
       ),
       Layer.succeed(SnapshotStore)(
@@ -369,8 +383,56 @@ describe("foundation-core durable workflow runtime", () => {
 
         expect(Option.isSome(inspected)).toBe(true);
         if (Option.isSome(inspected)) {
-          expect(inspected.value.checkpointCount).toBe(3);
-          expect(inspected.value.completedSteps).toBe(6);
+          expect(Schema.encodeSync(WorkflowInspectionSnapshotSchema)(inspected.value)).toEqual({
+            runId: compiledPlan.plan.id,
+            planId: compiledPlan.plan.id,
+            targetId: compiledPlan.plan.targetId,
+            packId: compiledPlan.plan.packId,
+            accessPolicyId: compiledPlan.plan.accessPolicyId,
+            concurrencyBudgetId: compiledPlan.plan.concurrencyBudgetId,
+            entryUrl: compiledPlan.plan.entryUrl,
+            status: "succeeded",
+            stage: "reflect",
+            startedAt: CREATED_AT,
+            updatedAt: "2026-03-07T12:30:02.000Z",
+            storedAt: "2026-03-07T12:30:02.000Z",
+            stats: {
+              runId: compiledPlan.plan.id,
+              plannedSteps: 6,
+              completedSteps: 6,
+              checkpointCount: 3,
+              artifactCount: 1,
+              outcome: "succeeded",
+              startedAt: CREATED_AT,
+              updatedAt: "2026-03-07T12:30:02.000Z",
+            },
+            progress: {
+              plannedSteps: 6,
+              completedSteps: 6,
+              pendingSteps: 0,
+              checkpointCount: 3,
+              artifactCount: 1,
+              completionRatio: 1,
+              completedStepIds: [
+                "step-capture",
+                "step-extract",
+                "step-snapshot",
+                "step-diff",
+                "step-quality",
+                "step-reflect",
+              ],
+              pendingStepIds: [],
+            },
+            budget: {
+              maxAttempts: 3,
+              configuredTimeoutMs: 20_000,
+              elapsedMs: 2_000,
+              remainingTimeoutMs: 18_000,
+              timeoutUtilization: 0.1,
+              checkpointInterval: 2,
+              stepsUntilNextCheckpoint: 0,
+            },
+          });
         }
 
         expect(yield* Ref.get(harness.browserCallsRef)).toEqual(["target-search-001"]);
@@ -401,5 +463,95 @@ describe("foundation-core durable workflow runtime", () => {
 
       expect(failure.message).toContain("require a resume token");
     }),
+  );
+
+  it.effect(
+    "persists deterministic failure inspection snapshots for operators and SDK clients",
+    () =>
+      Effect.gen(function* () {
+        const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+        const compiledPlan = compiledPlans[0];
+        if (compiledPlan === undefined) {
+          throw new Error("Expected a compiled crawl plan.");
+        }
+        const harness = yield* makeTestLayer({
+          extractorFailureMessage: "Synthetic extractor failure for inspection replay.",
+        });
+        const { failure, inspected } = yield* Effect.gen(function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          const startFailure = yield* Effect.flip(workflowRunner.start(compiledPlan.plan));
+          const inspection = yield* workflowRunner.inspect(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(new Error("Expected failed workflow inspection to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+
+          return {
+            failure: startFailure,
+            inspected: inspection,
+          };
+        }).pipe(Effect.provide(harness.layer));
+
+        expect(failure.message).toContain("Synthetic extractor failure");
+        expect(Schema.encodeSync(WorkflowInspectionSnapshotSchema)(inspected)).toEqual({
+          runId: compiledPlan.plan.id,
+          planId: compiledPlan.plan.id,
+          targetId: compiledPlan.plan.targetId,
+          packId: compiledPlan.plan.packId,
+          accessPolicyId: compiledPlan.plan.accessPolicyId,
+          concurrencyBudgetId: compiledPlan.plan.concurrencyBudgetId,
+          entryUrl: compiledPlan.plan.entryUrl,
+          status: "failed",
+          stage: "extract",
+          nextStepId: "step-extract",
+          startedAt: CREATED_AT,
+          updatedAt: CREATED_AT,
+          storedAt: CREATED_AT,
+          stats: {
+            runId: compiledPlan.plan.id,
+            plannedSteps: 6,
+            completedSteps: 1,
+            checkpointCount: 1,
+            artifactCount: 1,
+            outcome: "failed",
+            startedAt: CREATED_AT,
+            updatedAt: CREATED_AT,
+          },
+          progress: {
+            plannedSteps: 6,
+            completedSteps: 1,
+            pendingSteps: 5,
+            checkpointCount: 1,
+            artifactCount: 1,
+            completionRatio: 1 / 6,
+            completedStepIds: ["step-capture"],
+            pendingStepIds: [
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect",
+            ],
+          },
+          budget: {
+            maxAttempts: 3,
+            configuredTimeoutMs: 20_000,
+            elapsedMs: 0,
+            remainingTimeoutMs: 20_000,
+            timeoutUtilization: 0,
+            checkpointInterval: 2,
+            stepsUntilNextCheckpoint: 2,
+          },
+          error: {
+            code: "parser_failure",
+            retryable: false,
+            message: "Synthetic extractor failure for inspection replay.",
+          },
+        });
+      }),
   );
 });

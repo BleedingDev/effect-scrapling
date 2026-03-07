@@ -17,6 +17,7 @@ import {
   RunCheckpointSchema,
   RunPlanSchema,
   RunStatsSchema,
+  WorkflowInspectionSnapshotSchema,
 } from "../../libs/foundation/core/src/run-state.ts";
 import {
   AccessPlanner,
@@ -302,6 +303,50 @@ describe("foundation-core service topology", () => {
       },
       storedAt: "2026-03-06T10:02:00.000Z",
     });
+    const inspection = Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)({
+      runId: "run-001",
+      planId: runPlan.id,
+      targetId: targetProfile.id,
+      packId: sitePack.id,
+      accessPolicyId: accessPolicy.id,
+      concurrencyBudgetId: runPlan.concurrencyBudgetId,
+      entryUrl: runPlan.entryUrl,
+      status: "running",
+      stage: "extract",
+      nextStepId: "step-extract-001",
+      startedAt: "2026-03-06T10:00:00.000Z",
+      updatedAt: "2026-03-06T10:02:00.000Z",
+      storedAt: "2026-03-06T10:02:00.000Z",
+      stats: {
+        runId: "run-001",
+        plannedSteps: 2,
+        completedSteps: 1,
+        checkpointCount: 1,
+        artifactCount: 1,
+        outcome: "running",
+        startedAt: "2026-03-06T10:00:00.000Z",
+        updatedAt: "2026-03-06T10:02:00.000Z",
+      },
+      progress: {
+        plannedSteps: 2,
+        completedSteps: 1,
+        pendingSteps: 1,
+        checkpointCount: 1,
+        artifactCount: 1,
+        completionRatio: 0.5,
+        completedStepIds: ["step-capture-001"],
+        pendingStepIds: ["step-extract-001"],
+      },
+      budget: {
+        maxAttempts: 3,
+        configuredTimeoutMs: 30_000,
+        elapsedMs: 2_000,
+        remainingTimeoutMs: 28_000,
+        timeoutUtilization: 2_000 / 30_000,
+        checkpointInterval: 2,
+        stepsUntilNextCheckpoint: 1,
+      },
+    });
     const exportedLocator = Schema.decodeUnknownSync(StorageLocatorSchema)({
       namespace: "exports/example-com",
       key: "run-001/html-001",
@@ -373,21 +418,7 @@ describe("foundation-core service topology", () => {
       ),
       Layer.succeed(WorkflowRunner)(
         WorkflowRunner.of({
-          inspect: () =>
-            Effect.succeed(
-              Option.some(
-                Schema.decodeUnknownSync(RunStatsSchema)({
-                  runId: "run-001",
-                  plannedSteps: 2,
-                  completedSteps: 1,
-                  checkpointCount: 1,
-                  artifactCount: 1,
-                  outcome: "running",
-                  startedAt: "2026-03-06T10:00:00.000Z",
-                  updatedAt: "2026-03-06T10:02:00.000Z",
-                }),
-              ),
-            ),
+          inspect: () => Effect.succeed(Option.some(inspection)),
           resume: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
           start: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
         }),
@@ -449,11 +480,11 @@ describe("foundation-core service topology", () => {
         const evaluatedVerdict = yield* qualityGate.evaluate(diffResult);
         const decision = yield* reflectionEngine.decide(pack, evaluatedVerdict);
         const startedCheckpoint = yield* workflowRunner.start(plan);
-        const inspectedStats = yield* workflowRunner.inspect(checkpoint.runId).pipe(
+        const inspectedRun = yield* workflowRunner.inspect(checkpoint.runId).pipe(
           Effect.flatMap(
             Option.match({
               onNone: () =>
-                Effect.fail(new Error("Expected workflow runner layer to resolve run stats")),
+                Effect.fail(new Error("Expected workflow runner layer to resolve run inspection")),
               onSome: Effect.succeed,
             }),
           ),
@@ -471,7 +502,7 @@ describe("foundation-core service topology", () => {
         return {
           decision,
           exported,
-          inspectedStats,
+          inspectedRun,
           resumedCheckpoint,
         };
       }).pipe(Effect.provide(mainLayer)),
@@ -481,7 +512,10 @@ describe("foundation-core service topology", () => {
       Schema.encodeSync(PackPromotionDecisionSchema)(promotionDecision),
     );
     expect(result.exported).toEqual(exportedLocator);
-    expect(Schema.encodeSync(RunStatsSchema)(result.inspectedStats)).toEqual({
+    expect(Schema.encodeSync(WorkflowInspectionSnapshotSchema)(result.inspectedRun)).toEqual(
+      Schema.encodeSync(WorkflowInspectionSnapshotSchema)(inspection),
+    );
+    expect(Schema.encodeSync(RunStatsSchema)(result.inspectedRun.stats)).toEqual({
       runId: "run-001",
       plannedSteps: 2,
       completedSteps: 1,

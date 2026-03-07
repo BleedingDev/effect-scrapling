@@ -53,6 +53,8 @@
     "check:e4-browser-soak-load": "bun run benchmark:e4-browser-soak-load",
     "benchmark:e4-performance-budget": "bun run scripts/benchmarks/e4-performance-budget.ts --baseline docs/artifacts/e4-performance-budget-baseline.json --artifact docs/artifacts/e4-performance-budget-scorecard.json",
     "check:e4-performance-budget": "bun run benchmark:e4-performance-budget",
+    "benchmark:e5-workflow-simulation": "bun run scripts/benchmarks/e5-workflow-simulation.ts --artifact docs/artifacts/e5-workflow-simulation-scorecard.json",
+    "check:e5-workflow-simulation": "bun run benchmark:e5-workflow-simulation",
     "check:e1-foundation-core-consumer": "bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts && bun run example:e1-foundation-core-consumer",
     "benchmark:e0-performance-budget": "bun run scripts/benchmarks/e0-performance-budget.ts --baseline docs/artifacts/e0-performance-budget-baseline.json",
     "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts examples -g '*.ts')",

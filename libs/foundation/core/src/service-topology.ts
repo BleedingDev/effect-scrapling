@@ -16,7 +16,7 @@ import type { Snapshot } from "./observation-snapshot.ts";
 import type { TargetProfile } from "./target-profile.ts";
 import type { CanonicalDomain, CanonicalIdentifier } from "./schema-primitives.ts";
 import type { PackPromotionDecisionEncoded, QualityVerdict, SnapshotDiff } from "./diff-verdict.ts";
-import type { RunCheckpointEncoded, RunPlan, RunStats } from "./run-state.ts";
+import type { RunCheckpointEncoded, RunPlan, WorkflowInspectionSnapshot } from "./run-state.ts";
 
 export class TargetRegistry extends ServiceMap.Service<
   TargetRegistry,
@@ -137,7 +137,10 @@ export class WorkflowRunner extends ServiceMap.Service<
   {
     readonly inspect: (
       runId: CanonicalIdentifier,
-    ) => Effect.Effect<Option.Option<RunStats>, CheckpointCorruption | ProviderUnavailable>;
+    ) => Effect.Effect<
+      Option.Option<WorkflowInspectionSnapshot>,
+      CheckpointCorruption | ProviderUnavailable
+    >;
     readonly resume: (
       checkpoint: RunCheckpointEncoded,
     ) => Effect.Effect<

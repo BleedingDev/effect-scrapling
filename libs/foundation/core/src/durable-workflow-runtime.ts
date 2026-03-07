@@ -9,7 +9,13 @@ import {
 } from "./config-storage.ts";
 import { QualityVerdictSchema, SnapshotDiffSchema } from "./diff-verdict.ts";
 import { SnapshotSchema } from "./observation-snapshot.ts";
-import { RunCheckpointSchema, RunOutcomeSchema, RunPlanSchema, type RunPlan } from "./run-state.ts";
+import {
+  RunCheckpointSchema,
+  RunOutcomeSchema,
+  RunPlanSchema,
+  WorkflowInspectionSnapshotSchema,
+  type RunPlan,
+} from "./run-state.ts";
 import { CanonicalIdentifierSchema } from "./schema-primitives.ts";
 import {
   BrowserAccess,
@@ -23,7 +29,18 @@ import {
   SnapshotStore,
   WorkflowRunner,
 } from "./service-topology.ts";
-import { CheckpointCorruption, PolicyViolation, ProviderUnavailable } from "./tagged-errors.ts";
+import {
+  CheckpointCorruption,
+  type CoreErrorEnvelope,
+  PolicyViolation,
+  ProviderUnavailable,
+  TimeoutError,
+  RenderCrashError,
+  ParserFailure,
+  ExtractionMismatch,
+  DriftDetected,
+  toCoreErrorEnvelope,
+} from "./tagged-errors.ts";
 
 const workflowStageOrder = [
   "capture",
@@ -119,36 +136,120 @@ function readCauseMessage(cause: unknown, fallback: string) {
 function toWorkflowFailure(
   cause: unknown,
   fallback: string,
-): PolicyViolation | ProviderUnavailable {
+): {
+  readonly error: PolicyViolation | ProviderUnavailable;
+  readonly failure: CoreErrorEnvelope;
+} {
   if (Predicate.isTagged("ProviderUnavailable")(cause) && hasFailureMessage(cause)) {
-    return new ProviderUnavailable({ message: cause.message });
+    return {
+      error: new ProviderUnavailable({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new ProviderUnavailable({ message: cause.message })),
+    };
   }
 
   if (Predicate.isTagged("TimeoutError")(cause) && hasFailureMessage(cause)) {
-    return new ProviderUnavailable({ message: cause.message });
+    return {
+      error: new ProviderUnavailable({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new TimeoutError({ message: cause.message })),
+    };
   }
 
   if (Predicate.isTagged("RenderCrashError")(cause) && hasFailureMessage(cause)) {
-    return new ProviderUnavailable({ message: cause.message });
+    return {
+      error: new ProviderUnavailable({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new RenderCrashError({ message: cause.message })),
+    };
   }
 
   if (Predicate.isTagged("PolicyViolation")(cause) && hasFailureMessage(cause)) {
-    return new PolicyViolation({ message: cause.message });
+    return {
+      error: new PolicyViolation({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new PolicyViolation({ message: cause.message })),
+    };
   }
 
   if (Predicate.isTagged("ExtractionMismatch")(cause) && hasFailureMessage(cause)) {
-    return new PolicyViolation({ message: cause.message });
+    return {
+      error: new PolicyViolation({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new ExtractionMismatch({ message: cause.message })),
+    };
   }
 
   if (Predicate.isTagged("ParserFailure")(cause) && hasFailureMessage(cause)) {
-    return new PolicyViolation({ message: cause.message });
+    return {
+      error: new PolicyViolation({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new ParserFailure({ message: cause.message })),
+    };
   }
 
   if (Predicate.isTagged("DriftDetected")(cause) && hasFailureMessage(cause)) {
-    return new PolicyViolation({ message: cause.message });
+    return {
+      error: new PolicyViolation({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new DriftDetected({ message: cause.message })),
+    };
   }
 
-  return new ProviderUnavailable({ message: readCauseMessage(cause, fallback) });
+  const message = readCauseMessage(cause, fallback);
+  return {
+    error: new ProviderUnavailable({ message }),
+    failure: toCoreErrorEnvelope(new ProviderUnavailable({ message })),
+  };
+}
+
+function buildInspectionSnapshot(input: {
+  readonly checkpoint: Schema.Schema.Type<typeof RunCheckpointSchema>;
+  readonly plan: RunPlan;
+}) {
+  const elapsedMs = Math.max(
+    Date.parse(input.checkpoint.stats.updatedAt) - Date.parse(input.checkpoint.stats.startedAt),
+    0,
+  );
+  const remainingTimeoutMs = Math.max(input.plan.timeoutMs - elapsedMs, 0);
+  const timeoutUtilization = Math.min(elapsedMs / input.plan.timeoutMs, 1);
+  const pendingSteps = input.checkpoint.pendingStepIds.length;
+
+  return Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)({
+    runId: input.checkpoint.runId,
+    planId: input.plan.id,
+    targetId: input.plan.targetId,
+    packId: input.plan.packId,
+    accessPolicyId: input.plan.accessPolicyId,
+    concurrencyBudgetId: input.plan.concurrencyBudgetId,
+    entryUrl: input.plan.entryUrl,
+    status: input.checkpoint.stats.outcome,
+    stage: input.checkpoint.stage,
+    ...(input.checkpoint.nextStepId === undefined
+      ? {}
+      : { nextStepId: input.checkpoint.nextStepId }),
+    startedAt: input.checkpoint.stats.startedAt,
+    updatedAt: input.checkpoint.stats.updatedAt,
+    storedAt: input.checkpoint.storedAt,
+    stats: input.checkpoint.stats,
+    progress: {
+      plannedSteps: input.checkpoint.stats.plannedSteps,
+      completedSteps: input.checkpoint.stats.completedSteps,
+      pendingSteps,
+      checkpointCount: input.checkpoint.stats.checkpointCount,
+      artifactCount: input.checkpoint.stats.artifactCount,
+      completionRatio:
+        input.checkpoint.stats.plannedSteps === 0
+          ? 0
+          : input.checkpoint.stats.completedSteps / input.checkpoint.stats.plannedSteps,
+      completedStepIds: input.checkpoint.completedStepIds,
+      pendingStepIds: input.checkpoint.pendingStepIds,
+    },
+    budget: {
+      maxAttempts: input.plan.maxAttempts,
+      configuredTimeoutMs: input.plan.timeoutMs,
+      elapsedMs,
+      remainingTimeoutMs,
+      timeoutUtilization,
+      checkpointInterval: input.plan.checkpointInterval,
+      stepsUntilNextCheckpoint:
+        pendingSteps === 0 ? 0 : Math.min(input.plan.checkpointInterval, pendingSteps),
+    },
+    ...(input.checkpoint.failure === undefined ? {} : { error: input.checkpoint.failure }),
+  });
 }
 
 function decodePlan(plan: RunPlan) {
@@ -415,6 +516,7 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
       state: WorkflowExecutionState,
       sequence: number,
       outcome: Schema.Schema.Type<typeof RunOutcomeSchema>,
+      failure?: CoreErrorEnvelope,
     ) {
       const storedAt = now().toISOString();
       const stageStep = yield* resolveCheckpointStage(
@@ -437,6 +539,7 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
             pendingStepIds: state.pendingStepIds,
             artifactIds: state.artifactIds,
             resumeToken: encodeResumeToken(state.context),
+            ...(failure === undefined ? {} : { failure }),
             stats: {
               runId: state.runId,
               plannedSteps: state.plan.steps.length,
@@ -683,14 +786,17 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
               return Effect.fail(error);
             }
 
-            const normalizedError = toWorkflowFailure(
+            const workflowFailure = toWorkflowFailure(
               error,
               `Durable workflow ${step.stage} stage failed.`,
             );
 
-            return persistCheckpoint(nextState, startingSequence + 1, "failed").pipe(
-              Effect.andThen(Effect.fail(normalizedError)),
-            );
+            return persistCheckpoint(
+              nextState,
+              startingSequence + 1,
+              "failed",
+              workflowFailure.failure,
+            ).pipe(Effect.andThen(Effect.fail(workflowFailure.error)));
           },
           onSuccess: Effect.succeed,
         });
@@ -705,9 +811,34 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
     });
 
     const inspect = Effect.fn("DurableWorkflowRunner.inspect")(function* (runId: string) {
-      return yield* checkpointStore
-        .latest(runId)
-        .pipe(Effect.map(Option.map((record) => record.checkpoint.stats)));
+      const record = yield* checkpointStore.latest(runId);
+
+      if (Option.isNone(record)) {
+        return Option.none();
+      }
+
+      const checkpoint = record.value.checkpoint;
+      if (checkpoint.resumeToken === undefined) {
+        return yield* Effect.fail(
+          new CheckpointCorruption({
+            message:
+              "Durable workflow checkpoints require a resume token for deterministic inspection snapshots.",
+          }),
+        );
+      }
+
+      const context = yield* decodeResumeToken(checkpoint.resumeToken);
+      const plan = yield* decodePlan(context.plan).pipe(
+        Effect.mapError(
+          ({ message }) =>
+            new CheckpointCorruption({
+              message,
+            }),
+        ),
+      );
+      yield* validateCheckpointAgainstPlan(checkpoint, plan, createRunId);
+
+      return Option.some(buildInspectionSnapshot({ checkpoint, plan }));
     });
 
     const start = Effect.fn("DurableWorkflowRunner.start")(function* (plan: RunPlan) {

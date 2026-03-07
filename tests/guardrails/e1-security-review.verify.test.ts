@@ -5,6 +5,7 @@ import {
   RunExecutionConfigSchema,
   StorageLocatorSchema,
   TargetProfileSchema,
+  WorkflowInspectionSnapshotSchema,
 } from "../../libs/foundation/core/src";
 import { runE1CapabilitySlice } from "../../examples/e1-capability-slice.ts";
 
@@ -74,6 +75,9 @@ describe("E1 security review verification", () => {
         const errorEnvelope = Schema.decodeUnknownSync(CoreErrorEnvelopeSchema)(
           result.errorEnvelope,
         );
+        const inspection = Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)(
+          result.inspection,
+        );
 
         expect(result.resolvedConfig.artifactNamespace).not.toContain("..");
         expect(result.resolvedConfig.checkpointNamespace).not.toContain("..");
@@ -82,6 +86,7 @@ describe("E1 security review verification", () => {
         expect(result.exportedLocator.key).not.toContain("..");
         expect(errorEnvelope.code).toBe("policy_violation");
         expect(Object.keys(errorEnvelope).sort()).toEqual(["code", "message", "retryable"]);
+        expect(inspection.error).toBeUndefined();
       }),
   );
 });

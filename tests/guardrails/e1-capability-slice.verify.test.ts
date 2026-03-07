@@ -13,6 +13,7 @@ import {
   SnapshotDiffSchema,
   SnapshotSchema,
   StorageLocatorSchema,
+  WorkflowInspectionSnapshotSchema,
 } from "../../libs/foundation/core/src";
 import { runE1CapabilitySlice } from "../../examples/e1-capability-slice.ts";
 
@@ -29,6 +30,9 @@ describe("E1 capability slice verification", () => {
       const plan = Schema.decodeUnknownSync(RunPlanSchema)(result.plan);
       const checkpoint = Schema.decodeUnknownSync(RunCheckpointSchema)(result.checkpoint);
       const stats = Schema.decodeUnknownSync(RunStatsSchema)(result.stats);
+      const inspection = Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)(
+        result.inspection,
+      );
       const artifacts = Schema.decodeUnknownSync(ARTIFACTS_SCHEMA)(result.artifacts);
       const snapshot = Schema.decodeUnknownSync(SnapshotSchema)(result.snapshot);
       const diff = Schema.decodeUnknownSync(SnapshotDiffSchema)(result.diff);
@@ -42,6 +46,8 @@ describe("E1 capability slice verification", () => {
       expect(plan.steps.map(({ stage }) => stage)).toEqual(["capture", "extract", "snapshot"]);
       expect(checkpoint.stage).toBe("extract");
       expect(stats.completedSteps).toBe(1);
+      expect(inspection.progress.pendingSteps).toBe(2);
+      expect(inspection.budget.stepsUntilNextCheckpoint).toBe(2);
       expect(artifacts).toHaveLength(2);
       expect(snapshot.observations[0]?.field).toBe("price");
       expect(diff.metrics.fieldRecallDelta).toBe(0.03);
@@ -72,6 +78,9 @@ describe("E1 capability slice verification", () => {
     const plan = Schema.decodeUnknownSync(RunPlanSchema)(payload.plan);
     const checkpoint = Schema.decodeUnknownSync(RunCheckpointSchema)(payload.checkpoint);
     const stats = Schema.decodeUnknownSync(RunStatsSchema)(payload.stats);
+    const inspection = Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)(
+      payload.inspection,
+    );
     const artifacts = Schema.decodeUnknownSync(ARTIFACTS_SCHEMA)(payload.artifacts);
     const snapshot = Schema.decodeUnknownSync(SnapshotSchema)(payload.snapshot);
     const diff = Schema.decodeUnknownSync(SnapshotDiffSchema)(payload.diff);
@@ -87,6 +96,7 @@ describe("E1 capability slice verification", () => {
     expect(plan.steps).toHaveLength(3);
     expect(checkpoint.stage).toBe("extract");
     expect(stats.completedSteps).toBe(1);
+    expect(inspection.stage).toBe("extract");
     expect(snapshot.observations[0]?.field).toBe("price");
     expect(diff.metrics.latencyDeltaMs).toBe(-50);
     expect(verdict.action).toBe("promote-shadow");
