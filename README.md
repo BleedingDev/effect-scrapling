@@ -44,6 +44,8 @@ live in [`docs/runbooks/e4-browser-pool-controls.md`](docs/runbooks/e4-browser-p
 BrowserAccess startup, scoped sharing, cleanup, troubleshooting, and rollback
 guidance live in
 [`docs/runbooks/e4-browser-access-lifecycle.md`](docs/runbooks/e4-browser-access-lifecycle.md).
+Browser security isolation and capability-slice validation guidance live in
+[`docs/runbooks/e4-browser-security-isolation.md`](docs/runbooks/e4-browser-security-isolation.md).
 Render preview command, API route, and SDK usage guidance live in
 [`docs/runbooks/e4-render-preview.md`](docs/runbooks/e4-render-preview.md).
 Browser capture completeness, redacted export verification, and crash recovery
@@ -95,6 +97,9 @@ Operator runbooks:
 - [E0 security review](docs/runbooks/e0-security-review.md)
 - [E0 performance budget](docs/runbooks/e0-performance-budget.md)
 - [E0 operations and rollback drill](docs/runbooks/e0-operations-rollback-drill.md)
+- [E3 HTTP access execution](docs/runbooks/e3-http-access-execution.md)
+- [E3 egress lease management](docs/runbooks/e3-egress-lease-management.md)
+- [E4 browser security isolation](docs/runbooks/e4-browser-security-isolation.md)
 - `docs/artifacts/e0-post-validation-triage.md`
 
 ## CLI

@@ -53,6 +53,8 @@ Run from repository root:
 
 ```bash
 bun test tests/libs/foundation-core-browser-security-isolation.test.ts
+bun test tests/examples/e4-capability-slice.test.ts
+bun run check:e4-capability-slice
 ```
 
 Focused checks:
@@ -73,6 +75,38 @@ What to inspect:
 - a cross-origin redirect is denied before DOM or screenshot capture runs
 - decision records include both `sessionIsolation` and `originRestriction`
   entries with `allowed` / `blocked` outcomes
+- the E4 capability slice still emits zero leak alarms with only `allowed`
+  policy outcomes on the healthy path
+
+## Practical Execution Example
+
+The deterministic E4 example now composes:
+
+- `AccessPlannerLive(...)`
+- `BrowserAccessLive(...)`
+- `makeInMemoryBrowserAccessSecurityPolicy(...)`
+- `makeInMemoryBrowserLeakDetector(...)`
+- `buildRedactedBrowserArtifactExports(...)`
+
+Run:
+
+```bash
+bun run example:e4-capability-slice | jq '{
+  captureKinds: [.rawCaptureBundle.artifacts[].kind],
+  policyOutcomes: [.policyDecisions[] | { policy, outcome }],
+  leakSnapshot: .leakSnapshot,
+  lifecycle: .lifecycle
+}'
+```
+
+Healthy evidence:
+
+- `captureKinds == ["renderedDom", "screenshot", "networkSummary", "timings"]`
+- every policy outcome is `allowed`
+- `leakSnapshot.openBrowsers == 0`
+- `leakSnapshot.openContexts == 0`
+- `leakSnapshot.openPages == 0`
+- the synthetic lifecycle closes every launched browser/context/page
 
 ## Failure Interpretation
 
@@ -114,8 +148,28 @@ bun run typecheck
 bun run build
 bun test tests/libs/foundation-core-browser-access-runtime.test.ts
 bun test tests/libs/foundation-core-browser-crash-recovery.test.ts
+bun test tests/libs/foundation-core-browser-leak-detection.test.ts
 bun test tests/libs/foundation-core-browser-security-isolation.test.ts
+bun test tests/examples/e4-capability-slice.test.ts
+bun run check:e4-capability-slice
 ```
+
+## Rollout And Rollback
+
+Roll out browser-security changes only when:
+
+- the focused browser-security test is green
+- the E4 capability slice is green
+- the browser crash-recovery and leak-detection suites are green
+- full repository gates are green
+
+Rollback guidance today:
+
+- there is no feature flag for origin restriction or session isolation
+- revert `browser-access-policy.ts` and the paired runtime/test changes
+  together
+- rerun the crash-recovery, leak-detection, focused browser-security, and E4
+  capability-slice tests before replaying the full repository gates
 
 ## Residual Limits
 

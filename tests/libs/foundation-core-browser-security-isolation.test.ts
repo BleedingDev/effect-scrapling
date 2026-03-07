@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect-native/bun-test";
-import { Effect, Schema } from "effect";
+import { Effect, Logger, Match, Schema } from "effect";
 import {
   BrowserPolicyDecisionSchema,
   makeInMemoryBrowserAccessSecurityPolicy,
@@ -38,6 +38,63 @@ const browserPlan = Schema.decodeUnknownSync(RunPlanSchema)({
 });
 
 const encodePolicyDecision = Schema.encodeSync(BrowserPolicyDecisionSchema);
+const BrowserPolicyDecisionLogSchema = Schema.Struct({
+  event: Schema.Literal("browser.policy.decision"),
+  planId: Schema.String,
+  sessionId: Schema.String,
+  policy: Schema.Literals(["sessionIsolation", "originRestriction"] as const),
+  subject: Schema.Literals(["context", "page", "navigation"] as const),
+  outcome: Schema.Literals(["allowed", "blocked"] as const),
+  ownerSessionId: Schema.NullOr(Schema.String),
+  expectedOrigin: Schema.NullOr(Schema.String),
+  observedOrigin: Schema.NullOr(Schema.String),
+  message: Schema.String,
+  recordedAt: Schema.String,
+});
+const decodePolicyDecisionLog = Schema.decodeUnknownSync(BrowserPolicyDecisionLogSchema);
+
+function capturePolicyDecisionLogs<A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+): Effect.Effect<
+  readonly [A, ReadonlyArray<Schema.Schema.Type<typeof BrowserPolicyDecisionLogSchema>>],
+  E,
+  R
+> {
+  return Effect.gen(function* () {
+    const entries: string[] = [];
+    const logger: Logger.Logger<unknown, unknown> = Logger.make<unknown, unknown>(({ message }) => {
+      const formattedMessage =
+        typeof message === "string"
+          ? message
+          : Array.isArray(message) && message.every((entry) => typeof entry === "string")
+            ? message.join("")
+            : undefined;
+
+      if (formattedMessage !== undefined) {
+        entries.push(formattedMessage);
+      }
+    });
+    const result = yield* effect.pipe(
+      Effect.provideService(
+        Logger.CurrentLoggers,
+        new Set<Logger.Logger<unknown, unknown>>([logger]),
+      ),
+      Effect.provideService(Logger.LogToStderr, false),
+    );
+    const decisions = entries.flatMap((entry) => {
+      try {
+        const decoded = JSON.parse(entry);
+        return Reflect.get(decoded, "event") === "browser.policy.decision"
+          ? [decodePolicyDecisionLog(decoded)]
+          : [];
+      } catch {
+        return [];
+      }
+    });
+
+    return [result, decisions] as const;
+  });
+}
 
 describe("foundation-core browser security isolation", () => {
   it.effect(
@@ -123,24 +180,34 @@ describe("foundation-core browser security isolation", () => {
           },
         };
 
-        const [firstArtifacts, isolationFailure, recoveredArtifacts] = yield* Effect.scoped(
-          Effect.gen(function* () {
-            const access = yield* BrowserAccess;
-            const firstCapture = yield* access.capture(browserPlan);
-            const secondCaptureFailure = yield* access.capture(browserPlan).pipe(Effect.flip);
-            const thirdCapture = yield* access.capture(browserPlan);
-            return [firstCapture, secondCaptureFailure, thirdCapture] as const;
-          }).pipe(
-            Effect.provide(
-              BrowserAccessLive({
-                engine,
-                securityPolicy: policy,
-                now: () => new Date("2026-03-06T10:00:05.000Z"),
-              }),
+        const [[firstArtifacts, isolationFailure, recoveredArtifacts], loggedDecisions] =
+          yield* capturePolicyDecisionLogs(
+            Effect.scoped(
+              Effect.gen(function* () {
+                const access = yield* BrowserAccess;
+                const firstCapture = yield* access.capture(browserPlan);
+                const secondCaptureFailure = yield* access.capture(browserPlan).pipe(Effect.flip);
+                const thirdCapture = yield* access.capture(browserPlan);
+                return [firstCapture, secondCaptureFailure, thirdCapture] as const;
+              }).pipe(
+                Effect.provide(
+                  BrowserAccessLive({
+                    engine,
+                    securityPolicy: policy,
+                    now: () => new Date("2026-03-06T10:00:05.000Z"),
+                  }),
+                ),
+              ),
             ),
-          ),
-        );
+          );
         const decisions = yield* policy.readDecisions;
+        const isolationFailureMessage = Match.value(isolationFailure).pipe(
+          Match.tag("PolicyViolation", ({ message }) => message),
+          Match.tag("ProviderUnavailable", ({ message }) => message),
+          Match.tag("RenderCrashError", ({ message }) => message),
+          Match.tag("TimeoutError", ({ message }) => message),
+          Match.exhaustive,
+        );
 
         expect(firstArtifacts.map(({ kind }) => kind)).toEqual([
           "renderedDom",
@@ -148,7 +215,7 @@ describe("foundation-core browser security isolation", () => {
           "networkSummary",
           "timings",
         ]);
-        expect(isolationFailure.name).toBe("PolicyViolation");
+        expect(isolationFailureMessage).toContain("Blocked context reuse across browser sessions");
         expect(recoveredArtifacts.map(({ kind }) => kind)).toEqual([
           "renderedDom",
           "screenshot",
@@ -214,6 +281,12 @@ describe("foundation-core browser security isolation", () => {
           outcome: "blocked",
           planId: browserPlan.id,
         });
+        expect(loggedDecisions).toEqual(
+          decisions.map((decision) => ({
+            event: "browser.policy.decision",
+            ...encodePolicyDecision(decision),
+          })),
+        );
       }),
   );
 
@@ -271,17 +344,19 @@ describe("foundation-core browser security isolation", () => {
           },
         };
 
-        const failure = yield* Effect.scoped(
-          Effect.gen(function* () {
-            const access = yield* BrowserAccess;
-            return yield* access.capture(browserPlan).pipe(Effect.flip);
-          }).pipe(
-            Effect.provide(
-              BrowserAccessLive({
-                engine,
-                securityPolicy: policy,
-                now: () => new Date("2026-03-06T11:00:05.000Z"),
-              }),
+        const [failure, loggedDecisions] = yield* capturePolicyDecisionLogs(
+          Effect.scoped(
+            Effect.gen(function* () {
+              const access = yield* BrowserAccess;
+              return yield* access.capture(browserPlan).pipe(Effect.flip);
+            }).pipe(
+              Effect.provide(
+                BrowserAccessLive({
+                  engine,
+                  securityPolicy: policy,
+                  now: () => new Date("2026-03-06T11:00:05.000Z"),
+                }),
+              ),
             ),
           ),
         );
@@ -291,8 +366,17 @@ describe("foundation-core browser security isolation", () => {
             ({ policy: name, outcome }) => name === "originRestriction" && outcome === "blocked",
           ) ?? decisions[0]!,
         );
+        const failureMessage = Match.value(failure).pipe(
+          Match.tag("PolicyViolation", ({ message }) => message),
+          Match.tag("ProviderUnavailable", ({ message }) => message),
+          Match.tag("RenderCrashError", ({ message }) => message),
+          Match.tag("TimeoutError", ({ message }) => message),
+          Match.exhaustive,
+        );
 
-        expect(failure.name).toBe("PolicyViolation");
+        expect(failureMessage).toContain(
+          "Blocked browser navigation from expected origin https://example.com/ to https://malicious.example.net/.",
+        );
         expect(contentCalls.current).toBe(0);
         expect(screenshotCalls.current).toBe(0);
         expect(launches.current).toBe(1);
@@ -329,6 +413,12 @@ describe("foundation-core browser security isolation", () => {
           expectedOrigin: "https://example.com/",
           observedOrigin: "https://malicious.example.net/",
         });
+        expect(loggedDecisions).toEqual(
+          decisions.map((decision) => ({
+            event: "browser.policy.decision",
+            ...encodePolicyDecision(decision),
+          })),
+        );
       }),
   );
 });
