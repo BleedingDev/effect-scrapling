@@ -128,8 +128,20 @@ Operator runbooks:
 - [E4 security review](docs/runbooks/e4-security-review.md)
 - [E4 performance budget](docs/runbooks/e4-performance-budget.md)
 - [E4 operations and rollback drill](docs/runbooks/e4-operations-rollback-drill.md)
+- [E5 resume and replay operations](docs/runbooks/e5-resume-replay-operations.md)
+- [E5 workflow inspection read models](docs/runbooks/e5-workflow-inspection-read-models.md)
 - [E5 workflow simulation](docs/runbooks/e5-workflow-simulation.md)
 - `docs/artifacts/e0-post-validation-triage.md`
+
+E5 resume/replay operators can validate the current control surface with
+`bun test tests/libs/foundation-core-durable-workflow-runtime.test.ts`. Today
+that surface is library-level through `WorkflowRunner.replayRun(runId)` and
+`WorkflowRunner.resumeRun(runId)`; there is no dedicated CLI or API wrapper yet.
+
+E5 workflow inspection operators can run
+`bun test tests/libs/foundation-core-workflow.test.ts tests/libs/foundation-core-durable-workflow-runtime.test.ts`,
+`bun run check:e1-capability-slice`, or `bun run example:e1-capability-slice`
+to inspect the current typed read model behavior.
 
 E5 workflow simulation operators can run
 `bun run benchmark:e5-workflow-simulation`,

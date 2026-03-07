@@ -622,6 +622,66 @@ describe("foundation-core durable workflow runtime", () => {
     }),
   );
 
+  it.effect("rejects explicit resume and replay operations for malformed run identifiers", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeTestLayer();
+      const failures = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        return {
+          replayed: yield* Effect.flip(workflowRunner.replayRun("run invalid")),
+          resumed: yield* Effect.flip(workflowRunner.resumeRun("run invalid")),
+        };
+      }).pipe(Effect.provide(harness.layer));
+
+      expect(failures.replayed.message).toContain("run identifier");
+      expect(failures.resumed.message).toContain("run identifier");
+    }),
+  );
+
+  it.effect(
+    "rejects explicit resume and replay operations when the latest checkpoint token is corrupted",
+    () =>
+      Effect.gen(function* () {
+        const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+        const compiledPlan = compiledPlans[0];
+        if (compiledPlan === undefined) {
+          throw new Error("Expected a compiled crawl plan.");
+        }
+        const harness = yield* makeTestLayer();
+        const failures = yield* Effect.gen(function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+          const started = Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded);
+
+          yield* Ref.update(harness.checkpointStoreRef, (records) =>
+            records.map((record) =>
+              record.runId === started.runId
+                ? Schema.decodeUnknownSync(CheckpointRecordSchema)({
+                    ...Schema.encodeSync(CheckpointRecordSchema)(record),
+                    checkpoint: {
+                      ...Schema.encodeSync(RunCheckpointSchema)(record.checkpoint),
+                      resumeToken: "{not-json",
+                    },
+                  })
+                : record,
+            ),
+          );
+
+          return {
+            replayed: yield* Effect.flip(workflowRunner.replayRun(started.runId)),
+            resumed: yield* Effect.flip(workflowRunner.resumeRun(started.runId)),
+          };
+        }).pipe(Effect.provide(harness.layer));
+
+        expect(failures.replayed.message).toContain(
+          "Failed to decode durable workflow resume token",
+        );
+        expect(failures.resumed.message).toContain(
+          "Failed to decode durable workflow resume token",
+        );
+      }),
+  );
+
   it.effect("rejects resume attempts when the checkpoint token is missing", () =>
     Effect.gen(function* () {
       const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
