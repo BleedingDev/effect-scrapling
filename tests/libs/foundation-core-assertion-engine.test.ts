@@ -176,7 +176,7 @@ describe("foundation-core assertion engine", () => {
       ).toEqual([
         {
           kind: "businessInvariantFailure",
-          message: "Field price numeric value 4.99 is outside the allowed range [10, inf].",
+          message: "Field price violates numeric range invariant [10, inf].",
           context: {
             snapshotId: "snapshot-assertion-003",
             field: "price",
@@ -185,8 +185,7 @@ describe("foundation-core assertion engine", () => {
         },
         {
           kind: "businessInvariantFailure",
-          message:
-            "Field availability normalized value discontinued is outside the allowed set inStock, preorder.",
+          message: "Field availability violates allowed-value invariant (inStock, preorder).",
           context: {
             snapshotId: "snapshot-assertion-003",
             field: "availability",
@@ -194,6 +193,54 @@ describe("foundation-core assertion engine", () => {
           },
         },
       ]);
+    }),
+  );
+
+  it.effect("does not leak secret-bearing normalized values in invariant failures", () =>
+    Effect.gen(function* () {
+      const snapshot = Schema.decodeUnknownSync(SnapshotSchema)({
+        id: "snapshot-assertion-secret-001",
+        targetId: "target-product-secret-001",
+        observations: [
+          {
+            field: "apiToken",
+            normalizedValue: "Bearer secret-live-token",
+            confidence: 0.94,
+            evidenceRefs: ["artifact-secret-001"],
+          },
+        ],
+        qualityScore: 0.71,
+        createdAt: "2026-03-07T12:00:00.000Z",
+      });
+
+      const failure = yield* runAssertionEngine({
+        snapshot,
+        requiredFields: [],
+        businessInvariants: [
+          {
+            kind: "stringOneOf",
+            field: "apiToken",
+            allowedValues: ["approved"],
+          },
+        ],
+      }).pipe(Effect.flip);
+
+      const encoded = failure.failures.map((issue) =>
+        Schema.encodeSync(AssertionFailureSchema)(issue),
+      );
+
+      expect(encoded).toEqual([
+        {
+          kind: "businessInvariantFailure",
+          message: "Field apiToken violates allowed-value invariant (approved).",
+          context: {
+            snapshotId: "snapshot-assertion-secret-001",
+            field: "apiToken",
+            evidenceRefs: ["artifact-secret-001"],
+          },
+        },
+      ]);
+      expect(JSON.stringify(encoded)).not.toContain("secret-live-token");
     }),
   );
 

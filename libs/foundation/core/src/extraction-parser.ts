@@ -6,6 +6,7 @@ import { ParserFailure } from "./tagged-errors.ts";
 
 const NonEmptyHtmlSchema = Schema.Trim.check(Schema.isNonEmpty());
 const HtmlAttributesSchema = Schema.Record(Schema.String, Schema.String);
+const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
 export const DeterministicParserInputSchema = Schema.Struct({
   documentId: CanonicalIdentifierSchema,
@@ -37,13 +38,28 @@ export class ParsedHtmlDocument extends Schema.Class<ParsedHtmlDocument>("Parsed
   nodes: ParsedHtmlNodesSchema,
 }) {}
 
+export class ParsedHtmlDocumentSummary extends Schema.Class<ParsedHtmlDocumentSummary>(
+  "ParsedHtmlDocumentSummary",
+)({
+  documentId: CanonicalIdentifierSchema,
+  rootPath: CanonicalKeySchema,
+  nodeCount: NonNegativeIntSchema,
+  maxDepth: NonNegativeIntSchema,
+  tagNames: Schema.UniqueArray(Schema.String),
+}) {}
+
 export const ParsedHtmlNodeSchema = ParsedHtmlNode;
 export const ParsedHtmlDocumentSchema = ParsedHtmlDocument;
+export const ParsedHtmlDocumentSummarySchema = ParsedHtmlDocumentSummary;
 
 const ROOT_PATH = "document";
 
 function normalizeTextContent(value: string) {
   return value.replace(/\s+/gu, " ").trim();
+}
+
+function pathDepth(path: string) {
+  return path === ROOT_PATH ? 0 : path.split("/").length - 1;
 }
 
 function readCauseMessage(cause: unknown, fallback: string) {
@@ -117,5 +133,17 @@ export function parseDeterministicHtml(input: unknown) {
       new ParserFailure({
         message: readCauseMessage(cause, "Failed to parse HTML document deterministically."),
       }),
+  });
+}
+
+export function summarizeParsedHtmlDocument(
+  document: Schema.Schema.Type<typeof ParsedHtmlDocumentSchema>,
+) {
+  return Schema.decodeUnknownSync(ParsedHtmlDocumentSummarySchema)({
+    documentId: document.documentId,
+    rootPath: document.rootPath,
+    nodeCount: document.nodes.length,
+    maxDepth: Math.max(...document.nodes.map(({ path }) => pathDepth(path))),
+    tagNames: [...new Set(document.nodes.map(({ tagName }) => tagName))].toSorted(),
   });
 }

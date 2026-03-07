@@ -161,15 +161,23 @@ function buildRelocationTraceEntry(
   confidenceImpact: number,
   selected: boolean,
 ) {
-  return Schema.decodeUnknownSync(SelectorRelocationTraceEntrySchema)({
+  const relocationTraceEntry = {
     selectorPath: candidate.path,
     selector: candidate.selector,
-    attr: candidate.attr,
     fallbackDepth,
     matchedCount,
     confidenceImpact,
     selected,
-  });
+  };
+
+  return Schema.decodeUnknownSync(SelectorRelocationTraceEntrySchema)(
+    candidate.attr === undefined
+      ? relocationTraceEntry
+      : {
+          ...relocationTraceEntry,
+          attr: candidate.attr,
+        },
+  );
 }
 
 export function resolveSelectorPrecedence(input: unknown) {
@@ -211,10 +219,9 @@ export function resolveSelectorPrecedence(input: unknown) {
             true,
           ),
         ];
-        return Schema.decodeUnknownSync(SelectorResolutionSchema)({
+        const resolution = {
           selectorPath: candidate.path,
           selector: candidate.selector,
-          attr: candidate.attr,
           values: candidate.all === true ? values : values.slice(0, 1),
           matchedCount: values.length,
           candidateOrder: decoded.candidates.map(({ path }) => path),
@@ -223,7 +230,16 @@ export function resolveSelectorPrecedence(input: unknown) {
           confidence: roundBoundedScore(1 - confidenceImpact),
           confidenceImpact,
           relocationTrace: selectedTrace,
-        });
+        };
+
+        return Schema.decodeUnknownSync(SelectorResolutionSchema)(
+          candidate.attr === undefined
+            ? resolution
+            : {
+                ...resolution,
+                attr: candidate.attr,
+              },
+        );
       }
 
       relocationTrace.push(

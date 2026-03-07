@@ -24,7 +24,12 @@ import {
   EvidenceManifestSchema,
   generateEvidenceManifest,
 } from "./evidence-manifest.ts";
-import { ParsedHtmlDocumentSchema, parseDeterministicHtml } from "./extraction-parser.ts";
+import {
+  ParsedHtmlDocumentSchema,
+  ParsedHtmlDocumentSummarySchema,
+  parseDeterministicHtml,
+  summarizeParsedHtmlDocument,
+} from "./extraction-parser.ts";
 import { HttpCaptureBundleSchema } from "./http-access-runtime.ts";
 import { ObservationSchema } from "./observation-snapshot.ts";
 import { RunPlanSchema } from "./run-state.ts";
@@ -121,7 +126,7 @@ export class ExtractorOrchestrationResult extends Schema.Class<ExtractorOrchestr
   planId: CanonicalIdentifierSchema,
   recipePackId: CanonicalIdentifierSchema,
   documentArtifactId: CanonicalIdentifierSchema,
-  document: ParsedHtmlDocumentSchema,
+  documentSummary: ParsedHtmlDocumentSummarySchema,
   selectorResolutions: Schema.Array(SelectorResolutionSchema),
   fieldBindings: ExtractorFieldBindingsSchema,
   snapshotAssembly: SnapshotAssemblyResultSchema,
@@ -172,7 +177,12 @@ function deriveObservationConfidence(field: ExtractorFieldConfig, resolution: Se
 }
 
 function renderAssertionFailure(failure: AssertionFailure) {
-  return failure.message;
+  switch (failure.kind) {
+    case "missingRequiredField":
+      return failure.message;
+    case "businessInvariantFailure":
+      return `Field ${failure.context.field} violates extractor assertions.`;
+  }
 }
 
 function selectDocumentArtifact(
@@ -364,7 +374,7 @@ export function runExtractorOrchestration(input: unknown, loadPayload: Extractor
       planId: decoded.plan.id,
       recipePackId: decoded.recipe.packId,
       documentArtifactId: documentArtifact.artifactId,
-      document,
+      documentSummary: summarizeParsedHtmlDocument(document),
       selectorResolutions: extracted.selectorResolutions,
       fieldBindings: extracted.fieldBindings,
       snapshotAssembly,

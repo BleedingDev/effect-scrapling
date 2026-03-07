@@ -230,7 +230,7 @@ function evaluateBusinessInvariant(
             snapshot.id,
             assertion.field,
             observation.evidenceRefs,
-            `Field ${assertion.field} numeric value ${numericValue} is outside the allowed range ${renderRange(assertion.minimum, assertion.maximum)}.`,
+            `Field ${assertion.field} violates numeric range invariant ${renderRange(assertion.minimum, assertion.maximum)}.`,
           ),
         ];
       }
@@ -260,7 +260,7 @@ function evaluateBusinessInvariant(
           snapshot.id,
           assertion.field,
           observation.evidenceRefs,
-          `Field ${assertion.field} normalized value ${actualValue} is outside the allowed set ${assertion.allowedValues.join(", ")}.`,
+          `Field ${assertion.field} violates allowed-value invariant ${renderAllowedValues(assertion.allowedValues)}.`,
         ),
       ];
     }
@@ -317,4 +317,8 @@ function renderRange(minimum: number | undefined, maximum: number | undefined) {
   const lowerBound = minimum === undefined ? "-inf" : `${minimum}`;
   const upperBound = maximum === undefined ? "inf" : `${maximum}`;
   return `[${lowerBound}, ${upperBound}]`;
+}
+
+function renderAllowedValues(values: ReadonlyArray<string>) {
+  return `(${values.join(", ")})`;
 }

@@ -4,7 +4,7 @@ EffectTS + Bun reimplementation of Scrapling with:
 
 - `effect-scrapling` CLI
 - `effect-scrapling-api` HTTP API
-- reusable SDK functions in `src/sdk`
+- reusable SDK functions through the public `effect-scrapling/sdk` export
 
 ## Bootstrap Readiness
 
@@ -82,9 +82,9 @@ TARGET_BRANCH="${TARGET_BRANCH:-origin/master}"
 NX_BASE="${NX_BASE:-$(git rev-parse "$TARGET_BRANCH")}"
 NX_HEAD="${NX_HEAD:-$(git rev-parse HEAD)}"
 
-bun run ultracite
-bun run oxlint
-bun run oxfmt
+bun run ultracite:check
+bun run oxlint:check
+bun run format:check
 bun run nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
 bun run nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
 bun run nx affected -t typecheck --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
@@ -104,6 +104,9 @@ Operator runbooks:
 - [E0 security review](docs/runbooks/e0-security-review.md)
 - [E0 performance budget](docs/runbooks/e0-performance-budget.md)
 - [E0 operations and rollback drill](docs/runbooks/e0-operations-rollback-drill.md)
+- [E2 extractor orchestration](docs/runbooks/e2-extractor-orchestration.md)
+- [E2 security review](docs/runbooks/e2-security-review.md)
+- [E2 performance budget](docs/runbooks/e2-performance-budget.md)
 - [E3 HTTP access execution](docs/runbooks/e3-http-access-execution.md)
 - [E3 egress lease management](docs/runbooks/e3-egress-lease-management.md)
 - [E4 browser security isolation](docs/runbooks/e4-browser-security-isolation.md)
@@ -115,21 +118,21 @@ Operator runbooks:
 ## CLI
 
 ```bash
-./effect-scrapling doctor
+bun run standalone -- doctor
 
-./effect-scrapling access preview \
+bun run standalone -- access preview \
   --url "https://example.com"
 
-./effect-scrapling render preview \
+bun run standalone -- render preview \
   --url "https://example.com" \
   --wait-until networkidle \
   --wait-ms 300
 
-./effect-scrapling extract run \
+bun run standalone -- extract run \
   --url "https://example.com" \
   --selector "h1"
 
-./effect-scrapling extract run \
+bun run standalone -- extract run \
   --url "https://example.com" \
   --selector "a" \
   --attr "href" \
@@ -140,7 +143,7 @@ Operator runbooks:
 Shortcut command:
 
 ```bash
-./effect-scrapling scrape \
+bun run standalone -- scrape \
   --url "https://example.com" \
   --selector ".product-title"
 ```
@@ -148,7 +151,7 @@ Shortcut command:
 ## API
 
 ```bash
-PORT=3000 ./effect-scrapling-api
+PORT=3000 bun run api
 ```
 
 Endpoints:
@@ -213,6 +216,7 @@ In-repo demo for the public consumer integration:
 ```bash
 bun install --frozen-lockfile
 bun run example:sdk-consumer
+bun run example:e2-sdk-consumer
 bun run example:e4-sdk-consumer
 ```
 
@@ -226,6 +230,14 @@ public contract surface:
 - `pitfalls`, the integration mistakes the example is designed to prevent
 - `payload.expectedError`, an intentionally triggered `InvalidInputError`
 
+The extraction-oriented E2 example at `examples/e2-sdk-consumer.ts` stays on
+the same public package boundary and demonstrates:
+
+- public `extractRun` usage through `effect-scrapling/sdk`
+- typed warning handling for no-match selectors
+- typed `InvalidInputError` and `ExtractionError` examples
+- prerequisite and pitfall reporting for downstream extraction consumers
+
 The browser-oriented E4 example at `examples/e4-sdk-consumer.ts` stays on the
 same public package boundary and demonstrates:
 
@@ -237,6 +249,7 @@ same public package boundary and demonstrates:
 Replay it with:
 
 ```bash
+bun run check:e2-sdk-consumer
 bun run check:e4-sdk-consumer
 ```
 
@@ -245,6 +258,9 @@ To run the in-repo example:
 - Bun `>= 1.3.10` and a successful `bun install --frozen-lockfile`
 - `bun run example:sdk-consumer` does not require Playwright or live network
   access because it injects a mock `FetchService`
+- `bun run example:e2-sdk-consumer` uses the same public SDK boundary for the
+  E2 extraction core and documents expected warning/error paths without any
+  private imports
 - `bun run example:e4-sdk-consumer` uses the browser-facing public SDK
   contracts; replay `bun run check:e4-sdk-consumer` for the deterministic
   synthetic-browser path or install Chromium with `bun run browser:install` for
@@ -267,6 +283,25 @@ Expected public tagged errors:
 - `BrowserError` when Playwright is unavailable or browser-mode navigation fails
 - `ExtractionError` when extraction or response validation cannot produce the
   public contract
+
+## E2 Extraction Runtime
+
+Run the deterministic extraction slice and its security/performance gates when
+you need current operator evidence for parser, selector, normalizer, assertion,
+evidence-manifest, and replay behavior:
+
+```bash
+bun run check:e2-capability-slice
+bun run check:e2-sdk-consumer
+bun run check:e2-security-review
+bun run check:e2-performance-budget
+```
+
+Supporting runbooks:
+
+- [`docs/runbooks/e2-extractor-orchestration.md`](docs/runbooks/e2-extractor-orchestration.md)
+- [`docs/runbooks/e2-security-review.md`](docs/runbooks/e2-security-review.md)
+- [`docs/runbooks/e2-performance-budget.md`](docs/runbooks/e2-performance-budget.md)
 
 ## Nx Compliant Module Generator
 

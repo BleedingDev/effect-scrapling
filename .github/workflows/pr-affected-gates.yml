@@ -24,11 +24,11 @@ jobs:
       matrix:
         gate:
           - name: ultracite
-            command: bun run ultracite
+            command: bun run ultracite:check
           - name: oxlint
-            command: bun run oxlint
+            command: bun run oxlint:check
           - name: oxfmt
-            command: bun run oxfmt
+            command: bun run format:check
           - name: affected-lint
             command: bun run nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
           - name: affected-test

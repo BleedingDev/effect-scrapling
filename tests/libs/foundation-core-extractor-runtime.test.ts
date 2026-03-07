@@ -154,6 +154,13 @@ describe("foundation-core extractor runtime", () => {
       );
 
       expect(encodedOrchestration.documentArtifactId).toBe("plan-product-001-html");
+      expect(encodedOrchestration.documentSummary).toEqual({
+        documentId: "plan-product-001-html",
+        rootPath: "document",
+        nodeCount: 10,
+        maxDepth: 5,
+        tagNames: ["article", "body", "div", "document", "h1", "head", "html", "span"],
+      });
       expect(
         encodedOrchestration.selectorResolutions.map(({ selectorPath }) => selectorPath),
       ).toEqual(["title/primary", "price/primary", "availability/primary"]);
@@ -436,7 +443,7 @@ describe("foundation-core extractor runtime", () => {
       );
 
       expect(failureMessage).toBe(
-        "Extraction assertions failed: Field availability normalized value outOfStock is outside the allowed set inStock.",
+        "Extraction assertions failed: Field availability violates extractor assertions.",
       );
     }),
   );
