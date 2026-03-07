@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
 import { planAccessExecution } from "../../libs/foundation/core/src/access-planner-runtime.ts";
 import {
+  AccessRetryReportSchema,
   executeWithAccessRetry,
   isRetryableAccessFailure,
 } from "../../libs/foundation/core/src/access-retry-runtime.ts";
@@ -111,6 +112,67 @@ describe("foundation-core access retry runtime", () => {
 
       expect(message).toBe("policy drift");
       expect(attempts).toBe(1);
+    }),
+  );
+
+  it.effect("surfaces a structured report when a retryable failure exhausts the budget", () =>
+    Effect.gen(function* () {
+      let attempts = 0;
+      const exhaustedEvents: unknown[] = [];
+      const message = yield* executeWithAccessRetry({
+        policy: {
+          id: "retry-demo",
+          maxAttempts: 2,
+          baseDelayMs: 100,
+          maxDelayMs: 400,
+          backoffFactor: 2,
+        },
+        effect: () => {
+          attempts += 1;
+          return Effect.fail(new ProviderUnavailable({ message: `still down ${attempts}` }));
+        },
+        shouldRetry: isRetryableAccessFailure,
+        onDecision: () => Effect.void,
+        onExhausted: ({ error, report }) =>
+          Effect.sync(() => {
+            exhaustedEvents.push({
+              error: {
+                name: error.name,
+                message: error.message,
+              },
+              report: Schema.encodeSync(AccessRetryReportSchema)(report),
+            });
+          }),
+        delay: () => Effect.void,
+      }).pipe(
+        Effect.match({
+          onFailure: ({ message }) => message,
+          onSuccess: () => "unexpected-success",
+        }),
+      );
+
+      expect(message).toBe("still down 2");
+      expect(attempts).toBe(2);
+      expect(exhaustedEvents).toEqual([
+        {
+          error: {
+            name: "ProviderUnavailable",
+            message: "still down 2",
+          },
+          report: {
+            attempts: 2,
+            exhaustedBudget: true,
+            decisions: [
+              {
+                attempt: 1,
+                nextAttempt: 2,
+                delayMs: 100,
+                reason: "still down 1",
+              },
+            ],
+          },
+        },
+      ]);
     }),
   );
 

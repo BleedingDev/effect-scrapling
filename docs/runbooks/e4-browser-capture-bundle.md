@@ -12,6 +12,10 @@ network capture completeness in:
 - `tests/libs/foundation-core-browser-crash-recovery.test.ts`
 - `scripts/benchmarks/e4-browser-soak-load.ts`
 
+For prompt/log export redaction specifically, use:
+
+- `docs/runbooks/e4-browser-artifact-redaction.md`
+
 This runbook is intentionally limited to behavior that exists today. It does
 not assume:
 
@@ -26,6 +30,10 @@ Policy baseline:
 - no manual `_tag` inspection
 - no manual `instanceof`
 - no type-safety bypasses
+
+If you need to validate how the captured bundle is sanitized before export,
+logs, or model prompts, use
+`docs/runbooks/e4-browser-artifact-redaction.md` together with this runbook.
 
 ## Current Contract
 
@@ -46,6 +54,8 @@ Current browser completeness behavior:
 - every payload locator key is prefixed with `<plan.id>/`
 - `BrowserAccess.capture(plan)` returns artifact metadata only; payload-level
   inspection happens at the `captureBrowserArtifacts(...)` boundary today
+- `buildRedactedBrowserArtifactExports(...)` is the current in-repo redaction
+  boundary for export/log/prompt-safe browser artifact summaries
 
 Current per-artifact contract:
 
@@ -93,6 +103,7 @@ Current SDK boundary to keep in mind:
 - `effect-scrapling/sdk` supports browser mode through Playwright
 - the public SDK currently returns preview and extract responses, not browser
   bundle payloads
+- the public SDK also does not return the redacted browser export bundle yet
 - browser bundle completeness verification therefore stays at the
   `foundation-core` runtime and test boundary today
 
@@ -136,13 +147,32 @@ bun run check:e4-browser-soak-load
 Run full repository gates before bead closure or rollout:
 
 ```bash
-bun run ultracite:check
-bun run oxlint:check
-bun run format:check
-bun run test
-bun run build
 bun run check
+bun run nx:lint
+bun run nx:typecheck
+bun run nx:build
 ```
+
+Replay the merge-blocking affected-target matrix before pushing:
+
+```bash
+TARGET_BRANCH="${TARGET_BRANCH:-origin/master}"
+NX_BASE="${NX_BASE:-$(git rev-parse "$TARGET_BRANCH")}"
+NX_HEAD="${NX_HEAD:-$(git rev-parse HEAD)}"
+
+bun run ultracite
+bun run oxlint
+bun run oxfmt
+bun run nx affected -t lint --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+bun run nx affected -t test --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+bun run nx affected -t typecheck --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+bun run nx affected -t build --base="$NX_BASE" --head="$NX_HEAD" --parallel=1
+```
+
+`pr-gates-status` is the CI summary status for that matrix. Use the README gate
+section as the source of truth if the rollout checklist changes:
+
+- `README.md#CI Affected Gates`
 
 ## Expected Evidence
 

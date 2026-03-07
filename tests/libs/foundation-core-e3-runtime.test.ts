@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Layer, Match, Schema } from "effect";
 import { AccessPlanner, HttpAccess } from "../../libs/foundation/core/src/service-topology.ts";
+import { AccessRetryReportSchema } from "../../libs/foundation/core/src/access-retry-runtime.ts";
 import {
   AccessPlannerDecisionSchema,
   AccessPlannerLive,
@@ -723,6 +724,7 @@ describe("foundation-core access runtime", () => {
         createdAt: FIXED_DATE,
       });
       const decisions: string[] = [];
+      const exhaustedEvents: unknown[] = [];
       let attempts = 0;
 
       const failureMessage = yield* captureHttpArtifacts(
@@ -745,6 +747,17 @@ describe("foundation-core access runtime", () => {
           Effect.sync(() => {
             decisions.push(decision.reason);
           }),
+        undefined,
+        (input) =>
+          Effect.sync(() => {
+            exhaustedEvents.push({
+              error: {
+                name: input.error.name,
+                message: input.error.message,
+              },
+              report: Schema.encodeSync(AccessRetryReportSchema)(input.report),
+            });
+          }),
       ).pipe(
         Effect.match({
           onFailure: ({ message }) => message,
@@ -756,6 +769,67 @@ describe("foundation-core access runtime", () => {
       expect(failureMessage).toContain("body policy violation");
       expect(attempts).toBe(1);
       expect(decisions).toEqual([]);
+      expect(exhaustedEvents).toEqual([]);
+    }),
+  );
+
+  it.effect("surfaces retry exhaustion evidence separately from the terminal failure", () =>
+    Effect.gen(function* () {
+      const decision = yield* planAccessExecution({
+        target,
+        pack,
+        accessPolicy: Schema.decodeUnknownSync(AccessPolicySchema)({
+          ...Schema.encodeSync(AccessPolicySchema)(httpPolicy),
+          maxRetries: 1,
+        }),
+        createdAt: FIXED_DATE,
+      });
+      const exhaustedEvents: unknown[] = [];
+      const failureMessage = yield* captureHttpArtifacts(
+        decision.plan,
+        async () => Promise.reject(new Error("persistent upstream")),
+        () => new Date(FIXED_DATE),
+        undefined,
+        () => Effect.void,
+        undefined,
+        (input) =>
+          Effect.sync(() => {
+            exhaustedEvents.push({
+              error: {
+                name: input.error.name,
+                message: input.error.message,
+              },
+              report: Schema.encodeSync(AccessRetryReportSchema)(input.report),
+            });
+          }),
+      ).pipe(
+        Effect.match({
+          onFailure: ({ message }) => message,
+          onSuccess: () => "unexpected-success",
+        }),
+      );
+
+      expect(failureMessage).toBe("persistent upstream");
+      expect(exhaustedEvents).toEqual([
+        {
+          error: {
+            name: "ProviderUnavailable",
+            message: "persistent upstream",
+          },
+          report: {
+            attempts: 2,
+            exhaustedBudget: true,
+            decisions: [
+              {
+                attempt: 1,
+                nextAttempt: 2,
+                delayMs: 250,
+                reason: "persistent upstream",
+              },
+            ],
+          },
+        },
+      ]);
     }),
   );
 });

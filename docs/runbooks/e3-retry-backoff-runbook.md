@@ -68,11 +68,13 @@ HTTP-specific scope:
 Observability limits to keep in mind:
 
 - Successful execution returns an `AccessRetryReport`.
-- Exhausted retry budgets do not currently emit a final report. The runtime
-  returns the terminal error once the budget is spent.
+- Exhausted retry budgets can now emit a final structured report through the
+  `onExhausted` / `onRetryExhausted` caller boundary before the terminal typed
+  error is returned.
 - Decision history is therefore available from:
   - the `report.decisions` array on success
   - `onDecision` / `onRetryDecision` logging on retry
+  - `onExhausted` / `onRetryExhausted` structured reporting on exhausted failure
   - the terminal error on failure
 
 ## Command Usage
@@ -230,10 +232,11 @@ CI=1 bd create "[E3] Remediate: access runtime budget breach" \
 Replace `<candidate-bead-id>` with the active implementation, rollout, or
 validation bead that must stay blocked until the regression is fixed.
 
-### Add structured retry-decision logging at the caller boundary
+### Add structured retry-decision and exhaustion reporting at the caller boundary
 
-`captureHttpArtifacts` already accepts a decision callback. Use that boundary to
-attach run-specific context that the generic retry runtime does not know.
+`captureHttpArtifacts` accepts both retry-decision and exhaustion callbacks. Use
+that boundary to attach run-specific context that the generic retry runtime
+does not know.
 
 ```ts
 import { Effect } from "effect";
@@ -258,6 +261,24 @@ const bundle = yield* captureHttpArtifacts(
         reason: decision.reason,
       }),
     ),
+  undefined,
+  ({ error, report }) =>
+    Effect.log(
+      JSON.stringify({
+        event: "access.retry.exhausted",
+        runId: plan.id,
+        targetId: plan.targetId,
+        accessPolicyId: plan.accessPolicyId,
+        entryUrl: plan.entryUrl,
+        attempts: report.attempts,
+        exhaustedBudget: report.exhaustedBudget,
+        decisions: report.decisions,
+        error: {
+          name: error.name,
+          message: error.message,
+        },
+      }),
+    ),
 );
 ```
 
@@ -266,6 +287,8 @@ Default HTTP behavior if no callback is supplied:
 - `captureHttpArtifacts` emits one text log line per scheduled retry decision
 - the line includes the current attempt, next attempt, delay in milliseconds,
   and the retry reason
+- `captureHttpArtifacts` also emits one structured exhaustion log entry when a
+  retryable failure spends the full budget
 
 ## Policy Logging Guidance
 
@@ -284,14 +307,14 @@ Recommended operator checks:
 
 - confirm no logged `nextAttempt` exceeds `runPlan.maxAttempts`
 - confirm delay growth matches the derived policy
-- confirm repeated terminal failures include the final error cause
+- confirm exhausted failures include the structured report with the final error
+  cause
 - correlate retry logs with access-health, lease, and artifact persistence logs
   at the same run id
 
 Do not rely on these signals today:
 
 - a persisted retry ledger
-- a final exhaustion report from `executeWithAccessRetry`
 - jitter or randomized spread between retries
 
 ## Troubleshooting
@@ -355,8 +378,9 @@ Check:
 - the final error message returned by the effect
 - whether the failing stage was fetch-time or body-read time
 
-Remember that the final exhausted attempt returns the original error. There is
-currently no final `exhaustedBudget` report on failure.
+Remember that the final exhausted attempt still returns the original typed
+error. Use the exhaustion callback to separate "budget spent" from "later
+terminal stage failed" without scraping generic text logs.
 
 ### Policy decode failures appear immediately
 
@@ -379,7 +403,7 @@ the targeted tests.
   - `bun test tests/libs/foundation-core-e3-runtime.test.ts`
 - confirm the rollout target's `accessPolicy.timeoutMs` and `accessPolicy.maxRetries`
 - decide whether default text logging is sufficient or whether a custom
-  `onRetryDecision` callback is required
+  `onRetryDecision` / `onRetryExhausted` callback is required
 
 2. Apply
 - ship the policy/config change or caller integration

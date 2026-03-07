@@ -211,6 +211,8 @@ const idleState: BrowserRuntimeState = { status: "idle" };
 const closedState: BrowserRuntimeState = { status: "closed" };
 const redactedExportValue = "[REDACTED]";
 const strippedScreenshotMessage = "Binary screenshot payload omitted from redacted export.";
+const missingPayloadExportNote = "Artifact payload was unavailable for redacted export.";
+const invalidPayloadExportNote = "Artifact payload failed redaction validation.";
 const sensitiveArtifactNamePattern =
   /(?:authorization|cookie|token|secret|session|api[-_]?key|password|credential|csrf)/iu;
 const sensitiveInlineValuePattern =
@@ -363,6 +365,47 @@ function summarizeScreenshotForExport(artifact: ArtifactMetadataRecord) {
     null,
     2,
   )}\n`;
+}
+
+function summarizeArtifactExportFallback(artifactId: string, note: string) {
+  return `${JSON.stringify(
+    {
+      artifactId,
+      note,
+    },
+    null,
+    2,
+  )}\n`;
+}
+
+function buildRedactedArtifactExportBody(
+  artifact: ArtifactMetadataRecord,
+  payload: Schema.Schema.Type<typeof BrowserCapturePayloadSchema> | undefined,
+) {
+  if (payload === undefined) {
+    return summarizeArtifactExportFallback(artifact.artifactId, missingPayloadExportNote);
+  }
+
+  try {
+    switch (artifact.kind) {
+      case "renderedDom": {
+        return summarizeRenderedDomForExport(payload.body);
+      }
+      case "screenshot": {
+        return summarizeScreenshotForExport(artifact);
+      }
+      case "networkSummary": {
+        return encodeSanitizedNetworkSummary(
+          Schema.decodeUnknownSync(BrowserNetworkSummarySchema)(JSON.parse(payload.body)),
+        );
+      }
+      case "timings": {
+        return payload.body;
+      }
+    }
+  } catch {
+    return summarizeArtifactExportFallback(artifact.artifactId, invalidPayloadExportNote);
+  }
 }
 
 function sha256(value: Uint8Array) {
@@ -848,25 +891,7 @@ export function buildRedactedBrowserArtifactExports(
       const payload = payloadsByLocator.get(
         `${artifact.locator.namespace}/${artifact.locator.key}`,
       );
-      const body =
-        payload === undefined
-          ? `${JSON.stringify(
-              {
-                artifactId: artifact.artifactId,
-                note: "Artifact payload was unavailable for redacted export.",
-              },
-              null,
-              2,
-            )}\n`
-          : artifact.kind === "renderedDom"
-            ? summarizeRenderedDomForExport(payload.body)
-            : artifact.kind === "screenshot"
-              ? summarizeScreenshotForExport(artifact)
-              : artifact.kind === "networkSummary"
-                ? encodeSanitizedNetworkSummary(
-                    Schema.decodeUnknownSync(BrowserNetworkSummarySchema)(JSON.parse(payload.body)),
-                  )
-                : payload.body;
+      const body = buildRedactedArtifactExportBody(artifact, payload);
       const mediaType =
         artifact.kind === "renderedDom" || artifact.kind === "screenshot"
           ? "application/json"

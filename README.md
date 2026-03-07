@@ -41,6 +41,11 @@ Playwright scripts and strict `bun install --frozen-lockfile`.
 
 Browser pool controls, queue/backpressure interpretation, and rollback guidance
 live in [`docs/runbooks/e4-browser-pool-controls.md`](docs/runbooks/e4-browser-pool-controls.md).
+Browser capture completeness, redacted export verification, and crash recovery
+guidance live in
+[`docs/runbooks/e4-browser-capture-bundle.md`](docs/runbooks/e4-browser-capture-bundle.md),
+[`docs/runbooks/e4-browser-artifact-redaction.md`](docs/runbooks/e4-browser-artifact-redaction.md),
+and [`docs/runbooks/e4-browser-crash-recovery.md`](docs/runbooks/e4-browser-crash-recovery.md).
 
 ## CI Affected Gates
 

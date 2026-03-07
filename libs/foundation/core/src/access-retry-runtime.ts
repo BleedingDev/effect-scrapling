@@ -146,9 +146,14 @@ export function executeWithAccessRetry<A, E, R>(options: {
   readonly onDecision?: (
     decision: Schema.Schema.Type<typeof AccessRetryDecisionSchema>,
   ) => Effect.Effect<void, never, never>;
+  readonly onExhausted?: (input: {
+    readonly error: E;
+    readonly report: Schema.Schema.Type<typeof AccessRetryReportSchema>;
+  }) => Effect.Effect<void, never, never>;
   readonly delay?: (delayMs: number) => Effect.Effect<void, never, never>;
 }) {
   const onDecision = options.onDecision ?? (() => Effect.void);
+  const onExhausted = options.onExhausted ?? (() => Effect.void);
   const delay = options.delay ?? liveDelay;
 
   return Effect.gen(function* () {
@@ -171,8 +176,17 @@ export function executeWithAccessRetry<A, E, R>(options: {
           report: buildRetryReport(attempt, false, decisions),
         })),
         Effect.catch((error: E) => {
-          if (!options.shouldRetry(error) || attempt >= policy.maxAttempts) {
+          if (!options.shouldRetry(error)) {
             return Effect.fail(error);
+          }
+
+          if (attempt >= policy.maxAttempts) {
+            const report = buildRetryReport(attempt, true, decisions);
+
+            return onExhausted({
+              error,
+              report,
+            }).pipe(Effect.andThen(Effect.fail(error)));
           }
 
           const decision = buildRetryDecision(policy, attempt, readRetryReason(error));

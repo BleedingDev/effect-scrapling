@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Effect, Layer, Predicate, Schema } from "effect";
 import {
   AccessRetryDecisionSchema,
+  AccessRetryReportSchema,
   deriveAccessRetryPolicy,
   executeWithAccessRetry,
   isRetryableAccessFailure,
@@ -49,6 +50,17 @@ function readCauseMessage(cause: unknown, fallback: string) {
     const message = Reflect.get(cause, "message");
     if (typeof message === "string" && message.trim() !== "") {
       return message;
+    }
+  }
+
+  return fallback;
+}
+
+function readCauseName(cause: unknown, fallback: string) {
+  if ((typeof cause === "object" && cause !== null) || typeof cause === "function") {
+    const name = Reflect.get(cause, "name");
+    if (typeof name === "string" && name.trim() !== "") {
+      return name;
     }
   }
 
@@ -171,6 +183,22 @@ export function captureHttpArtifacts(
       `Retrying access operation attempt ${decision.attempt} -> ${decision.nextAttempt} after ${decision.delayMs}ms: ${decision.reason}`,
     ),
   requestHeaders: Readonly<Record<string, string>> = defaultRequestHeaders,
+  onRetryExhausted: (input: {
+    readonly error: PolicyViolation | ProviderUnavailable | TimeoutError;
+    readonly report: Schema.Schema.Type<typeof AccessRetryReportSchema>;
+  }) => Effect.Effect<void, never, never> = ({ error, report }) =>
+    Effect.log(
+      JSON.stringify({
+        event: "access.retry.exhausted",
+        attempts: report.attempts,
+        exhaustedBudget: report.exhaustedBudget,
+        decisions: report.decisions,
+        error: {
+          name: readCauseName(error, "AccessFailure"),
+          message: error.message,
+        },
+      }),
+    ),
 ) {
   return Effect.gen(function* () {
     const decodedPlan = yield* Effect.try({
@@ -232,6 +260,7 @@ export function captureHttpArtifacts(
         }),
       shouldRetry: isRetryableAccessFailure,
       onDecision: onRetryDecision,
+      onExhausted: onRetryExhausted,
     }).pipe(Effect.map(({ value }) => value));
     const { body, response } = capture;
     const durationMs = Math.max(0, perfNow() - startedAt);

@@ -69,6 +69,7 @@ describe("e3 access runtime benchmark harness", () => {
       expect(recoveredBodyRead.artifactCount).toBe(4);
 
       let failedAttempts = 0;
+      const exhaustedEvents: unknown[] = [];
       const failureMessage = yield* runRetryRecovery({
         accessPolicy: {
           maxRetries: 0,
@@ -76,6 +77,9 @@ describe("e3 access runtime benchmark harness", () => {
         fetchImpl: async () => Promise.reject(new Error("persistent upstream")),
         onAttempt: (attempt) => {
           failedAttempts = attempt;
+        },
+        onExhausted: (input) => {
+          exhaustedEvents.push(input);
         },
       }).pipe(
         Effect.match({
@@ -86,6 +90,19 @@ describe("e3 access runtime benchmark harness", () => {
 
       expect(failedAttempts).toBe(1);
       expect(failureMessage).toContain("persistent upstream");
+      expect(exhaustedEvents).toEqual([
+        {
+          error: {
+            name: "ProviderUnavailable",
+            message: "persistent upstream",
+          },
+          report: {
+            attempts: 1,
+            exhaustedBudget: true,
+            decisions: [],
+          },
+        },
+      ]);
     }),
   );
 

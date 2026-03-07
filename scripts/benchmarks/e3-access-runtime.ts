@@ -3,6 +3,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Effect, Schema, SchemaGetter } from "effect";
+import { AccessRetryReportSchema } from "../../libs/foundation/core/src/access-retry-runtime.ts";
 import { planAccessExecution } from "../../libs/foundation/core/src/access-planner-runtime.ts";
 import {
   AccessPolicySchema,
@@ -115,6 +116,13 @@ type CandidateAccessOptions = FixtureOverrides & {
 };
 type RetryRecoveryOptions = CandidateAccessOptions & {
   readonly onAttempt?: (attempt: number) => void;
+  readonly onExhausted?: (input: {
+    readonly error: {
+      readonly name: string;
+      readonly message: string;
+    };
+    readonly report: Schema.Codec.Encoded<typeof AccessRetryReportSchema>;
+  }) => void;
 };
 
 export function decodePositiveIntegerOption(rawValue: string | undefined, fallback: number) {
@@ -312,6 +320,17 @@ export function runRetryRecovery(options: RetryRecoveryOptions = {}) {
       () => new Date(FIXED_DATE),
       undefined,
       () => Effect.void,
+      undefined,
+      ({ error, report }) =>
+        Effect.sync(() => {
+          options.onExhausted?.({
+            error: {
+              name: error.name,
+              message: error.message,
+            },
+            report: Schema.encodeSync(AccessRetryReportSchema)(report),
+          });
+        }),
     );
     const store = yield* makeInMemoryCaptureBundleStore();
     yield* store.persistBundle(plan.id, bundle);

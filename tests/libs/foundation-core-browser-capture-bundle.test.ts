@@ -69,7 +69,7 @@ describe("foundation-core browser capture bundle", () => {
             newPage: async () => ({
               goto: async () => undefined,
               content: async () =>
-                `<html><head><title>Rendered Bundle</title></head><body><main>Rendered token=dom-secret</main><form action="https://example.com/checkout?session=checkout-secret#frag"><input type="hidden" value="csrf-secret" /></form></body></html>`,
+                `<html><head><title>Rendered Bundle</title><meta content="meta-secret" /></head><body><script>const token = "script-secret";</script><main>Rendered token=dom-secret Bearer bearer-secret</main><a href="https://user:pass@example.com/account?token=link-secret#details"></a><img src="https://user:pass@example.com/account?token=link-secret#details" /><form action="https://example.com/checkout?session=checkout-secret#frag"><input type="hidden" value="csrf-secret" /></form><style>.secret { content: "style-secret"; }</style><noscript>noscript-secret</noscript></body></html>`,
               screenshot: async () => screenshotBytes,
               evaluate: async () => ({
                 navigation: [
@@ -133,6 +133,12 @@ describe("foundation-core browser capture bundle", () => {
         );
         const encodedBundle = Schema.encodeSync(BrowserCaptureBundleSchema)(bundle);
         const exportBundle = buildRedactedBrowserArtifactExports(bundle);
+        const renderedDomExport = JSON.parse(exportBundle.exports[0]?.body ?? "{}");
+        const screenshotExport = JSON.parse(exportBundle.exports[1]?.body ?? "{}");
+        const exportedNetworkSummary = Schema.decodeUnknownSync(BrowserNetworkSummarySchema)(
+          JSON.parse(exportBundle.exports[2]?.body ?? "{}"),
+        );
+        const exportedTimings = JSON.parse(exportBundle.exports[3]?.body ?? "{}");
         const screenshotPayload = bundle.payloads.find(
           ({ mediaType }) => mediaType === "image/png",
         );
@@ -157,6 +163,34 @@ describe("foundation-core browser capture bundle", () => {
           `${browserPlan.id}/screenshot.png`,
           `${browserPlan.id}/network-summary.json`,
           `${browserPlan.id}/timings.json`,
+        ]);
+        expect(
+          exportBundle.exports.map(({ kind, sourceVisibility, mediaType }) => ({
+            kind,
+            sourceVisibility,
+            mediaType,
+          })),
+        ).toEqual([
+          {
+            kind: "renderedDom",
+            sourceVisibility: "raw",
+            mediaType: "application/json",
+          },
+          {
+            kind: "screenshot",
+            sourceVisibility: "raw",
+            mediaType: "application/json",
+          },
+          {
+            kind: "networkSummary",
+            sourceVisibility: "redacted",
+            mediaType: "application/json",
+          },
+          {
+            kind: "timings",
+            sourceVisibility: "redacted",
+            mediaType: "application/json",
+          },
         ]);
         expect(screenshotPayload?.encoding).toBe("base64");
         expect(screenshotPayload?.body).toBe(Buffer.from(screenshotBytes).toString("base64"));
@@ -212,17 +246,78 @@ describe("foundation-core browser capture bundle", () => {
             },
           ],
         });
-        expect(JSON.parse(exportBundle.exports[0]?.body ?? "{}")).toMatchObject({
+        expect(renderedDomExport).toEqual({
           title: "Rendered Bundle",
-          hiddenFieldCount: 1,
-          linkTargets: ["https://example.com/checkout?session=%5BREDACTED%5D"],
+          textPreview: "Rendered token=[REDACTED] Bearer [REDACTED]",
+          linkTargets: [
+            "https://example.com/account?token=%5BREDACTED%5D",
+            "https://example.com/checkout?session=%5BREDACTED%5D",
+          ],
+          hiddenFieldCount: 2,
         });
-        expect(exportBundle.exports[0]?.body).toContain("token=[REDACTED]");
+        expect(exportBundle.exports[0]?.body).not.toContain("script-secret");
+        expect(exportBundle.exports[0]?.body).not.toContain("style-secret");
+        expect(exportBundle.exports[0]?.body).not.toContain("noscript-secret");
         expect(exportBundle.exports[0]?.body).not.toContain("csrf-secret");
-        expect(exportBundle.exports[1]?.body).toContain("Binary screenshot payload omitted");
+        expect(screenshotExport).toEqual({
+          artifactId: `${browserPlan.id}-screenshot`,
+          mediaType: "image/png",
+          sizeBytes: screenshotBytes.byteLength,
+          sha256: encodedBundle.artifacts[1]?.sha256,
+          note: "Binary screenshot payload omitted from redacted export.",
+        });
         expect(exportBundle.exports[1]?.body).not.toContain(
           Buffer.from(screenshotBytes).toString("base64"),
         );
+        expect(exportedNetworkSummary).toEqual({
+          navigation: [
+            {
+              url: "https://example.com/products/001?session=%5BREDACTED%5D",
+              type: "navigation",
+              startTimeMs: 1,
+              durationMs: 12,
+              transferSize: 900,
+              encodedBodySize: 700,
+              decodedBodySize: 1500,
+              responseStatus: 302,
+            },
+            {
+              url: "https://example.com/products/001?step=2&token=%5BREDACTED%5D",
+              type: "navigation",
+              startTimeMs: 4,
+              durationMs: 8,
+              transferSize: 1000,
+              encodedBodySize: 800,
+              decodedBodySize: 1600,
+              responseStatus: 200,
+            },
+          ],
+          resources: [
+            {
+              url: "https://cdn.example.com/app.css",
+              initiatorType: "link",
+              startTimeMs: 2,
+              durationMs: 3,
+              transferSize: 300,
+              encodedBodySize: 250,
+              decodedBodySize: 500,
+            },
+            {
+              url: "https://cdn.example.com/script.js?api_key=%5BREDACTED%5D",
+              initiatorType: "script",
+              startTimeMs: 9,
+              durationMs: 6,
+              transferSize: 450,
+              encodedBodySize: 350,
+              decodedBodySize: 700,
+            },
+          ],
+        });
+        expect(exportedTimings).toEqual({
+          startedAt: "2026-03-06T10:00:05.000Z",
+          completedAt: "2026-03-06T10:00:07.000Z",
+          elapsedMs: 2000,
+        });
         expect(closed.page).toBe(1);
         expect(closed.context).toBe(1);
       }),
@@ -255,6 +350,179 @@ describe("foundation-core browser capture bundle", () => {
     }),
   );
 
+  it("re-sanitizes browser payloads before prompt or log export", () => {
+    const screenshotBody = Buffer.from(Uint8Array.from([1, 2, 3, 4])).toString("base64");
+    const bundle = Schema.decodeUnknownSync(BrowserCaptureBundleSchema)({
+      capturedAt: "2026-03-06T10:00:07.000Z",
+      artifacts: [
+        {
+          id: "artifact-rendered-dom-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-rendered-dom-001",
+          kind: "renderedDom",
+          visibility: "raw",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/rendered-dom.html`,
+          },
+          sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          sizeBytes: 128,
+          mediaType: "text/html",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+        {
+          id: "artifact-screenshot-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-screenshot-001",
+          kind: "screenshot",
+          visibility: "raw",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/screenshot.png`,
+          },
+          sha256: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+          sizeBytes: 4,
+          mediaType: "image/png",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+        {
+          id: "artifact-network-summary-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-network-summary-001",
+          kind: "networkSummary",
+          visibility: "redacted",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/network-summary.json`,
+          },
+          sha256: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+          sizeBytes: 96,
+          mediaType: "application/json",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+        {
+          id: "artifact-timings-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-timings-001",
+          kind: "timings",
+          visibility: "redacted",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/timings.json`,
+          },
+          sha256: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+          sizeBytes: 80,
+          mediaType: "application/json",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+      ],
+      payloads: [
+        {
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/rendered-dom.html`,
+          },
+          mediaType: "text/html",
+          encoding: "utf8",
+          body: `<html><head><title>Prompt Export</title></head><body><main>Bearer dom-secret token=prompt-secret</main><a href="https://example.com/account?session=session-secret#frag">account</a></body></html>`,
+        },
+        {
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/screenshot.png`,
+          },
+          mediaType: "image/png",
+          encoding: "base64",
+          body: screenshotBody,
+        },
+        {
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/network-summary.json`,
+          },
+          mediaType: "application/json",
+          encoding: "utf8",
+          body: `${JSON.stringify(
+            {
+              navigation: [
+                {
+                  url: "https://user:pass@example.com/account?token=raw-secret#frag",
+                  type: "navigation",
+                  startTimeMs: 1,
+                  durationMs: 2,
+                  transferSize: 3,
+                  encodedBodySize: 4,
+                  decodedBodySize: 5,
+                  responseStatus: 200,
+                },
+              ],
+              resources: [],
+            },
+            null,
+            2,
+          )}\n`,
+        },
+        {
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/timings.json`,
+          },
+          mediaType: "application/json",
+          encoding: "utf8",
+          body: `${JSON.stringify(
+            {
+              startedAt: "2026-03-06T10:00:05.000Z",
+              completedAt: "2026-03-06T10:00:07.000Z",
+              elapsedMs: 2,
+            },
+            null,
+            2,
+          )}\n`,
+        },
+      ],
+    });
+    const exportBundle = buildRedactedBrowserArtifactExports(bundle);
+    const renderedDomExport = JSON.parse(exportBundle.exports[0]?.body ?? "{}");
+    const networkExport = JSON.parse(exportBundle.exports[2]?.body ?? "{}");
+
+    expect(exportBundle.exports.map(({ kind }) => kind)).toEqual([
+      "renderedDom",
+      "screenshot",
+      "networkSummary",
+      "timings",
+    ]);
+    expect(exportBundle.exports.map(({ sourceVisibility }) => sourceVisibility)).toEqual([
+      "raw",
+      "raw",
+      "redacted",
+      "redacted",
+    ]);
+    expect(renderedDomExport).toMatchObject({
+      title: "Prompt Export",
+      linkTargets: ["https://example.com/account?session=%5BREDACTED%5D"],
+    });
+    expect(exportBundle.exports[0]?.body).toContain("Bearer [REDACTED]");
+    expect(exportBundle.exports[0]?.body).toContain("token=[REDACTED]");
+    expect(exportBundle.exports[1]?.body).toContain("Binary screenshot payload omitted");
+    expect(exportBundle.exports[1]?.body).not.toContain(screenshotBody);
+    expect(networkExport).toEqual({
+      navigation: [
+        {
+          url: "https://example.com/account?token=%5BREDACTED%5D",
+          type: "navigation",
+          startTimeMs: 1,
+          durationMs: 2,
+          transferSize: 3,
+          encodedBodySize: 4,
+          decodedBodySize: 5,
+          responseStatus: 200,
+        },
+      ],
+      resources: [],
+    });
+    expect(exportBundle.exports[3]?.body).toContain('"elapsedMs": 2');
+  });
+
   it("emits a deterministic redacted export fallback when a browser payload is missing", () => {
     const bundle = Schema.decodeUnknownSync(BrowserCaptureBundleSchema)({
       capturedAt: "2026-03-06T10:00:07.000Z",
@@ -274,16 +542,170 @@ describe("foundation-core browser capture bundle", () => {
           mediaType: "text/html",
           storedAt: "2026-03-06T10:00:07.000Z",
         },
+        {
+          id: "artifact-screenshot-missing-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-screenshot-missing-001",
+          kind: "screenshot",
+          visibility: "raw",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/screenshot.png`,
+          },
+          sha256: "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+          sizeBytes: 8,
+          mediaType: "image/png",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+        {
+          id: "artifact-network-summary-missing-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-network-summary-missing-001",
+          kind: "networkSummary",
+          visibility: "redacted",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/network-summary.json`,
+          },
+          sha256: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+          sizeBytes: 8,
+          mediaType: "application/json",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+        {
+          id: "artifact-timings-missing-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-timings-missing-001",
+          kind: "timings",
+          visibility: "redacted",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/timings.json`,
+          },
+          sha256: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+          sizeBytes: 8,
+          mediaType: "application/json",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
       ],
       payloads: [],
     });
     const exportBundle = buildRedactedBrowserArtifactExports(bundle);
 
-    expect(exportBundle.exports).toHaveLength(1);
-    expect(JSON.parse(exportBundle.exports[0]?.body ?? "{}")).toEqual({
-      artifactId: "artifact-rendered-dom-missing-001",
-      note: "Artifact payload was unavailable for redacted export.",
+    expect(exportBundle.exports).toHaveLength(4);
+    expect(exportBundle.exports.map(({ kind }) => kind)).toEqual([
+      "renderedDom",
+      "screenshot",
+      "networkSummary",
+      "timings",
+    ]);
+    expect(exportBundle.exports.map(({ body }) => JSON.parse(body))).toEqual([
+      {
+        artifactId: "artifact-rendered-dom-missing-001",
+        note: "Artifact payload was unavailable for redacted export.",
+      },
+      {
+        artifactId: "artifact-screenshot-missing-001",
+        note: "Artifact payload was unavailable for redacted export.",
+      },
+      {
+        artifactId: "artifact-network-summary-missing-001",
+        note: "Artifact payload was unavailable for redacted export.",
+      },
+      {
+        artifactId: "artifact-timings-missing-001",
+        note: "Artifact payload was unavailable for redacted export.",
+      },
+    ]);
+  });
+
+  it("emits a deterministic redacted export fallback when a network summary payload is malformed JSON", () => {
+    const bundle = Schema.decodeUnknownSync(BrowserCaptureBundleSchema)({
+      capturedAt: "2026-03-06T10:00:07.000Z",
+      artifacts: [
+        {
+          id: "artifact-network-summary-invalid-json-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-network-summary-invalid-json-001",
+          kind: "networkSummary",
+          visibility: "redacted",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/network-summary.json`,
+          },
+          sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          sizeBytes: 32,
+          mediaType: "application/json",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+      ],
+      payloads: [
+        {
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/network-summary.json`,
+          },
+          mediaType: "application/json",
+          encoding: "utf8",
+          body: '{"navigation":[{"url":"https://example.com?token=json-secret"}]',
+        },
+      ],
     });
+    const exportBundle = buildRedactedBrowserArtifactExports(bundle);
+
+    expect(JSON.parse(exportBundle.exports[0]?.body ?? "{}")).toEqual({
+      artifactId: "artifact-network-summary-invalid-json-001",
+      note: "Artifact payload failed redaction validation.",
+    });
+    expect(exportBundle.exports[0]?.body).not.toContain("json-secret");
+  });
+
+  it("emits a deterministic redacted export fallback when a network summary payload fails schema validation", () => {
+    const bundle = Schema.decodeUnknownSync(BrowserCaptureBundleSchema)({
+      capturedAt: "2026-03-06T10:00:07.000Z",
+      artifacts: [
+        {
+          id: "artifact-network-summary-invalid-shape-001",
+          runId: browserPlan.id,
+          artifactId: "artifact-network-summary-invalid-shape-001",
+          kind: "networkSummary",
+          visibility: "redacted",
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/network-summary.json`,
+          },
+          sha256: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+          sizeBytes: 64,
+          mediaType: "application/json",
+          storedAt: "2026-03-06T10:00:07.000Z",
+        },
+      ],
+      payloads: [
+        {
+          locator: {
+            namespace: `captures/${browserPlan.targetId}`,
+            key: `${browserPlan.id}/network-summary.json`,
+          },
+          mediaType: "application/json",
+          encoding: "utf8",
+          body: JSON.stringify({
+            navigation: [
+              {
+                url: "https://example.com/products/001?token=schema-secret",
+              },
+            ],
+            resources: [],
+          }),
+        },
+      ],
+    });
+    const exportBundle = buildRedactedBrowserArtifactExports(bundle);
+
+    expect(JSON.parse(exportBundle.exports[0]?.body ?? "{}")).toEqual({
+      artifactId: "artifact-network-summary-invalid-shape-001",
+      note: "Artifact payload failed redaction validation.",
+    });
+    expect(exportBundle.exports[0]?.body).not.toContain("schema-secret");
   });
 
   it.effect(
