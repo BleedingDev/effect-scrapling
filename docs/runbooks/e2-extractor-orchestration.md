@@ -159,6 +159,10 @@ Use the narrower runbooks below when the integrated orchestration flow already
 identified the failing subsystem and you need deeper operational guidance:
 
 - `docs/runbooks/e2-evidence-manifest.md`
+- `docs/runbooks/e2-domain-normalizers.md`
+- `docs/runbooks/e2-assertion-engine.md`
+- `docs/runbooks/e2-selector-precedence.md`
+- `docs/runbooks/e2-selector-relocation.md`
 - `docs/runbooks/e2-snapshot-builder.md`
 - `docs/runbooks/e2-snapshot-diff-engine.md`
 - `docs/runbooks/e2-golden-fixtures.md`

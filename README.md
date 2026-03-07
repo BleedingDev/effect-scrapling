@@ -105,6 +105,10 @@ Operator runbooks:
 - [E0 performance budget](docs/runbooks/e0-performance-budget.md)
 - [E0 operations and rollback drill](docs/runbooks/e0-operations-rollback-drill.md)
 - [E2 extractor orchestration](docs/runbooks/e2-extractor-orchestration.md)
+- [E2 domain normalizers](docs/runbooks/e2-domain-normalizers.md)
+- [E2 assertion engine](docs/runbooks/e2-assertion-engine.md)
+- [E2 selector precedence](docs/runbooks/e2-selector-precedence.md)
+- [E2 selector relocation](docs/runbooks/e2-selector-relocation.md)
 - [E2 evidence manifest](docs/runbooks/e2-evidence-manifest.md)
 - [E2 snapshot builder](docs/runbooks/e2-snapshot-builder.md)
 - [E2 snapshot diff engine](docs/runbooks/e2-snapshot-diff-engine.md)
@@ -304,6 +308,10 @@ bun run check:e2-performance-budget
 Supporting runbooks:
 
 - [`docs/runbooks/e2-extractor-orchestration.md`](docs/runbooks/e2-extractor-orchestration.md)
+- [`docs/runbooks/e2-domain-normalizers.md`](docs/runbooks/e2-domain-normalizers.md)
+- [`docs/runbooks/e2-assertion-engine.md`](docs/runbooks/e2-assertion-engine.md)
+- [`docs/runbooks/e2-selector-precedence.md`](docs/runbooks/e2-selector-precedence.md)
+- [`docs/runbooks/e2-selector-relocation.md`](docs/runbooks/e2-selector-relocation.md)
 - [`docs/runbooks/e2-evidence-manifest.md`](docs/runbooks/e2-evidence-manifest.md)
 - [`docs/runbooks/e2-snapshot-builder.md`](docs/runbooks/e2-snapshot-builder.md)
 - [`docs/runbooks/e2-snapshot-diff-engine.md`](docs/runbooks/e2-snapshot-diff-engine.md)
