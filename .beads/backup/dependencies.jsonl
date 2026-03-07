@@ -417,6 +417,14 @@
 {"created_at":"2026-03-05T23:41:18Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.33","issue_id":"bd-afb.36","type":"blocks"}
 {"created_at":"2026-03-05T23:41:18Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.5","issue_id":"bd-afb.36","type":"blocks"}
 {"created_at":"2026-03-05T23:41:18Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.8","issue_id":"bd-afb.36","type":"blocks"}
+{"created_at":"2026-03-07T07:34:51Z","created_by":"Petr Glaser","depends_on_id":"bd-afb","issue_id":"bd-afb.37","type":"parent-child"}
+{"created_at":"2026-03-07T07:35:14Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.19","issue_id":"bd-afb.37","type":"blocks"}
+{"created_at":"2026-03-07T07:34:51Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.36","issue_id":"bd-afb.37","type":"discovered-from"}
+{"created_at":"2026-03-07T07:35:14Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.4","issue_id":"bd-afb.37","type":"blocks"}
+{"created_at":"2026-03-07T07:34:51Z","created_by":"Petr Glaser","depends_on_id":"bd-afb","issue_id":"bd-afb.38","type":"parent-child"}
+{"created_at":"2026-03-07T07:35:14Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.19","issue_id":"bd-afb.38","type":"blocks"}
+{"created_at":"2026-03-07T07:34:51Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.36","issue_id":"bd-afb.38","type":"discovered-from"}
+{"created_at":"2026-03-07T07:35:28Z","created_by":"Petr Glaser","depends_on_id":"bd-afb.37","issue_id":"bd-afb.38","type":"blocks"}
 {"created_at":"2026-03-05T23:42:20Z","created_by":"Petr Glaser","depends_on_id":"bd-7aw.4","issue_id":"bd-afb.4","type":"blocks"}
 {"created_at":"2026-03-05T23:41:11Z","created_by":"Petr Glaser","depends_on_id":"bd-afb","issue_id":"bd-afb.4","type":"parent-child"}
 {"created_at":"2026-03-05T23:41:11Z","created_by":"Petr Glaser","depends_on_id":"bd-afb","issue_id":"bd-afb.5","type":"parent-child"}

@@ -39,6 +39,9 @@ bun run check:playwright
 CI installs and verifies Chromium in the Linux x64 build lane using the same
 Playwright scripts and strict `bun install --frozen-lockfile`.
 
+Browser pool controls, queue/backpressure interpretation, and rollback guidance
+live in [`docs/runbooks/e4-browser-pool-controls.md`](docs/runbooks/e4-browser-pool-controls.md).
+
 ## CI Affected Gates
 
 Pull requests run `.github/workflows/pr-affected-gates.yml`. The merge-blocking
