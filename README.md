@@ -118,10 +118,12 @@ Operator runbooks:
 - [E2 golden fixtures](docs/runbooks/e2-golden-fixtures.md)
 - [E2 security review](docs/runbooks/e2-security-review.md)
 - [E2 performance budget](docs/runbooks/e2-performance-budget.md)
+- [E2 operations and rollback drill](docs/runbooks/e2-operations-rollback-drill.md)
 - [E3 HTTP access execution](docs/runbooks/e3-http-access-execution.md)
 - [E3 access planner policy](docs/runbooks/e3-access-planner-policy.md)
 - [E3 identity lease management](docs/runbooks/e3-identity-lease-management.md)
 - [E3 egress lease management](docs/runbooks/e3-egress-lease-management.md)
+- [E3 operations and rollback drill](docs/runbooks/e3-operations-rollback-drill.md)
 - [E4 browser security isolation](docs/runbooks/e4-browser-security-isolation.md)
 - [E4 security review](docs/runbooks/e4-security-review.md)
 - [E4 performance budget](docs/runbooks/e4-performance-budget.md)
@@ -324,6 +326,11 @@ Supporting runbooks:
 - [`docs/runbooks/e2-golden-fixtures.md`](docs/runbooks/e2-golden-fixtures.md)
 - [`docs/runbooks/e2-security-review.md`](docs/runbooks/e2-security-review.md)
 - [`docs/runbooks/e2-performance-budget.md`](docs/runbooks/e2-performance-budget.md)
+- [`docs/runbooks/e2-operations-rollback-drill.md`](docs/runbooks/e2-operations-rollback-drill.md)
+
+Recovery evidence:
+
+- [`docs/artifacts/e2-rollback-drill.md`](docs/artifacts/e2-rollback-drill.md)
 
 ## Nx Compliant Module Generator
 
@@ -387,4 +394,9 @@ Operator workflow, troubleshooting, and rollback guidance:
 - [`docs/runbooks/e3-identity-lease-management.md`](docs/runbooks/e3-identity-lease-management.md)
 - [`docs/runbooks/e3-retry-backoff-runbook.md`](docs/runbooks/e3-retry-backoff-runbook.md)
 - [`docs/runbooks/e3-access-health-runbook.md`](docs/runbooks/e3-access-health-runbook.md)
+- [`docs/runbooks/e3-operations-rollback-drill.md`](docs/runbooks/e3-operations-rollback-drill.md)
 - [`docs/runbooks/e4-provider-selection.md`](docs/runbooks/e4-provider-selection.md)
+
+Recovery evidence:
+
+- [`docs/artifacts/e3-rollback-drill.md`](docs/artifacts/e3-rollback-drill.md)

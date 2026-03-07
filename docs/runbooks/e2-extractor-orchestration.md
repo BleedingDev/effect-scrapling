@@ -22,6 +22,10 @@ bun run check:e2-performance-budget
 bun run check:e2-sdk-consumer
 ```
 
+Operations and rollback drill guidance:
+
+- `docs/runbooks/e2-operations-rollback-drill.md`
+
 Focused E2 diagnostics:
 
 ```bash

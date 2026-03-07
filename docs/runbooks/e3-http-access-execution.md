@@ -30,6 +30,7 @@ Policy baseline:
 
 Related E3 runbooks:
 
+- `docs/runbooks/e3-operations-rollback-drill.md`
 - `docs/runbooks/e3-access-planner-policy.md`
 - `docs/runbooks/e3-identity-lease-management.md`
 - `docs/runbooks/e3-egress-lease-management.md`
