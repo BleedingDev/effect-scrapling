@@ -15,6 +15,7 @@ import {
   type ExtractRunRequest,
   type ExtractRunResponse,
 } from "./schemas.ts";
+import { type PlaywrightPage, withPooledBrowserPage } from "./browser-pool.ts";
 import { formatUnknownError } from "./error-guards.ts";
 import { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors.ts";
 
@@ -323,6 +324,7 @@ type FetchPageResult = {
   readonly contentLength: number;
   readonly html: string;
   readonly durationMs: number;
+  readonly warnings: ReadonlyArray<string>;
 };
 
 function fetchPageHttp(
@@ -377,6 +379,7 @@ function fetchPageHttp(
               contentLength: html.length,
               html,
               durationMs: Math.max(1, endedAt - startedAt),
+              warnings: [],
             };
           }
 
@@ -394,88 +397,6 @@ function fetchPageHttp(
   });
 }
 
-type PlaywrightResponse = {
-  readonly status: () => number;
-  readonly allHeaders: () => Promise<Record<string, string>>;
-};
-
-type PlaywrightPage = {
-  readonly goto: (
-    url: string,
-    options: { readonly waitUntil: BrowserWaitUntil; readonly timeout: number },
-  ) => Promise<PlaywrightResponse | null>;
-  readonly content: () => Promise<string>;
-  readonly url: () => string;
-  readonly waitForLoadState: (
-    state: "load" | "domcontentloaded" | "networkidle",
-    options?: { readonly timeout?: number },
-  ) => Promise<void>;
-  readonly route: (
-    matcher: string,
-    handler: (route: PlaywrightRoute) => Promise<void> | void,
-  ) => Promise<void>;
-  readonly close: () => Promise<void>;
-};
-
-type PlaywrightRequest = {
-  readonly url: () => string;
-};
-
-type PlaywrightRoute = {
-  readonly request: () => PlaywrightRequest;
-  readonly continue: () => Promise<void>;
-  readonly abort: (errorCode?: string) => Promise<void>;
-};
-
-type PlaywrightBrowserContext = {
-  readonly newPage: () => Promise<PlaywrightPage>;
-  readonly close: () => Promise<void>;
-};
-
-type PlaywrightBrowser = {
-  readonly newContext: (options: {
-    readonly userAgent: string;
-  }) => Promise<PlaywrightBrowserContext>;
-  readonly close: () => Promise<void>;
-};
-
-type PlaywrightModule = {
-  readonly chromium: {
-    readonly launch: (options: { readonly headless: boolean }) => Promise<PlaywrightBrowser>;
-  };
-};
-
-function isPlaywrightModule(module: unknown): module is PlaywrightModule {
-  if (typeof module !== "object" || module === null) {
-    return false;
-  }
-
-  const chromium = Reflect.get(module, "chromium");
-  if (typeof chromium !== "object" || chromium === null) {
-    return false;
-  }
-
-  return typeof Reflect.get(chromium, "launch") === "function";
-}
-
-function loadPlaywright(): Effect.Effect<PlaywrightModule, BrowserError> {
-  return Effect.tryPromise({
-    try: async () => {
-      const playwrightModuleName = "playwright";
-      const loaded = await import(playwrightModuleName);
-      if (!isPlaywrightModule(loaded)) {
-        throw new Error("Playwright module is installed but has an unexpected shape");
-      }
-      return loaded;
-    },
-    catch: (error) =>
-      new BrowserError({
-        message: "Browser mode requires Playwright to be installed and resolvable",
-        details: formatUnknownError(error),
-      }),
-  });
-}
-
 function resolveBrowserLoadState(
   waitUntil: BrowserWaitUntil,
 ): "load" | "domcontentloaded" | "networkidle" {
@@ -485,36 +406,20 @@ function resolveBrowserLoadState(
   return waitUntil;
 }
 
-async function closeQuietly(closeable?: { readonly close: () => Promise<void> }): Promise<void> {
-  if (!closeable) {
-    return;
-  }
-  try {
-    await closeable.close();
-  } catch {}
-}
-
 function fetchPageBrowser(
   url: string,
   options: BrowserFetchOptions,
 ): Effect.Effect<FetchPageResult, BrowserError> {
-  return Effect.gen(function* () {
-    const playwright = yield* loadPlaywright();
+  return withPooledBrowserPage(
+    {
+      userAgent: options.userAgent ?? DEFAULT_BROWSER_USER_AGENT,
+    },
+    (page: PlaywrightPage) =>
+      Effect.tryPromise({
+        try: async () => {
+          const startedAt = Date.now();
+          let blockedRequestReason: string | undefined;
 
-    return yield* Effect.tryPromise({
-      try: async () => {
-        const startedAt = Date.now();
-        let browser: PlaywrightBrowser | undefined;
-        let context: PlaywrightBrowserContext | undefined;
-        let page: PlaywrightPage | undefined;
-        let blockedRequestReason: string | undefined;
-
-        try {
-          browser = await playwright.chromium.launch({ headless: true });
-          context = await browser.newContext({
-            userAgent: options.userAgent ?? DEFAULT_BROWSER_USER_AGENT,
-          });
-          page = await context.newPage();
           await page.route("**/*", async (route) => {
             const requestUrl = route.request().url();
             const violation = getUrlPolicyViolation(new URL(requestUrl), {
@@ -567,19 +472,26 @@ function fetchPageBrowser(
             html,
             durationMs: Math.max(1, endedAt - startedAt),
           };
-        } finally {
-          await closeQuietly(page);
-          await closeQuietly(context);
-          await closeQuietly(browser);
-        }
-      },
-      catch: (error) =>
+        },
+        catch: (error) =>
+          new BrowserError({
+            message: `Browser access failed for ${url}`,
+            details: formatUnknownError(error),
+          }),
+      }),
+  ).pipe(
+    Effect.map(({ value, warnings }) => ({
+      ...value,
+      warnings,
+    })),
+    Effect.mapError(
+      (error) =>
         new BrowserError({
           message: `Browser access failed for ${url}`,
-          details: formatUnknownError(error),
+          details: error.details ?? error.message,
         }),
-    });
-  });
+    ),
+  );
 }
 
 function fetchPage(
@@ -620,7 +532,7 @@ export function accessPreview(
         contentLength: Math.max(1, page.contentLength),
         durationMs: page.durationMs,
       },
-      warnings: [],
+      warnings: [...page.warnings],
     };
 
     return yield* Effect.try({
@@ -700,7 +612,10 @@ export function extractRun(
         values,
         durationMs: page.durationMs,
       },
-      warnings: values.length === 0 ? [`No values matched selector "${selector}"`] : [],
+      warnings:
+        values.length === 0
+          ? [...page.warnings, `No values matched selector "${selector}"`]
+          : [...page.warnings],
     };
 
     return yield* Effect.try({
@@ -728,6 +643,13 @@ export function runDoctor(): Effect.Effect<{
   }>;
 }> {
   return Effect.sync(() => {
+    const bunRuntime = Reflect.get(globalThis, "Bun");
+    const bunVersion =
+      typeof bunRuntime === "object" &&
+      bunRuntime !== null &&
+      typeof Reflect.get(bunRuntime, "version") === "string"
+        ? String(Reflect.get(bunRuntime, "version"))
+        : "unavailable";
     const checks = [
       {
         name: "fetch",
@@ -749,7 +671,7 @@ export function runDoctor(): Effect.Effect<{
     return {
       ok: checks.every((check) => check.ok),
       runtime: {
-        bun: Bun.version,
+        bun: bunVersion,
         platform: process.platform,
         arch: process.arch,
       },

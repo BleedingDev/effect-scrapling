@@ -101,6 +101,7 @@ Useful artifacts and entrypoints:
 - `examples/e3-capability-slice.ts`
 - `scripts/benchmarks/e3-access-runtime.ts`
 - `docs/artifacts/e3-access-runtime-baseline.json`
+- `docs/artifacts/e3-access-runtime-scorecard.json`
 
 ## Practical Execution Examples
 
@@ -148,10 +149,7 @@ What to look for:
 ### Run the retry/backoff benchmark harness
 
 ```bash
-bun run scripts/benchmarks/e3-access-runtime.ts \
-  --baseline docs/artifacts/e3-access-runtime-baseline.json \
-  --sample-size 3 \
-  --warmup 1
+bun run benchmark:e3-access-runtime -- --sample-size 3 --warmup 1
 ```
 
 What this exercises:
@@ -162,15 +160,75 @@ What this exercises:
 
 What to inspect in the JSON output:
 
+- `docs/artifacts/e3-access-runtime-scorecard.json`
+- `status`
 - `measurements.retryRecovery.p95Ms`
 - `comparison.deltas.retryRecoveryP95Ms`
-- `status`
 
 Current budget thresholds in the benchmark harness:
 
 - `baselineAccessP95Ms <= 25`
 - `candidateAccessP95Ms <= 50`
 - `retryRecoveryP95Ms <= 300`
+
+### Read gate status from the persisted scorecard
+
+`bun run benchmark:e3-access-runtime` and `bun run check:e3-access-runtime`
+both overwrite the same operator-facing scorecard:
+
+- `docs/artifacts/e3-access-runtime-scorecard.json`
+
+Read these fields first:
+
+- `status`: gate result for the current candidate run
+- `measurements.baselineAccess.p95Ms`: plan-only baseline cost on the current
+  machine
+- `measurements.candidateAccess.p95Ms`: full HTTP capture latency
+- `measurements.retryRecovery.p95Ms`: bounded retry recovery latency
+- `comparison.baselinePath`: baseline artifact used for the comparison
+- `comparison.deltas.*`: change versus the committed baseline
+
+Quick status checks:
+
+```bash
+cat docs/artifacts/e3-access-runtime-scorecard.json
+jq '{status, measurements, comparison}' docs/artifacts/e3-access-runtime-scorecard.json
+```
+
+Treat the scorecard as the gate artifact for the current run. Do not promote a
+candidate when `status` is `fail`.
+
+### Open a blocking remediation bead when the budget fails
+
+If `docs/artifacts/e3-access-runtime-scorecard.json` reports `status: "fail"`,
+create a blocking remediation bead instead of widening budgets.
+
+Recommended workflow:
+
+1. Keep the persisted scorecard file unchanged so the failing evidence remains
+   inspectable.
+2. Record the exact failing metrics from:
+   - `measurements.baselineAccess.p95Ms`
+   - `measurements.candidateAccess.p95Ms`
+   - `measurements.retryRecovery.p95Ms`
+   - `comparison.deltas.*`
+3. Open a bug bead that blocks the candidate bead you were trying to promote.
+
+Template command:
+
+```bash
+CI=1 bd create "[E3] Remediate: access runtime budget breach" \
+  --type bug \
+  --priority 1 \
+  --parent bd-afb \
+  --labels epic-e3,lane-performance,phase-3 \
+  --deps blocks:<candidate-bead-id> \
+  --description $'Performance gate failed in docs/artifacts/e3-access-runtime-scorecard.json.\nCapture the breached metric names, measured p95 values, baseline deltas, local machine context, and the command used to reproduce the failure.' \
+  --acceptance $'Acceptance Criteria:\n- The breached E3 benchmark metric is back within budget.\n- docs/artifacts/e3-access-runtime-scorecard.json returns status: pass on the reproducer.\n- Any required follow-up budget or runtime changes are reviewed and documented.'
+```
+
+Replace `<candidate-bead-id>` with the active implementation, rollout, or
+validation bead that must stay blocked until the regression is fixed.
 
 ### Add structured retry-decision logging at the caller boundary
 
@@ -333,8 +391,11 @@ the targeted tests.
 - run:
   - `bun run check:e3-capability-slice`
   - `bun run check:e3-access-runtime`
+- inspect `docs/artifacts/e3-access-runtime-scorecard.json`
 - confirm logs show bounded attempt transitions
 - confirm retry recovery stays within the benchmark budget
+- if the scorecard `status` is `fail`, open a blocking remediation bead before
+  promotion
 
 4. Promote
 - run full repository gates

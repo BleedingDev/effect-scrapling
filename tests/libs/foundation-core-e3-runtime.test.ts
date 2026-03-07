@@ -493,6 +493,85 @@ describe("foundation-core access runtime", () => {
     }),
   );
 
+  it.effect(
+    "sanitizes secret-bearing request and response headers before persisting metadata",
+    () =>
+      Effect.gen(function* () {
+        const decision = yield* planAccessExecution({
+          target,
+          pack,
+          accessPolicy: httpPolicy,
+          createdAt: FIXED_DATE,
+        });
+        const requestHeaders = {
+          accept: "text/html,application/xhtml+xml",
+          authorization: "Bearer request-secret",
+          cookie: "session=request-cookie-secret",
+          "x-api-key": "request-api-key-secret",
+          "x-request-id": "req-outbound-001",
+        } as const;
+        let outboundHeaders: HeadersInit | undefined;
+        const bundle = yield* captureHttpArtifacts(
+          decision.plan,
+          async (_input, init) => {
+            outboundHeaders = init?.headers;
+
+            return new Response("<html><body>sanitized</body></html>", {
+              status: 200,
+              headers: {
+                authorization: "Bearer response-secret",
+                "content-type": "text/html; charset=utf-8",
+                "set-cookie": "session=response-cookie-secret; HttpOnly",
+                "x-auth-token": "response-auth-token-secret",
+                "x-request-id": "req-keep-me",
+              },
+            });
+          },
+          () => new Date(FIXED_DATE),
+          () => 50,
+          undefined,
+          requestHeaders,
+        );
+
+        expect(outboundHeaders).toEqual(requestHeaders);
+
+        const requestMetadata = JSON.parse(
+          bundle.payloads.find(({ locator }) => locator.key.endsWith("request-metadata.json"))
+            ?.body ?? "{}",
+        );
+        const responseMetadata = JSON.parse(
+          bundle.payloads.find(({ locator }) => locator.key.endsWith("response-metadata.json"))
+            ?.body ?? "{}",
+        );
+        const redactedBodies = bundle.payloads
+          .filter(({ locator }) => !locator.key.endsWith("body.html"))
+          .map(({ body }) => body)
+          .join("\n");
+
+        expect(requestMetadata.headers).toEqual([
+          { name: "accept", value: "text/html,application/xhtml+xml" },
+          { name: "authorization", value: "[REDACTED]" },
+          { name: "cookie", value: "[REDACTED]" },
+          { name: "x-api-key", value: "[REDACTED]" },
+          { name: "x-request-id", value: "req-outbound-001" },
+        ]);
+        expect(responseMetadata.headers).toEqual([
+          { name: "authorization", value: "[REDACTED]" },
+          { name: "content-type", value: "text/html; charset=utf-8" },
+          { name: "set-cookie", value: "[REDACTED]" },
+          { name: "x-auth-token", value: "[REDACTED]" },
+          { name: "x-request-id", value: "req-keep-me" },
+        ]);
+        expect(redactedBodies).toContain("[REDACTED]");
+        expect(redactedBodies).not.toContain("request-secret");
+        expect(redactedBodies).not.toContain("request-cookie-secret");
+        expect(redactedBodies).not.toContain("request-api-key-secret");
+        expect(redactedBodies).not.toContain("response-secret");
+        expect(redactedBodies).not.toContain("response-cookie-secret");
+        expect(redactedBodies).not.toContain("response-auth-token-secret");
+      }),
+  );
+
   it.effect("rejects browser-required plans for HTTP access", () =>
     Effect.gen(function* () {
       const browserPlan = Schema.decodeUnknownSync(RunPlanSchema)({

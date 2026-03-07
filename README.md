@@ -141,27 +141,62 @@ curl -sS -X POST http://127.0.0.1:3000/extract/run \
 
 ## SDK (library mode)
 
-Use SDK effects directly from TypeScript:
+Use SDK effects directly from TypeScript through the public package export and a
+provided fetch layer:
 
 ```ts
 import { Effect } from "effect";
-import { extractRun } from "effect-scrapling/sdk";
+import { extractRun, FetchServiceLive } from "effect-scrapling/sdk";
 
 const result = await Effect.runPromise(
   extractRun({
     url: "https://example.com",
     selector: "h1",
-  })
+  }).pipe(Effect.provide(FetchServiceLive))
 );
 
 console.log(result.data.values);
 ```
 
-Public consumer example:
+In-repo demo for the public consumer integration:
 
 ```bash
+bun install --frozen-lockfile
 bun run example:sdk-consumer
 ```
+
+The example at `examples/sdk-consumer.ts` is the supported consumer-facing SDK
+contract demonstration for this repository. It imports only from
+`effect-scrapling/sdk` and prints JSON with repository-example metadata plus the
+public contract surface:
+
+- `importPath`, pinned to the public SDK entrypoint
+- `prerequisites`, the setup needed to run this repository's example command
+- `pitfalls`, the integration mistakes the example is designed to prevent
+- `payload.expectedError`, an intentionally triggered `InvalidInputError`
+
+To run the in-repo example:
+
+- Bun `>= 1.3.10` and a successful `bun install --frozen-lockfile`
+- `bun run example:sdk-consumer` does not require Playwright or live network
+  access because it injects a mock `FetchService`
+- Browser-mode setup in this repository uses `bun run browser:install`
+
+Public SDK contract notes:
+
+- `accessPreview` and `extractRun` need a `FetchService`; use
+  `FetchServiceLive` for live HTTP access or provide a custom `FetchService` in
+  tests and examples
+- Browser-mode consumers need Playwright plus an installed Chromium browser
+- Consumer code should import from `effect-scrapling/sdk`, never `src/sdk/*`
+
+Expected public tagged errors:
+
+- `InvalidInputError` for malformed payloads before any fetch starts
+- `NetworkError` when live HTTP access fails while using `FetchServiceLive`
+- `BrowserError` when Playwright is unavailable or browser-mode navigation fails
+- `ExtractionError` when extraction or response validation cannot produce the
+  public contract
 
 ## Nx Compliant Module Generator
 

@@ -41,6 +41,47 @@ describe("scraper guardrails", () => {
     }),
   );
 
+  it.effect("accessPreview uses the explicit HTTP mode through the public SDK boundary", () =>
+    Effect.gen(function* () {
+      let requestUrl = "";
+      let requestHeaders: HeadersInit | undefined;
+      const output = yield* accessPreview({
+        url: "https://example.com/http-preview",
+        mode: "http",
+      }).pipe(
+        Effect.provideService(FetchService, {
+          fetch: async (input, init) => {
+            requestUrl = String(input);
+            requestHeaders = init?.headers;
+
+            return new Response(
+              "<html><head><title>HTTP Preview</title></head><body></body></html>",
+              {
+                status: 200,
+                headers: { "content-type": "text/html; charset=utf-8" },
+              },
+            );
+          },
+        }),
+      );
+
+      expect(output.ok).toBe(true);
+      expect(output.command).toBe("access preview");
+      expect(output.data.url).toBe("https://example.com/http-preview");
+      expect(output.data.finalUrl).toBe("https://example.com/http-preview");
+      expect(output.data.status).toBe(200);
+      expect(output.data.contentType).toBe("text/html; charset=utf-8");
+      expect(output.warnings).toEqual([]);
+      expect(requestUrl).toBe("https://example.com/http-preview");
+      expect(requestHeaders).toEqual(
+        expect.objectContaining({
+          accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "user-agent": "effect-scrapling/0.0.1",
+        }),
+      );
+    }),
+  );
+
   it("trims request string literals before schema validation", () => {
     expect(
       Schema.decodeUnknownSync(AccessPreviewRequestSchema)({

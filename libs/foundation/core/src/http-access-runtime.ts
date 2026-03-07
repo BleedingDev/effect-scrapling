@@ -33,6 +33,17 @@ export const HttpCaptureBundleSchema = HttpCaptureBundle;
 
 type HttpFetch = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
 
+const defaultRequestHeaders = {
+  accept: "text/html,application/xhtml+xml",
+} as const;
+
+const redactedHeaderValue = "[REDACTED]";
+
+const explicitlySensitiveHeaderNames = new Set(["cookie2", "set-cookie2"]);
+
+const sensitiveHeaderNamePattern =
+  /(?:^|[-])(authorization|cookie|token|secret|session|api[-]?key)(?:$|[-])/;
+
 function readCauseMessage(cause: unknown, fallback: string) {
   if ((typeof cause === "object" && cause !== null) || typeof cause === "function") {
     const message = Reflect.get(cause, "message");
@@ -44,15 +55,25 @@ function readCauseMessage(cause: unknown, fallback: string) {
   return fallback;
 }
 
-function serializeHeaders(headers: Headers) {
-  return Array.from(headers.entries())
-    .map(([name, value]) => [name.toLowerCase(), value] as const)
-    .sort(([leftName, leftValue], [rightName, rightValue]) =>
-      leftName === rightName
-        ? leftValue.localeCompare(rightValue)
-        : leftName.localeCompare(rightName),
-    )
-    .map(([name, value]) => ({ name, value }));
+function shouldSanitizeHeader(name: string) {
+  return explicitlySensitiveHeaderNames.has(name) || sensitiveHeaderNamePattern.test(name);
+}
+
+export function sanitizeHttpHeaders(headers: Iterable<readonly [string, string]>) {
+  return Array.from(headers)
+    .map(([name, value]) => {
+      const normalizedName = name.toLowerCase();
+
+      return {
+        name: normalizedName,
+        value: shouldSanitizeHeader(normalizedName) ? redactedHeaderValue : value,
+      };
+    })
+    .sort((left, right) =>
+      left.name === right.name
+        ? left.value.localeCompare(right.value)
+        : left.name.localeCompare(right.name),
+    );
 }
 
 function sizeBytes(value: string) {
@@ -114,6 +135,7 @@ export function captureHttpArtifacts(
     Effect.log(
       `Retrying access operation attempt ${decision.attempt} -> ${decision.nextAttempt} after ${decision.delayMs}ms: ${decision.reason}`,
     ),
+  requestHeaders: Readonly<Record<string, string>> = defaultRequestHeaders,
 ) {
   return Effect.gen(function* () {
     const decodedPlan = yield* Effect.try({
@@ -140,9 +162,6 @@ export function captureHttpArtifacts(
       );
     }
 
-    const requestHeaders = {
-      accept: "text/html,application/xhtml+xml",
-    };
     const startedAt = perfNow();
     const retryPolicy = yield* deriveAccessRetryPolicy(decodedPlan);
     const response = yield* executeWithAccessRetry({
@@ -192,9 +211,7 @@ export function captureHttpArtifacts(
         {
           method: "GET",
           url: decodedPlan.entryUrl,
-          headers: Object.entries(requestHeaders)
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([name, value]) => ({ name, value })),
+          headers: sanitizeHttpHeaders(Object.entries(requestHeaders)),
         },
         null,
         2,
@@ -210,7 +227,7 @@ export function captureHttpArtifacts(
           ok: response.ok,
           redirected: response.redirected,
           url: response.url || decodedPlan.entryUrl,
-          headers: serializeHeaders(response.headers),
+          headers: sanitizeHttpHeaders(response.headers.entries()),
         },
         null,
         2,

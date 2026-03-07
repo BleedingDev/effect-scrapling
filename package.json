@@ -37,7 +37,7 @@
     "check:e1-security-review": "bun test tests/guardrails/e1-security-review.verify.test.ts",
     "benchmark:e1-performance-budget": "bun run scripts/benchmarks/e1-performance-budget.ts --baseline docs/artifacts/e1-performance-budget-baseline.json",
     "check:e1-performance-budget": "bun run benchmark:e1-performance-budget",
-    "benchmark:e3-access-runtime": "bun run scripts/benchmarks/e3-access-runtime.ts --baseline docs/artifacts/e3-access-runtime-baseline.json",
+    "benchmark:e3-access-runtime": "bun run scripts/benchmarks/e3-access-runtime.ts --baseline docs/artifacts/e3-access-runtime-baseline.json --artifact docs/artifacts/e3-access-runtime-scorecard.json",
     "check:e3-access-runtime": "bun run benchmark:e3-access-runtime",
     "benchmark:e4-browser-soak-load": "bun run scripts/benchmarks/e4-browser-soak-load.ts",
     "check:e4-browser-soak-load": "bun run benchmark:e4-browser-soak-load",

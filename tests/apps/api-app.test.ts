@@ -1,6 +1,8 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
+import { Effect } from "effect";
 import { handleApiRequest } from "../../src/api.ts";
+import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import type { FetchClient } from "../../src/sdk/scraper.ts";
 
 function mockHtmlFetch(body: string): FetchClient {
@@ -15,6 +17,10 @@ function mockHtmlFetch(body: string): FetchClient {
     });
     return response;
   };
+}
+
+function resetSdkBrowserPool() {
+  return Effect.runPromise(resetBrowserPoolForTests());
 }
 
 describe("api app", () => {
@@ -152,6 +158,7 @@ describe("api app", () => {
   });
 
   it("normalizes nested browser aliases through the public access-preview route", async () => {
+    await resetSdkBrowserPool();
     const seenOptions: {
       readonly userAgent: string;
       readonly waitUntil: string;
@@ -230,11 +237,13 @@ describe("api app", () => {
         },
       ]);
     } finally {
+      await resetSdkBrowserPool();
       mock.restore();
     }
   });
 
   it("maps BrowserError failures to a 502 API response", async () => {
+    await resetSdkBrowserPool();
     mock.module("playwright", () => ({
       chromium: {
         launch: async () => {
@@ -260,6 +269,7 @@ describe("api app", () => {
       expect(payload.code).toBe("BrowserError");
       expect(payload.message).toContain("Browser access failed");
     } finally {
+      await resetSdkBrowserPool();
       mock.restore();
     }
   });
