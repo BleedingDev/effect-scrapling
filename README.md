@@ -105,6 +105,10 @@ Operator runbooks:
 - [E0 performance budget](docs/runbooks/e0-performance-budget.md)
 - [E0 operations and rollback drill](docs/runbooks/e0-operations-rollback-drill.md)
 - [E2 extractor orchestration](docs/runbooks/e2-extractor-orchestration.md)
+- [E2 evidence manifest](docs/runbooks/e2-evidence-manifest.md)
+- [E2 snapshot builder](docs/runbooks/e2-snapshot-builder.md)
+- [E2 snapshot diff engine](docs/runbooks/e2-snapshot-diff-engine.md)
+- [E2 golden fixtures](docs/runbooks/e2-golden-fixtures.md)
 - [E2 security review](docs/runbooks/e2-security-review.md)
 - [E2 performance budget](docs/runbooks/e2-performance-budget.md)
 - [E3 HTTP access execution](docs/runbooks/e3-http-access-execution.md)
@@ -300,6 +304,10 @@ bun run check:e2-performance-budget
 Supporting runbooks:
 
 - [`docs/runbooks/e2-extractor-orchestration.md`](docs/runbooks/e2-extractor-orchestration.md)
+- [`docs/runbooks/e2-evidence-manifest.md`](docs/runbooks/e2-evidence-manifest.md)
+- [`docs/runbooks/e2-snapshot-builder.md`](docs/runbooks/e2-snapshot-builder.md)
+- [`docs/runbooks/e2-snapshot-diff-engine.md`](docs/runbooks/e2-snapshot-diff-engine.md)
+- [`docs/runbooks/e2-golden-fixtures.md`](docs/runbooks/e2-golden-fixtures.md)
 - [`docs/runbooks/e2-security-review.md`](docs/runbooks/e2-security-review.md)
 - [`docs/runbooks/e2-performance-budget.md`](docs/runbooks/e2-performance-budget.md)
 

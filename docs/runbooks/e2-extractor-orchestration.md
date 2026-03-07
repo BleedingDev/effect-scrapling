@@ -152,3 +152,15 @@ bun run check:e2-sdk-consumer
    - defaulting to unbounded selector fallback
    - echoing captured secret values in assertion failures
    - introducing manual `_tag`, `instanceof`, or unsafe casts
+
+## Specialized E2 Runbooks
+
+Use the narrower runbooks below when the integrated orchestration flow already
+identified the failing subsystem and you need deeper operational guidance:
+
+- `docs/runbooks/e2-evidence-manifest.md`
+- `docs/runbooks/e2-snapshot-builder.md`
+- `docs/runbooks/e2-snapshot-diff-engine.md`
+- `docs/runbooks/e2-golden-fixtures.md`
+- `docs/runbooks/e2-security-review.md`
+- `docs/runbooks/e2-performance-budget.md`
