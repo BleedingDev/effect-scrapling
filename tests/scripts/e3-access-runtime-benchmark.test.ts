@@ -45,6 +45,29 @@ describe("e3 access runtime benchmark harness", () => {
       expect(recovered.attempts).toBe(2);
       expect(recovered.artifactCount).toBe(4);
 
+      let bodyReadAttempts = 0;
+      const recoveredBodyRead = yield* runRetryRecovery({
+        fetchImpl: async () => {
+          bodyReadAttempts += 1;
+
+          if (bodyReadAttempts === 1) {
+            return Object.assign(new Response("<html></html>", { status: 200 }), {
+              text: async () => Promise.reject(new Error("transient body read")),
+            });
+          }
+
+          return new Response("<html><body>retry recovered</body></html>", {
+            status: 200,
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+            },
+          });
+        },
+      });
+
+      expect(recoveredBodyRead.attempts).toBe(2);
+      expect(recoveredBodyRead.artifactCount).toBe(4);
+
       let failedAttempts = 0;
       const failureMessage = yield* runRetryRecovery({
         accessPolicy: {

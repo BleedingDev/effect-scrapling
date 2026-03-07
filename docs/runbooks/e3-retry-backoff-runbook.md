@@ -56,11 +56,11 @@ What the runtime does now:
 
 HTTP-specific scope:
 
-- `captureHttpArtifacts` wraps the outbound `fetch(...)` call in the retry
-  runtime.
-- The later `response.text()` body read is protected by timeout policy, but it
-  is not inside the retry loop. A body-read failure is terminal in the current
-  implementation.
+- `captureHttpArtifacts` wraps both the outbound `fetch(...)` call and the
+  later `response.text()` body read inside the bounded retry runtime.
+- A retryable body-read failure therefore schedules a fresh HTTP capture
+  attempt as long as `policy.maxAttempts` has budget remaining.
+- `PolicyViolation` during body read remains terminal and is not retried.
 - HTTP access rejects plans that:
   - do not contain a `capture` step
   - require browser resources
@@ -292,7 +292,6 @@ Do not rely on these signals today:
 
 - a persisted retry ledger
 - a final exhaustion report from `executeWithAccessRetry`
-- body-read retries after a successful HTTP response
 - jitter or randomized spread between retries
 
 ## Troubleshooting
@@ -304,14 +303,15 @@ Check these first:
 - the failure is actually `ProviderUnavailable` or `TimeoutError`
 - `accessPolicy.maxRetries` is greater than `0`
 - the generated `RunPlan.maxAttempts` is greater than `1`
-- the failure happened during `fetch`, not during `response.text()`
+- the failure is not a terminal `PolicyViolation` surfaced during `fetch` or
+  `response.text()`
 
 Common terminal cases:
 
 - `PolicyViolation`
 - missing `capture` step in the plan
 - browser-required plans passed into the HTTP runtime
-- response body read failures after the HTTP request already succeeded
+- body-read failures that already arrived as `PolicyViolation`
 
 ### Retry counts look off by one
 

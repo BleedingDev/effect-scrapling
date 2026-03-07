@@ -1,7 +1,9 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
+import * as cheerio from "cheerio";
 import { Deferred, Effect, Exit, Layer, Ref, Schema } from "effect";
 import { makeBrowserCrashTelemetry, type BrowserLeakDetector } from "./browser-leak-detection.ts";
+import { ArtifactVisibilitySchema } from "./budget-lease-artifact.ts";
 import {
   type ArtifactMetadataRecord,
   ArtifactMetadataRecordSchema,
@@ -10,7 +12,7 @@ import {
 import { BrowserAccess } from "./service-topology.ts";
 import type { RunPlan } from "./run-state.ts";
 import { RunPlanSchema } from "./run-state.ts";
-import { IsoDateTimeSchema } from "./schema-primitives.ts";
+import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
 import {
   PolicyViolation,
   ProviderUnavailable,
@@ -21,6 +23,16 @@ import {
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const NonNegativeFiniteSchema = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0));
 const BrowserPayloadEncodingSchema = Schema.Literals(["utf8", "base64"] as const);
+const BrowserArtifactExportKindSchema = Schema.Literals([
+  "renderedDom",
+  "screenshot",
+  "networkSummary",
+  "timings",
+] as const);
+const BrowserArtifactExportMediaTypeSchema = Schema.Literals([
+  "application/json",
+  "text/plain",
+] as const);
 
 export class BrowserCapturePayload extends Schema.Class<BrowserCapturePayload>(
   "BrowserCapturePayload",
@@ -69,9 +81,28 @@ export class BrowserCaptureBundle extends Schema.Class<BrowserCaptureBundle>(
   payloads: Schema.Array(BrowserCapturePayload),
 }) {}
 
+export class BrowserArtifactExport extends Schema.Class<BrowserArtifactExport>(
+  "BrowserArtifactExport",
+)({
+  artifactId: CanonicalIdentifierSchema,
+  kind: BrowserArtifactExportKindSchema,
+  sourceVisibility: ArtifactVisibilitySchema,
+  mediaType: BrowserArtifactExportMediaTypeSchema,
+  body: Schema.String,
+}) {}
+
+export class BrowserArtifactExportBundle extends Schema.Class<BrowserArtifactExportBundle>(
+  "BrowserArtifactExportBundle",
+)({
+  capturedAt: IsoDateTimeSchema,
+  exports: Schema.Array(BrowserArtifactExport),
+}) {}
+
 export const BrowserCapturePayloadSchema = BrowserCapturePayload;
 export const BrowserNetworkSummarySchema = BrowserNetworkSummary;
 export const BrowserCaptureBundleSchema = BrowserCaptureBundle;
+export const BrowserArtifactExportSchema = BrowserArtifactExport;
+export const BrowserArtifactExportBundleSchema = BrowserArtifactExportBundle;
 
 type BrowserLaunchError = ProviderUnavailable | RenderCrashError;
 type BrowserCapturePayloadEncoding = Schema.Schema.Type<typeof BrowserPayloadEncodingSchema>;
@@ -178,6 +209,13 @@ type BrowserProcessLaunchDecision =
 const TEXT_ENCODER = new TextEncoder();
 const idleState: BrowserRuntimeState = { status: "idle" };
 const closedState: BrowserRuntimeState = { status: "closed" };
+const redactedExportValue = "[REDACTED]";
+const strippedScreenshotMessage = "Binary screenshot payload omitted from redacted export.";
+const sensitiveArtifactNamePattern =
+  /(?:authorization|cookie|token|secret|session|api[-_]?key|password|credential|csrf)/iu;
+const sensitiveInlineValuePattern =
+  /((?:authorization|cookie|token|secret|session|api[-_]?key|password|credential|csrf)[^:=\n]{0,32}\s*[:=]\s*)(\S+)/giu;
+const bearerTokenPattern = /\bBearer\s+\S+/giu;
 const idleBrowserProcessState = {
   status: "idle",
   nextGeneration: 0,
@@ -227,6 +265,104 @@ function ensureBrowserCapturePlan(plan: RunPlan) {
 
 function utf8Bytes(value: string) {
   return TEXT_ENCODER.encode(value);
+}
+
+function normalizeText(value: string) {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+function sanitizeInlineSecrets(value: string) {
+  return value
+    .replace(sensitiveInlineValuePattern, (_, prefix: string) => `${prefix}${redactedExportValue}`)
+    .replace(bearerTokenPattern, `Bearer ${redactedExportValue}`);
+}
+
+function sanitizeArtifactUrl(value: string) {
+  try {
+    const parsed = new URL(value);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.hash = "";
+
+    for (const [name] of parsed.searchParams.entries()) {
+      if (sensitiveArtifactNamePattern.test(name)) {
+        parsed.searchParams.set(name, redactedExportValue);
+      }
+    }
+
+    return parsed.toString();
+  } catch {
+    return value;
+  }
+}
+
+function encodeSanitizedNetworkSummary(
+  summary: Schema.Schema.Type<typeof BrowserNetworkSummarySchema>,
+) {
+  const sanitized = Schema.decodeUnknownSync(BrowserNetworkSummarySchema)({
+    navigation: summary.navigation.map((entry) => ({
+      ...entry,
+      url: sanitizeArtifactUrl(entry.url),
+    })),
+    resources: summary.resources.map((entry) => ({
+      ...entry,
+      url: sanitizeArtifactUrl(entry.url),
+    })),
+  });
+
+  return `${JSON.stringify(Schema.encodeSync(BrowserNetworkSummarySchema)(sanitized), null, 2)}\n`;
+}
+
+function summarizeRenderedDomForExport(renderedDom: string) {
+  const $ = cheerio.load(renderedDom);
+  $("script, style, noscript, template").remove();
+
+  const linkTargets: string[] = [];
+  const seenTargets = new Set<string>();
+
+  for (const node of $("a[href], link[href], img[src], form[action]").toArray()) {
+    const target =
+      $(node).attr("href") ?? $(node).attr("src") ?? $(node).attr("action") ?? undefined;
+
+    if (target === undefined || target.trim() === "") {
+      continue;
+    }
+
+    const sanitizedTarget = sanitizeArtifactUrl(target.trim());
+    if (!seenTargets.has(sanitizedTarget)) {
+      seenTargets.add(sanitizedTarget);
+      linkTargets.push(sanitizedTarget);
+    }
+  }
+
+  const textPreview = sanitizeInlineSecrets(normalizeText($("body").text() || $.root().text()));
+  const hiddenFieldCount = $("input[type='hidden'][value], meta[content]").length;
+  const title = normalizeText($("title").first().text());
+
+  return `${JSON.stringify(
+    {
+      title: title === "" ? null : title,
+      textPreview: textPreview === "" ? null : textPreview.slice(0, 400),
+      linkTargets,
+      hiddenFieldCount,
+    },
+    null,
+    2,
+  )}\n`;
+}
+
+function summarizeScreenshotForExport(artifact: ArtifactMetadataRecord) {
+  return `${JSON.stringify(
+    {
+      artifactId: artifact.artifactId,
+      mediaType: artifact.mediaType,
+      sizeBytes: artifact.sizeBytes,
+      sha256: artifact.sha256,
+      note: strippedScreenshotMessage,
+    },
+    null,
+    2,
+  )}\n`;
 }
 
 function sha256(value: Uint8Array) {
@@ -610,11 +746,7 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
                 keySuffix: "network-summary.json",
                 mediaType: "application/json",
                 encoding: "utf8",
-                body: `${JSON.stringify(
-                  Schema.encodeSync(BrowserNetworkSummarySchema)(networkSummary),
-                  null,
-                  2,
-                )}\n`,
+                body: encodeSanitizedNetworkSummary(networkSummary),
               });
               const timingsPayload = buildCapturePayload({
                 plan,
@@ -700,6 +832,56 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
     );
   },
 );
+
+export function buildRedactedBrowserArtifactExports(
+  bundle: Schema.Schema.Type<typeof BrowserCaptureBundleSchema>,
+) {
+  const payloadsByLocator = new Map(
+    bundle.payloads.map(
+      (payload) => [`${payload.locator.namespace}/${payload.locator.key}`, payload] as const,
+    ),
+  );
+
+  return Schema.decodeUnknownSync(BrowserArtifactExportBundleSchema)({
+    capturedAt: bundle.capturedAt,
+    exports: bundle.artifacts.map((artifact) => {
+      const payload = payloadsByLocator.get(
+        `${artifact.locator.namespace}/${artifact.locator.key}`,
+      );
+      const body =
+        payload === undefined
+          ? `${JSON.stringify(
+              {
+                artifactId: artifact.artifactId,
+                note: "Artifact payload was unavailable for redacted export.",
+              },
+              null,
+              2,
+            )}\n`
+          : artifact.kind === "renderedDom"
+            ? summarizeRenderedDomForExport(payload.body)
+            : artifact.kind === "screenshot"
+              ? summarizeScreenshotForExport(artifact)
+              : artifact.kind === "networkSummary"
+                ? encodeSanitizedNetworkSummary(
+                    Schema.decodeUnknownSync(BrowserNetworkSummarySchema)(JSON.parse(payload.body)),
+                  )
+                : payload.body;
+      const mediaType =
+        artifact.kind === "renderedDom" || artifact.kind === "screenshot"
+          ? "application/json"
+          : "application/json";
+
+      return Schema.decodeUnknownSync(BrowserArtifactExportSchema)({
+        artifactId: artifact.artifactId,
+        kind: artifact.kind,
+        sourceVisibility: artifact.visibility,
+        mediaType,
+        body,
+      });
+    }),
+  });
+}
 
 export function makePlaywrightBrowserAccessRuntime(options?: {
   readonly engine?: BrowserAccessEngine;

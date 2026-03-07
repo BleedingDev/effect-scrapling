@@ -14,6 +14,7 @@ import {
 } from "../../libs/foundation/core/src/http-access-runtime.ts";
 import { RunPlanSchema } from "../../libs/foundation/core/src/run-state.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
+import { PolicyViolation } from "../../libs/foundation/core/src/tagged-errors.ts";
 import { TargetProfileSchema } from "../../libs/foundation/core/src/target-profile.ts";
 
 const FIXED_DATE = "2026-03-06T10:30:00.000Z";
@@ -635,23 +636,6 @@ describe("foundation-core access runtime", () => {
         expect(providerFailureMessage).not.toBe("unexpected-success");
         expect(providerFailureMessage).toContain("network down");
 
-        const bodyReadFailureMessage = yield* captureHttpArtifacts(
-          decision.plan,
-          async () =>
-            Object.assign(new Response("<html></html>", { status: 200 }), {
-              text: async () => Promise.reject(new Error("body read failed")),
-            }),
-          () => new Date(FIXED_DATE),
-        ).pipe(
-          Effect.match({
-            onFailure: ({ message }) => message,
-            onSuccess: () => "unexpected-success",
-          }),
-        );
-
-        expect(bodyReadFailureMessage).not.toBe("unexpected-success");
-        expect(bodyReadFailureMessage).toContain("body read failed");
-
         const noCapturePlan = Schema.decodeUnknownSync(RunPlanSchema)({
           ...decision.plan,
           steps: [
@@ -681,5 +665,97 @@ describe("foundation-core access runtime", () => {
         expect(missingCaptureMessage).not.toBe("unexpected-success");
         expect(missingCaptureMessage).toContain("requires a capture step");
       }),
+  );
+
+  it.effect("retries transient body-read failures through a fresh HTTP capture attempt", () =>
+    Effect.gen(function* () {
+      const decision = yield* planAccessExecution({
+        target,
+        pack,
+        accessPolicy: httpPolicy,
+        createdAt: FIXED_DATE,
+      });
+      const decisions: string[] = [];
+      let attempts = 0;
+
+      const bundle = yield* captureHttpArtifacts(
+        decision.plan,
+        async () => {
+          attempts += 1;
+
+          if (attempts === 1) {
+            return Object.assign(new Response("<html></html>", { status: 200 }), {
+              text: async () => Promise.reject(new Error("body read failed")),
+            });
+          }
+
+          return new Response("<html><body>recovered body</body></html>", {
+            status: 200,
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+            },
+          });
+        },
+        () => new Date(FIXED_DATE),
+        undefined,
+        (decision) =>
+          Effect.sync(() => {
+            decisions.push(decision.reason);
+          }),
+      );
+
+      expect(attempts).toBe(2);
+      expect(decisions).toEqual(["body read failed"]);
+      expect(bundle.artifacts).toHaveLength(4);
+      expect(
+        bundle.payloads.find(({ locator }) => locator.key === `${decision.plan.id}/body.html`)
+          ?.body,
+      ).toContain("recovered body");
+    }),
+  );
+
+  it.effect("does not retry non-retryable body-read failures", () =>
+    Effect.gen(function* () {
+      const decision = yield* planAccessExecution({
+        target,
+        pack,
+        accessPolicy: httpPolicy,
+        createdAt: FIXED_DATE,
+      });
+      const decisions: string[] = [];
+      let attempts = 0;
+
+      const failureMessage = yield* captureHttpArtifacts(
+        decision.plan,
+        async () => {
+          attempts += 1;
+
+          return Object.assign(new Response("<html></html>", { status: 200 }), {
+            text: async () =>
+              Promise.reject(
+                new PolicyViolation({
+                  message: "body policy violation",
+                }),
+              ),
+          });
+        },
+        () => new Date(FIXED_DATE),
+        undefined,
+        (decision) =>
+          Effect.sync(() => {
+            decisions.push(decision.reason);
+          }),
+      ).pipe(
+        Effect.match({
+          onFailure: ({ message }) => message,
+          onSuccess: () => "unexpected-success",
+        }),
+      );
+
+      expect(failureMessage).not.toBe("unexpected-success");
+      expect(failureMessage).toContain("body policy violation");
+      expect(attempts).toBe(1);
+      expect(decisions).toEqual([]);
+    }),
   );
 });

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer, Predicate, Schema } from "effect";
 import {
   AccessRetryDecisionSchema,
   deriveAccessRetryPolicy,
@@ -12,7 +12,7 @@ import { ArtifactMetadataRecordSchema, StorageLocatorSchema } from "./config-sto
 import { RunPlanSchema } from "./run-state.ts";
 import { HttpAccess } from "./service-topology.ts";
 import { IsoDateTimeSchema } from "./schema-primitives.ts";
-import { PolicyViolation, ProviderUnavailable } from "./tagged-errors.ts";
+import { PolicyViolation, ProviderUnavailable, TimeoutError } from "./tagged-errors.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 
@@ -53,6 +53,41 @@ function readCauseMessage(cause: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function hasFailureMessage(cause: unknown): cause is { readonly message: string } {
+  if (typeof cause !== "object" || cause === null) {
+    return false;
+  }
+
+  return Predicate.hasProperty(cause, "message") && typeof cause.message === "string";
+}
+
+function toHttpAccessFailure(
+  cause: unknown,
+  fallback: string,
+): PolicyViolation | ProviderUnavailable | TimeoutError {
+  if (Predicate.isTagged("ProviderUnavailable")(cause) && hasFailureMessage(cause)) {
+    return new ProviderUnavailable({
+      message: cause.message,
+    });
+  }
+
+  if (Predicate.isTagged("TimeoutError")(cause) && hasFailureMessage(cause)) {
+    return new TimeoutError({
+      message: cause.message,
+    });
+  }
+
+  if (Predicate.isTagged("PolicyViolation")(cause) && hasFailureMessage(cause)) {
+    return new PolicyViolation({
+      message: cause.message,
+    });
+  }
+
+  return new ProviderUnavailable({
+    message: readCauseMessage(cause, fallback),
+  });
 }
 
 function shouldSanitizeHeader(name: string) {
@@ -164,41 +199,41 @@ export function captureHttpArtifacts(
 
     const startedAt = perfNow();
     const retryPolicy = yield* deriveAccessRetryPolicy(decodedPlan);
-    const response = yield* executeWithAccessRetry({
+    const capture = yield* executeWithAccessRetry({
       policy: retryPolicy,
       effect: () =>
-        tryAbortableAccess({
-          policy: {
-            timeoutMs: decodedPlan.timeoutMs,
-            timeoutMessage: `HTTP access timed out for ${decodedPlan.entryUrl}.`,
-          },
-          try: (signal) =>
-            fetchImpl(decodedPlan.entryUrl, {
-              method: "GET",
-              headers: requestHeaders,
-              signal,
+        Effect.gen(function* () {
+          const response = yield* tryAbortableAccess({
+            policy: {
+              timeoutMs: decodedPlan.timeoutMs,
+              timeoutMessage: `HTTP access timed out for ${decodedPlan.entryUrl}.`,
+            },
+            try: (signal) =>
+              fetchImpl(decodedPlan.entryUrl, {
+                method: "GET",
+                headers: requestHeaders,
+                signal,
+              }),
+            catch: (cause) => toHttpAccessFailure(cause, "HTTP access request failed."),
+          });
+          const body = yield* withAccessTimeout(
+            Effect.tryPromise({
+              try: () => response.text(),
+              catch: (cause) =>
+                toHttpAccessFailure(cause, "HTTP access response body could not be read."),
             }),
-          catch: (cause) =>
-            new ProviderUnavailable({
-              message: readCauseMessage(cause, "HTTP access request failed."),
-            }),
+            {
+              timeoutMs: decodedPlan.timeoutMs,
+              timeoutMessage: `HTTP access body read timed out for ${decodedPlan.entryUrl}.`,
+            },
+          );
+
+          return { body, response };
         }),
       shouldRetry: isRetryableAccessFailure,
       onDecision: onRetryDecision,
     }).pipe(Effect.map(({ value }) => value));
-    const body = yield* withAccessTimeout(
-      Effect.tryPromise({
-        try: () => response.text(),
-        catch: (cause) =>
-          new ProviderUnavailable({
-            message: readCauseMessage(cause, "HTTP access response body could not be read."),
-          }),
-      }),
-      {
-        timeoutMs: decodedPlan.timeoutMs,
-        timeoutMessage: `HTTP access body read timed out for ${decodedPlan.entryUrl}.`,
-      },
-    );
+    const { body, response } = capture;
     const durationMs = Math.max(0, perfNow() - startedAt);
     const storedAt = now().toISOString();
     const responseMediaType = response.headers.get("content-type") ?? "application/octet-stream";
