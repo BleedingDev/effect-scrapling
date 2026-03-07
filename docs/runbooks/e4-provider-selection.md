@@ -128,6 +128,7 @@ Useful entrypoints and related runbooks:
 - `examples/e3-capability-slice.ts`
 - `scripts/benchmarks/e3-access-runtime.ts`
 - `docs/artifacts/e3-access-runtime-baseline.json`
+- `docs/runbooks/e3-access-runtime-benchmark.md`
 - `docs/runbooks/e1-access-policy.md`
 - `docs/runbooks/e1-tagged-errors.md`
 - `docs/runbooks/e3-retry-backoff-runbook.md`
@@ -233,6 +234,10 @@ Current expectations from `tests/examples/e3-capability-slice.test.ts`:
   snapshot is not an input to the planner selection heuristic
 
 ### Check the HTTP-path performance harness
+
+Use `docs/runbooks/e3-access-runtime-benchmark.md` when you need the full
+benchmark command contract, artifact lifecycle, or rollout/rollback procedure.
+This section stays focused on the provider-selection signal only.
 
 ```bash
 bun run scripts/benchmarks/e3-access-runtime.ts \

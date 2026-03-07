@@ -1,13 +1,20 @@
 import { describe, expect, it } from "@effect-native/bun-test";
+import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
 import { AccessPreviewRequestSchema, ExtractRunRequestSchema } from "../../src/sdk/schemas.ts";
+import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import {
   accessPreview,
   extractRun,
   FetchService,
   type FetchClient,
+  renderPreview,
   runDoctor,
 } from "../../src/sdk/scraper.ts";
+
+function resetSdkBrowserPool() {
+  return Effect.runPromise(resetBrowserPoolForTests());
+}
 
 describe("scraper guardrails", () => {
   const mockFetch: FetchClient = async (_input, _init) =>
@@ -81,6 +88,89 @@ describe("scraper guardrails", () => {
       );
     }),
   );
+
+  it("renderPreview produces a typed browser status envelope and deterministic artifact bundle", async () => {
+    await resetSdkBrowserPool();
+    mock.module("playwright", () => ({
+      chromium: {
+        launch: async () => ({
+          newContext: async (_options: { readonly userAgent: string }) => ({
+            newPage: async () => ({
+              route: async () => {},
+              goto: async () => ({
+                status: () => 200,
+                allHeaders: async () => ({
+                  "content-type": "text/html; charset=utf-8",
+                }),
+              }),
+              waitForLoadState: async () => {},
+              content: async () =>
+                '<html><head><title>Effect Scrapling</title></head><body><a href="/products/sku-123">Product</a><input type="hidden" value="secret" /><main> Rendered browser preview body </main></body></html>',
+              url: () => "https://example.com/products/sku-123",
+              close: async () => {},
+            }),
+            close: async () => {},
+          }),
+          close: async () => {},
+        }),
+      },
+    }));
+
+    try {
+      const output = await Effect.runPromise(
+        renderPreview({
+          url: "https://example.com/products/sku-123",
+          browser: {
+            waitUntil: "commit",
+            timeoutMs: "450",
+            userAgent: "SDK Browser",
+          },
+        }).pipe(
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ),
+      );
+
+      expect(output.ok).toBe(true);
+      expect(output.command).toBe("render preview");
+      expect(output.data.mode).toBe("browser");
+      expect(output.data.status).toEqual({
+        code: 200,
+        ok: true,
+        redirected: false,
+        family: "success",
+      });
+      expect(output.data.artifacts.map(({ kind }) => kind)).toEqual([
+        "navigation",
+        "renderedDom",
+        "timings",
+      ]);
+      expect(output.data.artifacts[0]).toEqual({
+        kind: "navigation",
+        mediaType: "application/json",
+        finalUrl: "https://example.com/products/sku-123",
+        contentType: "text/html; charset=utf-8",
+        contentLength: 191,
+      });
+      expect(output.data.artifacts[1]).toEqual({
+        kind: "renderedDom",
+        mediaType: "application/json",
+        title: "Effect Scrapling",
+        textPreview: "Product Rendered browser preview body",
+        linkTargets: ["https://example.com/products/sku-123"],
+        hiddenFieldCount: 1,
+      });
+      expect(output.data.artifacts[2]).toMatchObject({
+        kind: "timings",
+        mediaType: "application/json",
+      });
+      expect(output.data.artifacts[2]?.durationMs).toBeGreaterThanOrEqual(1);
+    } finally {
+      await resetSdkBrowserPool();
+      mock.restore();
+    }
+  });
 
   it("trims request string literals before schema validation", () => {
     expect(
@@ -181,5 +271,19 @@ describe("scraper guardrails", () => {
         expect(output.data.count).toBe(2);
         expect(output.data.values).toEqual(["Hello", "World"]);
       }),
+  );
+
+  it.effect("renderPreview rejects malformed payloads with typed errors", () =>
+    Effect.gen(function* () {
+      const failureMessage = yield* renderPreview({}).pipe(
+        Effect.flatMap(() => Effect.die(new Error("Expected InvalidInputError failure"))),
+        Effect.catchTag("InvalidInputError", ({ message }) => Effect.succeed(message)),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+        Effect.orDie,
+      );
+      expect(failureMessage).toContain("Invalid render preview payload");
+    }),
   );
 });

@@ -56,12 +56,24 @@ function normalizeSharedPayload(payload: JsonObject): JsonObject {
   };
 }
 
-export function normalizePayload(kind: "access" | "extract", rawPayload: unknown): JsonObject {
+export function normalizePayload(
+  kind: "access" | "extract" | "render",
+  rawPayload: unknown,
+): JsonObject {
   const payload = decodeJsonObject("Request body", rawPayload);
   const sharedPayload = normalizeSharedPayload(payload);
 
   if (kind === "access") {
     return sharedPayload;
+  }
+
+  if (kind === "render") {
+    return {
+      url: sharedPayload.url,
+      timeoutMs: sharedPayload.timeoutMs,
+      userAgent: sharedPayload.userAgent,
+      browser: sharedPayload.browser,
+    };
   }
 
   return {

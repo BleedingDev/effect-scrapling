@@ -1,6 +1,7 @@
 import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from "effect";
 
 const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0));
+const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const NonEmptyTrimmedString = Schema.Trim.check(Schema.isNonEmpty());
 const AccessModeSchema = Schema.Literals(["http", "browser"] as const);
 const BrowserWaitUntilSchema = Schema.Literals([
@@ -94,6 +95,13 @@ export const AccessPreviewRequestSchema = Schema.Struct({
   browser: Schema.optional(BrowserOptionsSchema),
 });
 
+export const RenderPreviewRequestSchema = Schema.Struct({
+  url: NonEmptyTrimmedString,
+  timeoutMs: PositiveIntInputSchema.pipe(Schema.withDecodingDefault(() => DEFAULT_TIMEOUT_MS)),
+  userAgent: Schema.optional(NonEmptyTrimmedString),
+  browser: Schema.optional(BrowserOptionsSchema),
+});
+
 export const ExtractRunRequestSchema = Schema.Struct({
   url: NonEmptyTrimmedString,
   mode: AccessModeInputSchema.pipe(Schema.withDecodingDefault(() => DEFAULT_ACCESS_MODE)),
@@ -120,6 +128,62 @@ export const AccessPreviewResponseSchema = Schema.Struct({
   warnings: Schema.Array(Schema.String),
 });
 
+const RenderPreviewStatusFamilySchema = Schema.Literals([
+  "informational",
+  "success",
+  "redirect",
+  "clientError",
+  "serverError",
+] as const);
+
+const RenderPreviewStatusSchema = Schema.Struct({
+  code: PositiveInt,
+  ok: Schema.Boolean,
+  redirected: Schema.Boolean,
+  family: RenderPreviewStatusFamilySchema,
+});
+
+const RenderPreviewNavigationArtifactSchema = Schema.Struct({
+  kind: Schema.Literal("navigation"),
+  mediaType: Schema.Literal("application/json"),
+  finalUrl: Schema.String,
+  contentType: Schema.String,
+  contentLength: PositiveInt,
+});
+
+const RenderPreviewRenderedDomArtifactSchema = Schema.Struct({
+  kind: Schema.Literal("renderedDom"),
+  mediaType: Schema.Literal("application/json"),
+  title: Schema.NullOr(Schema.String),
+  textPreview: Schema.String,
+  linkTargets: Schema.Array(Schema.String),
+  hiddenFieldCount: NonNegativeInt,
+});
+
+const RenderPreviewTimingsArtifactSchema = Schema.Struct({
+  kind: Schema.Literal("timings"),
+  mediaType: Schema.Literal("application/json"),
+  durationMs: PositiveInt,
+});
+
+export const RenderPreviewArtifactBundleSchema = Schema.Tuple([
+  RenderPreviewNavigationArtifactSchema,
+  RenderPreviewRenderedDomArtifactSchema,
+  RenderPreviewTimingsArtifactSchema,
+]);
+
+export const RenderPreviewResponseSchema = Schema.Struct({
+  ok: Schema.Literal(true),
+  command: Schema.Literal("render preview"),
+  data: Schema.Struct({
+    url: Schema.String,
+    mode: Schema.Literal("browser"),
+    status: RenderPreviewStatusSchema,
+    artifacts: RenderPreviewArtifactBundleSchema,
+  }),
+  warnings: Schema.Array(Schema.String),
+});
+
 export const ExtractRunResponseSchema = Schema.Struct({
   ok: Schema.Literal(true),
   command: Schema.Literal("extract run"),
@@ -135,8 +199,10 @@ export const ExtractRunResponseSchema = Schema.Struct({
 });
 
 export type AccessPreviewRequest = Schema.Schema.Type<typeof AccessPreviewRequestSchema>;
+export type RenderPreviewRequest = Schema.Schema.Type<typeof RenderPreviewRequestSchema>;
 export type ExtractRunRequest = Schema.Schema.Type<typeof ExtractRunRequestSchema>;
 export type AccessPreviewResponse = Schema.Schema.Type<typeof AccessPreviewResponseSchema>;
+export type RenderPreviewResponse = Schema.Schema.Type<typeof RenderPreviewResponseSchema>;
 export type ExtractRunResponse = Schema.Schema.Type<typeof ExtractRunResponseSchema>;
 export type AccessMode = Schema.Schema.Type<typeof AccessModeSchema>;
 export type BrowserWaitUntil = Schema.Schema.Type<typeof BrowserWaitUntilSchema>;

@@ -41,6 +41,11 @@ Playwright scripts and strict `bun install --frozen-lockfile`.
 
 Browser pool controls, queue/backpressure interpretation, and rollback guidance
 live in [`docs/runbooks/e4-browser-pool-controls.md`](docs/runbooks/e4-browser-pool-controls.md).
+BrowserAccess startup, scoped sharing, cleanup, troubleshooting, and rollback
+guidance live in
+[`docs/runbooks/e4-browser-access-lifecycle.md`](docs/runbooks/e4-browser-access-lifecycle.md).
+Render preview command, API route, and SDK usage guidance live in
+[`docs/runbooks/e4-render-preview.md`](docs/runbooks/e4-render-preview.md).
 Browser capture completeness, redacted export verification, and crash recovery
 guidance live in
 [`docs/runbooks/e4-browser-capture-bundle.md`](docs/runbooks/e4-browser-capture-bundle.md),
@@ -100,6 +105,11 @@ Operator runbooks:
 ./effect-scrapling access preview \
   --url "https://example.com"
 
+./effect-scrapling render preview \
+  --url "https://example.com" \
+  --wait-until networkidle \
+  --wait-ms 300
+
 ./effect-scrapling extract run \
   --url "https://example.com" \
   --selector "h1"
@@ -131,6 +141,7 @@ Endpoints:
 - `GET /health`
 - `GET /doctor`
 - `POST /access/preview`
+- `POST /render/preview`
 - `POST /extract/run`
 
 Example:
@@ -141,6 +152,10 @@ curl -sS http://127.0.0.1:3000/health
 curl -sS -X POST http://127.0.0.1:3000/access/preview \
   -H 'content-type: application/json' \
   -d '{"url":"https://example.com"}'
+
+curl -sS -X POST http://127.0.0.1:3000/render/preview \
+  -H 'content-type: application/json' \
+  -d '{"url":"https://example.com","browser":{"wait-until":"networkidle","timeout-ms":"300"}}'
 
 curl -sS -X POST http://127.0.0.1:3000/extract/run \
   -H 'content-type: application/json' \
@@ -154,7 +169,7 @@ provided fetch layer:
 
 ```ts
 import { Effect } from "effect";
-import { extractRun, FetchServiceLive } from "effect-scrapling/sdk";
+import { extractRun, FetchServiceLive, renderPreview } from "effect-scrapling/sdk";
 
 const result = await Effect.runPromise(
   extractRun({
@@ -164,6 +179,18 @@ const result = await Effect.runPromise(
 );
 
 console.log(result.data.values);
+
+const preview = await Effect.runPromise(
+  renderPreview({
+    url: "https://example.com",
+    browser: {
+      waitUntil: "networkidle",
+      timeoutMs: 300,
+    },
+  }).pipe(Effect.provide(FetchServiceLive))
+);
+
+console.log(preview.data.status);
 ```
 
 In-repo demo for the public consumer integration:
@@ -192,9 +219,11 @@ To run the in-repo example:
 
 Public SDK contract notes:
 
-- `accessPreview` and `extractRun` need a `FetchService`; use
+- `accessPreview`, `renderPreview`, and `extractRun` need a `FetchService`; use
   `FetchServiceLive` for live HTTP access or provide a custom `FetchService` in
   tests and examples
+- `renderPreview` is the browser-only public preview path with a typed status
+  envelope and deterministic artifact bundle
 - Browser-mode consumers need Playwright plus an installed Chromium browser
 - Consumer code should import from `effect-scrapling/sdk`, never `src/sdk/*`
 
@@ -247,3 +276,23 @@ Performance and recovery evidence for the same slice:
 - `docs/artifacts/e0-performance-budget-baseline.json`
 - `docs/artifacts/e0-rollback-drill.md`
 - `docs/artifacts/e0-post-validation-triage.md`
+
+## E3 Access Runtime Benchmark
+
+Run the deterministic HTTP-path throughput gate when you need current operator
+evidence for E3 planner, capture, and retry-recovery latency:
+
+```bash
+bun run check:e3-access-runtime
+```
+
+The default command compares the current run against
+`docs/artifacts/e3-access-runtime-baseline.json` and overwrites
+`docs/artifacts/e3-access-runtime-scorecard.json`.
+
+Operator workflow, troubleshooting, and rollback guidance:
+
+- [`docs/runbooks/e3-access-runtime-benchmark.md`](docs/runbooks/e3-access-runtime-benchmark.md)
+- [`docs/runbooks/e3-retry-backoff-runbook.md`](docs/runbooks/e3-retry-backoff-runbook.md)
+- [`docs/runbooks/e3-access-health-runbook.md`](docs/runbooks/e3-access-health-runbook.md)
+- [`docs/runbooks/e4-provider-selection.md`](docs/runbooks/e4-provider-selection.md)

@@ -104,6 +104,7 @@ Useful artifacts and entrypoints:
 - `scripts/benchmarks/e3-access-runtime.ts`
 - `docs/artifacts/e3-access-runtime-baseline.json`
 - `docs/artifacts/e3-access-runtime-scorecard.json`
+- `docs/runbooks/e3-access-runtime-benchmark.md`
 
 ## Practical Execution Examples
 
@@ -149,6 +150,11 @@ What to look for:
 - planner and service plans stay identical
 
 ### Run the retry/backoff benchmark harness
+
+Use `docs/runbooks/e3-access-runtime-benchmark.md` when you need the full
+operator contract for the benchmark command, scorecard lifecycle, and
+rollout/rollback flow. The summary below is limited to the retry-recovery
+signal that matters for this runbook.
 
 ```bash
 bun run benchmark:e3-access-runtime -- --sample-size 3 --warmup 1

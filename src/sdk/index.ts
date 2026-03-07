@@ -3,6 +3,7 @@ export {
   extractRun,
   FetchService,
   FetchServiceLive,
+  renderPreview,
   runDoctor,
   type FetchClient,
 } from "./scraper.ts";
@@ -12,6 +13,9 @@ export {
   BrowserOptionsSchema,
   ExtractRunRequestSchema,
   ExtractRunResponseSchema,
+  RenderPreviewArtifactBundleSchema,
+  RenderPreviewRequestSchema,
+  RenderPreviewResponseSchema,
   type AccessMode,
   type AccessPreviewRequest,
   type AccessPreviewResponse,
@@ -19,5 +23,7 @@ export {
   type BrowserWaitUntil,
   type ExtractRunRequest,
   type ExtractRunResponse,
+  type RenderPreviewRequest,
+  type RenderPreviewResponse,
 } from "./schemas.ts";
 export { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors.ts";

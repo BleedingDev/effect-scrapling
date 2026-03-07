@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { executeCli } from "../../src/standalone.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
+import { RenderPreviewResponseSchema } from "../../src/sdk/schemas.ts";
 import type { FetchClient } from "../../src/sdk/scraper.ts";
 
 function mockHtmlFetch(body: string): FetchClient {
@@ -190,6 +191,97 @@ describe("cli app", () => {
         "https://example.com/articles/effect-scrapling",
         "--mode",
         "browser",
+      ]);
+      const payload = JSON.parse(result.output);
+
+      expect(result.exitCode).toBe(1);
+      expect(payload.code).toBe("BrowserError");
+      expect(payload.message).toContain("Browser access failed");
+    } finally {
+      await resetSdkBrowserPool();
+      mock.restore();
+    }
+  });
+
+  it("executes render preview through the CLI boundary with a typed artifact bundle", async () => {
+    await resetSdkBrowserPool();
+    mock.module("playwright", () => ({
+      chromium: {
+        launch: async () => ({
+          newContext: async (_options: { readonly userAgent: string }) => ({
+            newPage: async () => ({
+              route: async () => {},
+              goto: async () => ({
+                status: () => 200,
+                allHeaders: async () => ({
+                  "content-type": "text/html; charset=utf-8",
+                }),
+              }),
+              waitForLoadState: async () => {},
+              content: async () =>
+                '<html><head><title>Rendered Preview</title></head><body><a href="/products/sku-123">Product</a><input type="hidden" value="secret" /><main> Browser policy preview </main></body></html>',
+              url: () => "https://example.com/products/sku-123",
+              close: async () => {},
+            }),
+            close: async () => {},
+          }),
+          close: async () => {},
+        }),
+      },
+    }));
+
+    try {
+      const result = await executeCli([
+        "render",
+        "preview",
+        "--url",
+        "https://example.com/products/sku-123",
+        "--waitUntil",
+        "commit",
+        "--browserTimeoutMs",
+        "450",
+        "--browserUserAgent",
+        "CLI Browser",
+      ]);
+      const payload = JSON.parse(result.output);
+      const preview = Schema.decodeUnknownSync(RenderPreviewResponseSchema)(payload);
+
+      expect(result.exitCode).toBe(0);
+      expect(preview.command).toBe("render preview");
+      expect(preview.data.mode).toBe("browser");
+      expect(preview.data.status).toEqual({
+        code: 200,
+        ok: true,
+        redirected: false,
+        family: "success",
+      });
+      expect(preview.data.artifacts.map(({ kind }) => kind)).toEqual([
+        "navigation",
+        "renderedDom",
+        "timings",
+      ]);
+    } finally {
+      await resetSdkBrowserPool();
+      mock.restore();
+    }
+  });
+
+  it("maps render-preview BrowserError failures to the CLI error envelope", async () => {
+    await resetSdkBrowserPool();
+    mock.module("playwright", () => ({
+      chromium: {
+        launch: async () => {
+          throw new Error("browser boot failed");
+        },
+      },
+    }));
+
+    try {
+      const result = await executeCli([
+        "render",
+        "preview",
+        "--url",
+        "https://example.com/articles/effect-scrapling",
       ]);
       const payload = JSON.parse(result.output);
 

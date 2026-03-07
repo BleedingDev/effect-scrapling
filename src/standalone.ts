@@ -14,6 +14,7 @@ import {
   FetchService,
   FetchServiceLive,
   type FetchClient,
+  renderPreview,
   runDoctor,
 } from "./sdk/scraper.ts";
 
@@ -27,11 +28,13 @@ const USAGE_TEXT = `effect-scrapling (EffectTS + Bun)
 Usage:
   effect-scrapling doctor
   effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
 
 Examples:
   effect-scrapling access preview --url "https://example.com"
   effect-scrapling access preview --url "https://example.com" --mode browser --wait-until networkidle --wait-ms 300
+  effect-scrapling render preview --url "https://example.com" --wait-until networkidle --wait-ms 300
   effect-scrapling extract run --url "https://example.com" --selector "h1"
   effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --mode browser --wait-until load
 `;
@@ -286,6 +289,46 @@ export async function executeCli(
       if (Object.keys(browser).length > 0) payload.browser = browser;
 
       const result = await runEffect(provideFetchService(accessPreview(payload), fetchClient));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "render" && subcommand === "preview") {
+      const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
+      const timeoutMs = parseNonEmptyString(
+        "timeout-ms",
+        getOption(parsed.options, "timeout-ms", "timeoutMs"),
+      );
+      const userAgent = parseNonEmptyString(
+        "user-agent",
+        getOption(parsed.options, "user-agent", "userAgent"),
+      );
+      const waitUntil = parseNonEmptyString(
+        "wait-until",
+        getOption(parsed.options, "wait-until", "waitUntil"),
+      );
+      const waitMs = parseNonEmptyString(
+        "wait-ms",
+        getOption(parsed.options, "wait-ms", "waitMs", "browser-timeout-ms", "browserTimeoutMs"),
+      );
+      const browserUserAgent = parseNonEmptyString(
+        "browser-user-agent",
+        getOption(parsed.options, "browser-user-agent", "browserUserAgent"),
+      );
+      if (url === undefined) {
+        throw new InvalidInputError({ message: "Missing required option: --url" });
+      }
+
+      const payload: Record<string, unknown> = { url };
+      if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
+      if (userAgent !== undefined) payload.userAgent = userAgent;
+
+      const browser: Record<string, unknown> = {};
+      if (waitUntil !== undefined) browser.waitUntil = waitUntil;
+      if (waitMs !== undefined) browser.timeoutMs = waitMs;
+      if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
+      if (Object.keys(browser).length > 0) payload.browser = browser;
+
+      const result = await runEffect(provideFetchService(renderPreview(payload), fetchClient));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 

@@ -20,6 +20,7 @@ import {
   FetchService,
   FetchServiceLive,
   type FetchClient,
+  renderPreview,
   runDoctor,
 } from "./sdk/scraper.ts";
 
@@ -113,7 +114,13 @@ async function runEffect<A, E>(effect: Effect.Effect<A, E, never>): Promise<A> {
 }
 
 function knownRoutes(): string[] {
-  return ["GET /health", "GET /doctor", "POST /access/preview", "POST /extract/run"];
+  return [
+    "GET /health",
+    "GET /doctor",
+    "POST /access/preview",
+    "POST /render/preview",
+    "POST /extract/run",
+  ];
 }
 
 function provideFetchService<A, E>(
@@ -133,7 +140,7 @@ function provideFetchService<A, E>(
 
 async function runRouteEffect<A>(
   req: Request,
-  kind: "access" | "extract",
+  kind: "access" | "extract" | "render",
   runner: (
     payload: unknown,
   ) => Effect.Effect<
@@ -176,6 +183,10 @@ export async function handleApiRequest(req: Request, fetchClient?: FetchClient):
 
   if (req.method === "POST" && url.pathname === "/access/preview") {
     return runRouteEffect(req, "access", accessPreview, fetchClient);
+  }
+
+  if (req.method === "POST" && url.pathname === "/render/preview") {
+    return runRouteEffect(req, "render", renderPreview, fetchClient);
   }
 
   if (req.method === "POST" && url.pathname === "/extract/run") {

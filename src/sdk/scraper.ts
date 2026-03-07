@@ -14,6 +14,10 @@ import {
   ExtractRunResponseSchema,
   type ExtractRunRequest,
   type ExtractRunResponse,
+  RenderPreviewRequestSchema,
+  RenderPreviewResponseSchema,
+  type RenderPreviewRequest,
+  type RenderPreviewResponse,
 } from "./schemas.ts";
 import { type PlaywrightPage, withPooledBrowserPage } from "./browser-pool.ts";
 import { formatUnknownError } from "./error-guards.ts";
@@ -23,6 +27,8 @@ const MAX_REDIRECTS = 5;
 const DEFAULT_USER_AGENT = "effect-scrapling/0.0.1";
 const DEFAULT_BROWSER_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+const RENDER_PREVIEW_LINK_LIMIT = 8;
+const RENDER_PREVIEW_TEXT_LIMIT = 280;
 const IPV4_SEGMENT_TEXT_SCHEMA = Schema.String.check(Schema.isPattern(/^(?:0|[1-9]\d{0,2})$/u));
 const IPV4_SEGMENT_SCHEMA = Schema.FiniteFromString.check(Schema.isInt())
   .check(Schema.isGreaterThanOrEqualTo(0))
@@ -77,6 +83,94 @@ function resolveHeaders(userAgent?: string): Record<string, string> {
     "user-agent": userAgent ?? DEFAULT_USER_AGENT,
     accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   };
+}
+
+function collapsePreviewText(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+function toPreviewText(value: string): string {
+  return collapsePreviewText(value).slice(0, RENDER_PREVIEW_TEXT_LIMIT);
+}
+
+function sanitizePreviewLink(rawHref: string | undefined, finalUrl: string): string | undefined {
+  if (rawHref === undefined) {
+    return undefined;
+  }
+
+  try {
+    const candidate = new URL(rawHref, finalUrl);
+    if (candidate.protocol !== "http:" && candidate.protocol !== "https:") {
+      return undefined;
+    }
+
+    candidate.username = "";
+    candidate.password = "";
+    candidate.hash = "";
+    return candidate.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveStatusFamily(statusCode: number) {
+  if (statusCode < 200) {
+    return "informational" as const;
+  }
+  if (statusCode < 300) {
+    return "success" as const;
+  }
+  if (statusCode < 400) {
+    return "redirect" as const;
+  }
+  if (statusCode < 500) {
+    return "clientError" as const;
+  }
+  return "serverError" as const;
+}
+
+function buildRenderPreviewArtifacts(page: FetchPageResult) {
+  const $ = cheerio.load(page.html);
+  const titleValue = collapsePreviewText($("title").first().text());
+  const title = titleValue.length === 0 ? null : titleValue;
+  const linkTargets: string[] = [];
+  const seen = new Set<string>();
+
+  for (const node of $("a[href]").toArray()) {
+    const href = sanitizePreviewLink($(node).attr("href"), page.finalUrl);
+    if (href === undefined || seen.has(href)) {
+      continue;
+    }
+
+    seen.add(href);
+    linkTargets.push(href);
+    if (linkTargets.length >= RENDER_PREVIEW_LINK_LIMIT) {
+      break;
+    }
+  }
+
+  return [
+    {
+      kind: "navigation" as const,
+      mediaType: "application/json" as const,
+      finalUrl: page.finalUrl,
+      contentType: page.contentType,
+      contentLength: Math.max(1, page.contentLength),
+    },
+    {
+      kind: "renderedDom" as const,
+      mediaType: "application/json" as const,
+      title,
+      textPreview: toPreviewText($("body").first().text() || $.root().text()),
+      linkTargets,
+      hiddenFieldCount: $("input[type='hidden']").length,
+    },
+    {
+      kind: "timings" as const,
+      mediaType: "application/json" as const,
+      durationMs: page.durationMs,
+    },
+  ] as const;
 }
 
 function parseIpv4Segments(
@@ -540,6 +634,56 @@ export function accessPreview(
       catch: (error) =>
         new ExtractionError({
           message: "Access preview response schema validation failed",
+          details: formatUnknownError(error),
+        }),
+    });
+  });
+}
+
+export function renderPreview(
+  rawPayload: unknown,
+): Effect.Effect<
+  RenderPreviewResponse,
+  InvalidInputError | BrowserError | ExtractionError,
+  FetchService
+> {
+  return Effect.gen(function* () {
+    const request: RenderPreviewRequest = yield* decodeRequest(
+      RenderPreviewRequestSchema,
+      rawPayload,
+      "render preview",
+    );
+    const validatedUrl = yield* parseUserFacingUrl(request.url);
+    const browserUserAgent = request.browser?.userAgent ?? request.userAgent;
+    const page = yield* fetchPageBrowser(validatedUrl, {
+      mode: "browser",
+      timeoutMs: request.browser?.timeoutMs ?? request.timeoutMs,
+      waitUntil: resolveBrowserWaitUntil(request.browser?.waitUntil),
+      ...(browserUserAgent !== undefined ? { userAgent: browserUserAgent } : {}),
+    });
+
+    const response: RenderPreviewResponse = {
+      ok: true,
+      command: "render preview",
+      data: {
+        url: page.url,
+        mode: "browser",
+        status: {
+          code: page.status,
+          ok: page.status < 400,
+          redirected: page.finalUrl !== page.url,
+          family: resolveStatusFamily(page.status),
+        },
+        artifacts: buildRenderPreviewArtifacts(page),
+      },
+      warnings: [...page.warnings],
+    };
+
+    return yield* Effect.try({
+      try: () => Schema.decodeUnknownSync(RenderPreviewResponseSchema)(response),
+      catch: (error) =>
+        new ExtractionError({
+          message: "Render preview response schema validation failed",
           details: formatUnknownError(error),
         }),
     });
