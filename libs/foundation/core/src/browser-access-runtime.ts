@@ -2,6 +2,10 @@ import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
 import { Deferred, Effect, Exit, Layer, Ref, Schema } from "effect";
+import {
+  makeInMemoryBrowserAccessSecurityPolicy,
+  type BrowserAccessSecurityPolicy,
+} from "./browser-access-policy.ts";
 import { makeBrowserCrashTelemetry, type BrowserLeakDetector } from "./browser-leak-detection.ts";
 import { ArtifactVisibilitySchema } from "./budget-lease-artifact.ts";
 import {
@@ -115,6 +119,7 @@ type BrowserPage = {
       readonly waitUntil: "domcontentloaded";
     },
   ) => PromiseLike<unknown>;
+  readonly url?: () => string | PromiseLike<string>;
   readonly content: () => PromiseLike<string>;
   readonly screenshot: (options: {
     readonly type: "png";
@@ -145,7 +150,7 @@ export type BrowserAccessRuntimeHandle = {
     plan: RunPlan,
   ) => Effect.Effect<
     ReadonlyArray<ArtifactMetadataRecord>,
-    ProviderUnavailable | RenderCrashError | TimeoutError
+    PolicyViolation | ProviderUnavailable | RenderCrashError | TimeoutError
   >;
   readonly shutdown: Effect.Effect<void>;
 };
@@ -434,6 +439,20 @@ function closeQuietly(effect: () => PromiseLike<void>) {
   );
 }
 
+function validateAcquiredBrowserResource<A, E>(options: {
+  readonly resource: A;
+  readonly validate: Effect.Effect<void, E>;
+  readonly release: (resource: A) => PromiseLike<void>;
+}) {
+  return Effect.matchEffect(options.validate, {
+    onFailure: (error) =>
+      closeQuietly(() => options.release(options.resource)).pipe(
+        Effect.andThen(Effect.fail(error)),
+      ),
+    onSuccess: () => Effect.succeed(options.resource),
+  });
+}
+
 function recordDetector(
   detector: BrowserLeakDetector | undefined,
   effect: (detector: BrowserLeakDetector) => Effect.Effect<unknown>,
@@ -631,19 +650,50 @@ const readBrowserNetworkSummary = Effect.fn("BrowserAccess.readBrowserNetworkSum
   }).pipe(Effect.map(normalizeNetworkSummary));
 });
 
+const readObservedBrowserUrl = Effect.fn("BrowserAccess.readObservedBrowserUrl")(function* (
+  page: BrowserPage,
+  options: {
+    readonly fallbackUrl: string;
+    readonly timeoutMs: number;
+    readonly timeoutMessage: string;
+  },
+) {
+  const readUrl = page.url;
+
+  if (readUrl === undefined) {
+    return options.fallbackUrl;
+  }
+
+  return yield* runTimedBrowserPromise({
+    timeoutMs: options.timeoutMs,
+    timeoutMessage: options.timeoutMessage,
+    try: () => Promise.resolve(readUrl()),
+    onError: (cause) => toRenderCrash("Browser access failed to inspect page origin", cause),
+  });
+});
+
 export function captureBrowserArtifacts(
   plan: unknown,
   browser: BrowserInstance,
   now: () => Date = () => new Date(),
   options?: {
     readonly detector?: BrowserLeakDetector;
+    readonly securityPolicy?: BrowserAccessSecurityPolicy;
   },
 ) {
   return Effect.gen(function* () {
     const decodedPlan = yield* decodeBrowserPlan(plan).pipe(
       Effect.flatMap(ensureBrowserCapturePlan),
     );
-    return yield* captureDecodedBrowserArtifacts(decodedPlan, browser, now, options?.detector);
+    const securityPolicy =
+      options?.securityPolicy ?? (yield* makeInMemoryBrowserAccessSecurityPolicy({ now }));
+    return yield* captureDecodedBrowserArtifacts(
+      decodedPlan,
+      browser,
+      now,
+      securityPolicy,
+      options?.detector,
+    );
   });
 }
 
@@ -652,11 +702,13 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
     plan: RunPlan,
     browser: BrowserInstance,
     now: () => Date,
+    securityPolicy: BrowserAccessSecurityPolicy,
     detector?: BrowserLeakDetector,
   ) {
     const startedAt = now();
     const timeoutMessage = `Browser access timed out for run plan ${plan.id}.`;
     const deadlineMs = startedAt.valueOf() + plan.timeoutMs;
+    const session = yield* securityPolicy.beginSession(plan.id, plan.entryUrl);
 
     return yield* Effect.acquireUseRelease(
       remainingTimeoutMs({
@@ -671,11 +723,22 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
             try: () => browser.newContext(),
             onError: (cause) =>
               toRenderCrash("Browser access failed to allocate a browsing context", cause),
-          }),
-        ),
-        Effect.tap(() =>
-          recordDetector(detector, (runtimeDetector) =>
-            runtimeDetector.recordContextOpened(plan.id),
+          }).pipe(
+            Effect.flatMap((context) =>
+              validateAcquiredBrowserResource({
+                resource: context,
+                validate: securityPolicy
+                  .verifyContext(session, context)
+                  .pipe(
+                    Effect.andThen(
+                      recordDetector(detector, (runtimeDetector) =>
+                        runtimeDetector.recordContextOpened(plan.id),
+                      ),
+                    ),
+                  ),
+                release: (resource) => resource.close(),
+              }),
+            ),
           ),
         ),
       ),
@@ -693,11 +756,22 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
                 try: () => context.newPage(),
                 onError: (cause) =>
                   toRenderCrash("Browser access failed to allocate a page", cause),
-              }),
-            ),
-            Effect.tap(() =>
-              recordDetector(detector, (runtimeDetector) =>
-                runtimeDetector.recordPageOpened(plan.id),
+              }).pipe(
+                Effect.flatMap((page) =>
+                  validateAcquiredBrowserResource({
+                    resource: page,
+                    validate: securityPolicy
+                      .verifyPage(session, page)
+                      .pipe(
+                        Effect.andThen(
+                          recordDetector(detector, (runtimeDetector) =>
+                            runtimeDetector.recordPageOpened(plan.id),
+                          ),
+                        ),
+                      ),
+                    release: (resource) => resource.close(),
+                  }),
+                ),
               ),
             ),
           ),
@@ -719,6 +793,20 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
                 onError: (cause) =>
                   toRenderCrash("Browser access failed during page navigation", cause),
               });
+              const observedUrl = yield* remainingTimeoutMs({
+                deadlineMs,
+                now,
+                timeoutMessage,
+              }).pipe(
+                Effect.flatMap((timeoutMs) =>
+                  readObservedBrowserUrl(page, {
+                    fallbackUrl: plan.entryUrl,
+                    timeoutMs,
+                    timeoutMessage,
+                  }),
+                ),
+              );
+              yield* securityPolicy.verifyOrigin(session, observedUrl);
 
               const renderedDom = yield* remainingTimeoutMs({
                 deadlineMs,
@@ -912,12 +1000,15 @@ export function makePlaywrightBrowserAccessRuntime(options?: {
   readonly engine?: BrowserAccessEngine;
   readonly now?: () => Date;
   readonly detector?: BrowserLeakDetector;
+  readonly securityPolicy?: BrowserAccessSecurityPolicy;
 }) {
   const now = options?.now ?? (() => new Date());
 
   return Effect.gen(function* () {
     const engine = options?.engine ?? (yield* loadPlaywrightEngine());
     const detector = options?.detector;
+    const securityPolicy =
+      options?.securityPolicy ?? (yield* makeInMemoryBrowserAccessSecurityPolicy({ now }));
     const browserStateRef = yield* Ref.make<BrowserProcessState>(idleBrowserProcessState);
 
     const launchBrowserProcess = Effect.fn("PlaywrightBrowserAccessRuntime.launchBrowserProcess")(
@@ -1108,26 +1199,33 @@ export function makePlaywrightBrowserAccessRuntime(options?: {
           plan,
           current.browser,
           now,
+          securityPolicy,
           detector,
         ).pipe(
-          Effect.catchTag("RenderCrashError", (failure) =>
-            Effect.gen(function* () {
-              yield* resetBrowserProcess(current, plan.id);
-              const recoveredProcess = yield* Effect.exit(getOrLaunchBrowserProcess(plan.id));
+          Effect.catchTags({
+            PolicyViolation: (failure: PolicyViolation) =>
+              Effect.gen(function* () {
+                yield* resetBrowserProcess(current, plan.id);
+                return yield* Effect.fail(failure);
+              }),
+            RenderCrashError: (failure: RenderCrashError) =>
+              Effect.gen(function* () {
+                yield* resetBrowserProcess(current, plan.id);
+                const recoveredProcess = yield* Effect.exit(getOrLaunchBrowserProcess(plan.id));
 
-              yield* emitCrashTelemetry({
-                planId: plan.id,
-                browserGeneration: current.generation,
-                recycledToGeneration: Exit.isSuccess(recoveredProcess)
-                  ? recoveredProcess.value.generation
-                  : null,
-                recovered: Exit.isSuccess(recoveredProcess),
-                failure,
-              });
+                yield* emitCrashTelemetry({
+                  planId: plan.id,
+                  browserGeneration: current.generation,
+                  recycledToGeneration: Exit.isSuccess(recoveredProcess)
+                    ? recoveredProcess.value.generation
+                    : null,
+                  recovered: Exit.isSuccess(recoveredProcess),
+                  failure,
+                });
 
-              return yield* Effect.fail(failure);
-            }),
-          ),
+                return yield* Effect.fail(failure);
+              }),
+          }),
         );
         return bundle.artifacts;
       }),
@@ -1232,11 +1330,13 @@ function getPlaywrightRuntimeOptions(options?: {
   readonly engine?: BrowserAccessEngine;
   readonly now?: () => Date;
   readonly detector?: BrowserLeakDetector;
+  readonly securityPolicy?: BrowserAccessSecurityPolicy;
 }) {
   if (
     options?.engine === undefined &&
     options?.now === undefined &&
-    options?.detector === undefined
+    options?.detector === undefined &&
+    options?.securityPolicy === undefined
   ) {
     return undefined;
   }
@@ -1245,6 +1345,7 @@ function getPlaywrightRuntimeOptions(options?: {
     ...(options?.engine === undefined ? {} : { engine: options.engine }),
     ...(options?.now === undefined ? {} : { now: options.now }),
     ...(options?.detector === undefined ? {} : { detector: options.detector }),
+    ...(options?.securityPolicy === undefined ? {} : { securityPolicy: options.securityPolicy }),
   };
 }
 
@@ -1253,6 +1354,7 @@ export function BrowserAccessLive(options?: {
   readonly engine?: BrowserAccessEngine;
   readonly now?: () => Date;
   readonly detector?: BrowserLeakDetector;
+  readonly securityPolicy?: BrowserAccessSecurityPolicy;
 }) {
   const launch =
     options?.launch ?? makePlaywrightBrowserAccessRuntime(getPlaywrightRuntimeOptions(options));

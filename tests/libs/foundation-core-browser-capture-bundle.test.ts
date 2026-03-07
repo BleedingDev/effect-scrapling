@@ -342,7 +342,12 @@ describe("foundation-core browser capture bundle", () => {
         },
         close: async () => undefined,
       };
-      const error = yield* captureBrowserArtifacts(httpPlan, browser).pipe(Effect.flip);
+      const error = yield* captureBrowserArtifacts(httpPlan, browser).pipe(
+        Effect.match({
+          onFailure: (failure) => failure,
+          onSuccess: () => new Error("unexpected-success"),
+        }),
+      );
 
       expect(error.name).toBe("PolicyViolation");
       expect(error.message).toContain("does not require browser resources");
@@ -735,7 +740,12 @@ describe("foundation-core browser capture bundle", () => {
           }),
           close: async () => undefined,
         };
-        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(Effect.flip);
+        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(
+          Effect.match({
+            onFailure: (failure) => failure,
+            onSuccess: () => new Error("unexpected-success"),
+          }),
+        );
 
         expect(error.name).toBe("RenderCrashError");
         expect(error.message).toContain("failed to capture rendered DOM");
@@ -771,7 +781,12 @@ describe("foundation-core browser capture bundle", () => {
           }),
           close: async () => undefined,
         };
-        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(Effect.flip);
+        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(
+          Effect.match({
+            onFailure: (failure) => failure,
+            onSuccess: () => new Error("unexpected-success"),
+          }),
+        );
 
         expect(error.name).toBe("RenderCrashError");
         expect(error.message).toContain("failed to capture page screenshot");
@@ -807,7 +822,12 @@ describe("foundation-core browser capture bundle", () => {
           }),
           close: async () => undefined,
         };
-        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(Effect.flip);
+        const error = yield* captureBrowserArtifacts(browserPlan, browser).pipe(
+          Effect.match({
+            onFailure: (failure) => failure,
+            onSuccess: () => new Error("unexpected-success"),
+          }),
+        );
 
         expect(error.name).toBe("RenderCrashError");
         expect(error.message).toContain("failed to capture network summary");
