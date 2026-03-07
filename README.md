@@ -53,6 +53,8 @@ E4 performance budgets and scorecard usage live in
 E4 rollout, rollback, and recovery-drill evidence live in
 [`docs/runbooks/e4-operations-rollback-drill.md`](docs/runbooks/e4-operations-rollback-drill.md)
 and [`docs/artifacts/e4-rollback-drill.md`](docs/artifacts/e4-rollback-drill.md).
+Post-validation E4 triage evidence lives in
+[`docs/artifacts/e4-post-validation-triage.md`](docs/artifacts/e4-post-validation-triage.md).
 Render preview command, API route, and SDK usage guidance live in
 [`docs/runbooks/e4-render-preview.md`](docs/runbooks/e4-render-preview.md).
 Browser capture completeness, redacted export verification, and crash recovery
@@ -105,6 +107,7 @@ Operator runbooks:
 - [E0 performance budget](docs/runbooks/e0-performance-budget.md)
 - [E0 operations and rollback drill](docs/runbooks/e0-operations-rollback-drill.md)
 - [E2 extractor orchestration](docs/runbooks/e2-extractor-orchestration.md)
+- [E2 deterministic parser pipeline](docs/runbooks/e2-deterministic-parser.md)
 - [E2 domain normalizers](docs/runbooks/e2-domain-normalizers.md)
 - [E2 assertion engine](docs/runbooks/e2-assertion-engine.md)
 - [E2 selector precedence](docs/runbooks/e2-selector-precedence.md)
@@ -116,6 +119,8 @@ Operator runbooks:
 - [E2 security review](docs/runbooks/e2-security-review.md)
 - [E2 performance budget](docs/runbooks/e2-performance-budget.md)
 - [E3 HTTP access execution](docs/runbooks/e3-http-access-execution.md)
+- [E3 access planner policy](docs/runbooks/e3-access-planner-policy.md)
+- [E3 identity lease management](docs/runbooks/e3-identity-lease-management.md)
 - [E3 egress lease management](docs/runbooks/e3-egress-lease-management.md)
 - [E4 browser security isolation](docs/runbooks/e4-browser-security-isolation.md)
 - [E4 security review](docs/runbooks/e4-security-review.md)
@@ -308,6 +313,7 @@ bun run check:e2-performance-budget
 Supporting runbooks:
 
 - [`docs/runbooks/e2-extractor-orchestration.md`](docs/runbooks/e2-extractor-orchestration.md)
+- [`docs/runbooks/e2-deterministic-parser.md`](docs/runbooks/e2-deterministic-parser.md)
 - [`docs/runbooks/e2-domain-normalizers.md`](docs/runbooks/e2-domain-normalizers.md)
 - [`docs/runbooks/e2-assertion-engine.md`](docs/runbooks/e2-assertion-engine.md)
 - [`docs/runbooks/e2-selector-precedence.md`](docs/runbooks/e2-selector-precedence.md)
@@ -377,6 +383,8 @@ The default command compares the current run against
 Operator workflow, troubleshooting, and rollback guidance:
 
 - [`docs/runbooks/e3-access-runtime-benchmark.md`](docs/runbooks/e3-access-runtime-benchmark.md)
+- [`docs/runbooks/e3-access-planner-policy.md`](docs/runbooks/e3-access-planner-policy.md)
+- [`docs/runbooks/e3-identity-lease-management.md`](docs/runbooks/e3-identity-lease-management.md)
 - [`docs/runbooks/e3-retry-backoff-runbook.md`](docs/runbooks/e3-retry-backoff-runbook.md)
 - [`docs/runbooks/e3-access-health-runbook.md`](docs/runbooks/e3-access-health-runbook.md)
 - [`docs/runbooks/e4-provider-selection.md`](docs/runbooks/e4-provider-selection.md)

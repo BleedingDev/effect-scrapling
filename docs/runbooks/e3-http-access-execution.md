@@ -28,6 +28,14 @@ Policy baseline:
 - retries and timeouts use typed Effect errors
 - no manual `_tag`, no manual `instanceof`, no unsafe type bypasses
 
+Related E3 runbooks:
+
+- `docs/runbooks/e3-access-planner-policy.md`
+- `docs/runbooks/e3-identity-lease-management.md`
+- `docs/runbooks/e3-egress-lease-management.md`
+- `docs/runbooks/e3-retry-backoff-runbook.md`
+- `docs/runbooks/e3-access-health-runbook.md`
+
 ## Current Runtime Contract
 
 Current exports from `http-access-runtime.ts`:
@@ -197,4 +205,3 @@ Rollback guidance today:
 - revert the `http-access-runtime.ts` change together with any touched retry or
   timeout helpers and test updates
 - rerun the focused HTTP suite, E3 checks, and full repository gates
-

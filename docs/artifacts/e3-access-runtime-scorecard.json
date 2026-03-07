@@ -1,6 +1,6 @@
 {
   "benchmark": "e3-access-runtime",
-  "generatedAt": "2026-03-07T03:04:12.732Z",
+  "generatedAt": "2026-03-07T06:01:11.805Z",
   "environment": {
     "bun": "1.3.10",
     "platform": "darwin",
@@ -16,32 +16,32 @@
   "measurements": {
     "baselineAccess": {
       "samples": 12,
-      "minMs": 0.405,
-      "meanMs": 0.57,
-      "p95Ms": 0.878,
-      "maxMs": 0.878
+      "minMs": 0.41,
+      "meanMs": 0.593,
+      "p95Ms": 0.961,
+      "maxMs": 0.961
     },
     "candidateAccess": {
       "samples": 12,
-      "minMs": 1.465,
-      "meanMs": 2.244,
-      "p95Ms": 7.489,
-      "maxMs": 7.489
+      "minMs": 1.475,
+      "meanMs": 2.346,
+      "p95Ms": 6.566,
+      "maxMs": 6.566
     },
     "retryRecovery": {
       "samples": 12,
-      "minMs": 255.651,
-      "meanMs": 257.234,
-      "p95Ms": 258.553,
-      "maxMs": 258.553
+      "minMs": 255.095,
+      "meanMs": 257.697,
+      "p95Ms": 260.595,
+      "maxMs": 260.595
     }
   },
   "comparison": {
     "baselinePath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e3-access-runtime-baseline.json",
     "deltas": {
-      "baselineAccessP95Ms": -0.179,
-      "candidateAccessP95Ms": 2.652,
-      "retryRecoveryP95Ms": 1.811
+      "baselineAccessP95Ms": -0.096,
+      "candidateAccessP95Ms": 1.729,
+      "retryRecoveryP95Ms": 3.853
     }
   },
   "status": "pass"
