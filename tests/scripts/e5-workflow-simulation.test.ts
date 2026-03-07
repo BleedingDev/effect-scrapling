@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
+import { compileCrawlPlans } from "../../libs/foundation/core/src/crawl-plan-runtime.ts";
 import {
   BenchmarkArtifactSchema,
   DEFAULT_OBSERVATIONS_PER_TARGET,
@@ -10,6 +11,7 @@ import {
   DEFAULT_TARGET_COUNT,
   DEFAULT_WARMUP_ITERATIONS,
   buildArtifact,
+  createSimulationCompilerInput,
   parseOptions,
   roundToThree,
   runBenchmark,
@@ -49,6 +51,11 @@ describe("e5 workflow simulation benchmark harness", () => {
       sampleSize: DEFAULT_SAMPLE_SIZE,
       warmupIterations: DEFAULT_WARMUP_ITERATIONS,
     });
+
+    expect(() => parseOptions(["--artifact"])).toThrow();
+    expect(() => parseOptions(["--sample-size"])).toThrow();
+    expect(() => parseOptions(["--warmup", "-1"])).toThrow();
+    expect(() => parseOptions(["--unknown"])).toThrow();
   });
 
   it("runs a deterministic workflow simulation sample with stable checkpoint metrics", async () => {
@@ -64,6 +71,39 @@ describe("e5 workflow simulation benchmark harness", () => {
     expect(sample.checkpointCount).toBe(6);
     expect(sample.stageFingerprint).toBe("snapshot>quality>reflect");
     expect(sample.durationMs).toBeGreaterThan(0);
+  });
+
+  it("supports simulation profiles above one hundred targets without violating target priority contracts", async () => {
+    const sample = await Effect.runPromise(
+      runSimulationSample({
+        targetCount: 101,
+        observationsPerTarget: 1,
+        totalObservations: 101,
+      }),
+    );
+
+    expect(sample.totalObservations).toBe(101);
+    expect(sample.checkpointCount).toBe(303);
+    expect(sample.stageFingerprint).toBe("snapshot>quality>reflect");
+  });
+
+  it("compiles large simulation profiles in deterministic canonical target order", async () => {
+    const compiledPlans = await Effect.runPromise(
+      compileCrawlPlans(
+        createSimulationCompilerInput({
+          targetCount: 1002,
+          observationsPerTarget: 1,
+          totalObservations: 1002,
+        }),
+      ),
+    );
+
+    expect(compiledPlans).toHaveLength(1002);
+    expect(compiledPlans[0]?.plan.targetId).toBe("target-product-0001");
+    expect(compiledPlans[1]?.plan.targetId).toBe("target-product-0002");
+    expect(compiledPlans[999]?.plan.targetId).toBe("target-product-1000");
+    expect(compiledPlans[1000]?.plan.targetId).toBe("target-product-1001");
+    expect(compiledPlans[1001]?.plan.targetId).toBe("target-product-1002");
   });
 
   it("writes a passing scorecard artifact when the benchmark harness runs end to end", async () => {

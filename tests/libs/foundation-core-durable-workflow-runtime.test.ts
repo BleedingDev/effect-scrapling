@@ -341,19 +341,23 @@ describe("foundation-core durable workflow runtime", () => {
           throw new Error("Expected a compiled crawl plan.");
         }
         const harness = yield* makeTestLayer();
-        const { finished, inspected, resumed, started } = yield* Effect.gen(function* () {
-          const workflowRunner = yield* WorkflowRunner;
-          const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
-          const resumedEncoded = yield* workflowRunner.resume(startedEncoded);
-          const finishedEncoded = yield* workflowRunner.resume(resumedEncoded);
+        const { finished, inspected, resumed, started, startedInspection } = yield* Effect.gen(
+          function* () {
+            const workflowRunner = yield* WorkflowRunner;
+            const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+            const startedInspection = yield* workflowRunner.inspect(compiledPlan.plan.id);
+            const resumedEncoded = yield* workflowRunner.resume(startedEncoded);
+            const finishedEncoded = yield* workflowRunner.resume(resumedEncoded);
 
-          return {
-            finished: Schema.decodeUnknownSync(RunCheckpointSchema)(finishedEncoded),
-            inspected: yield* workflowRunner.inspect(compiledPlan.plan.id),
-            resumed: Schema.decodeUnknownSync(RunCheckpointSchema)(resumedEncoded),
-            started: Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded),
-          };
-        }).pipe(Effect.provide(harness.layer));
+            return {
+              finished: Schema.decodeUnknownSync(RunCheckpointSchema)(finishedEncoded),
+              inspected: yield* workflowRunner.inspect(compiledPlan.plan.id),
+              resumed: Schema.decodeUnknownSync(RunCheckpointSchema)(resumedEncoded),
+              started: Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded),
+              startedInspection,
+            };
+          },
+        ).pipe(Effect.provide(harness.layer));
 
         expect(started.sequence).toBe(1);
         expect(started.stage).toBe("snapshot");
@@ -364,6 +368,56 @@ describe("foundation-core durable workflow runtime", () => {
           "step-quality",
           "step-reflect",
         ]);
+
+        expect(Option.isSome(startedInspection)).toBe(true);
+        if (Option.isSome(startedInspection)) {
+          expect(
+            Schema.encodeSync(WorkflowInspectionSnapshotSchema)(startedInspection.value),
+          ).toEqual({
+            runId: compiledPlan.plan.id,
+            planId: compiledPlan.plan.id,
+            targetId: compiledPlan.plan.targetId,
+            packId: compiledPlan.plan.packId,
+            accessPolicyId: compiledPlan.plan.accessPolicyId,
+            concurrencyBudgetId: compiledPlan.plan.concurrencyBudgetId,
+            entryUrl: compiledPlan.plan.entryUrl,
+            status: "running",
+            stage: "snapshot",
+            nextStepId: "step-snapshot",
+            startedAt: CREATED_AT,
+            updatedAt: CREATED_AT,
+            storedAt: CREATED_AT,
+            stats: {
+              runId: compiledPlan.plan.id,
+              plannedSteps: 6,
+              completedSteps: 2,
+              checkpointCount: 1,
+              artifactCount: 1,
+              outcome: "running",
+              startedAt: CREATED_AT,
+              updatedAt: CREATED_AT,
+            },
+            progress: {
+              plannedSteps: 6,
+              completedSteps: 2,
+              pendingSteps: 4,
+              checkpointCount: 1,
+              artifactCount: 1,
+              completionRatio: 2 / 6,
+              completedStepIds: ["step-capture", "step-extract"],
+              pendingStepIds: ["step-snapshot", "step-diff", "step-quality", "step-reflect"],
+            },
+            budget: {
+              maxAttempts: 3,
+              configuredTimeoutMs: 20_000,
+              elapsedMs: 0,
+              remainingTimeoutMs: 20_000,
+              timeoutUtilization: 0,
+              checkpointInterval: 2,
+              stepsUntilNextCheckpoint: 2,
+            },
+          });
+        }
 
         expect(resumed.sequence).toBe(2);
         expect(resumed.stage).toBe("quality");
@@ -462,6 +516,52 @@ describe("foundation-core durable workflow runtime", () => {
       }).pipe(Effect.provide(harness.layer));
 
       expect(failure.message).toContain("require a resume token");
+    }),
+  );
+
+  it.effect("returns none when operators inspect an unknown run id", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeTestLayer();
+      const inspected = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        return yield* workflowRunner.inspect("run-missing");
+      }).pipe(Effect.provide(harness.layer));
+
+      expect(Option.isNone(inspected)).toBe(true);
+    }),
+  );
+
+  it.effect("rejects inspection when the latest checkpoint resume token is corrupted", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+      const harness = yield* makeTestLayer();
+      const failure = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+        const started = Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded);
+
+        yield* Ref.update(harness.checkpointStoreRef, (records) =>
+          records.map((record) =>
+            record.runId === started.runId
+              ? Schema.decodeUnknownSync(CheckpointRecordSchema)({
+                  ...Schema.encodeSync(CheckpointRecordSchema)(record),
+                  checkpoint: {
+                    ...Schema.encodeSync(RunCheckpointSchema)(record.checkpoint),
+                    resumeToken: "{not-json",
+                  },
+                })
+              : record,
+          ),
+        );
+
+        return yield* Effect.flip(workflowRunner.inspect(started.runId));
+      }).pipe(Effect.provide(harness.layer));
+
+      expect(failure.message).toContain("Failed to decode durable workflow resume token");
     }),
   );
 

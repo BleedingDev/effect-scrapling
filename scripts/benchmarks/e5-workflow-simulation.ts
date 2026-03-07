@@ -174,6 +174,16 @@ function decodeNonNegativeIntegerOption(rawValue: string | undefined, fallback: 
   return Schema.decodeUnknownSync(NonNegativeIntArgumentSchema)(rawValue);
 }
 
+function readOptionValue(args: readonly string[], index: number, option: string) {
+  const rawValue = args[index + 1];
+
+  if (rawValue === undefined || rawValue.startsWith("--")) {
+    throw new Error(`Missing value for argument: ${option}`);
+  }
+
+  return rawValue;
+}
+
 export function parseOptions(args: readonly string[]) {
   let artifactPath: string | undefined;
   let baselinePath: string | undefined;
@@ -185,26 +195,29 @@ export function parseOptions(args: readonly string[]) {
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--artifact") {
-      artifactPath = args[index + 1];
+      artifactPath = readOptionValue(args, index, argument);
       index += 1;
       continue;
     }
 
     if (argument === "--baseline") {
-      baselinePath = args[index + 1];
+      baselinePath = readOptionValue(args, index, argument);
       index += 1;
       continue;
     }
 
     if (argument === "--targets") {
-      targetCount = decodePositiveIntegerOption(args[index + 1], DEFAULT_TARGET_COUNT);
+      targetCount = decodePositiveIntegerOption(
+        readOptionValue(args, index, argument),
+        DEFAULT_TARGET_COUNT,
+      );
       index += 1;
       continue;
     }
 
     if (argument === "--observations-per-target") {
       observationsPerTarget = decodePositiveIntegerOption(
-        args[index + 1],
+        readOptionValue(args, index, argument),
         DEFAULT_OBSERVATIONS_PER_TARGET,
       );
       index += 1;
@@ -212,13 +225,19 @@ export function parseOptions(args: readonly string[]) {
     }
 
     if (argument === "--sample-size") {
-      sampleSize = decodePositiveIntegerOption(args[index + 1], DEFAULT_SAMPLE_SIZE);
+      sampleSize = decodePositiveIntegerOption(
+        readOptionValue(args, index, argument),
+        DEFAULT_SAMPLE_SIZE,
+      );
       index += 1;
       continue;
     }
 
     if (argument === "--warmup") {
-      warmupIterations = decodeNonNegativeIntegerOption(args[index + 1], DEFAULT_WARMUP_ITERATIONS);
+      warmupIterations = decodeNonNegativeIntegerOption(
+        readOptionValue(args, index, argument),
+        DEFAULT_WARMUP_ITERATIONS,
+      );
       index += 1;
       continue;
     }
@@ -275,11 +294,11 @@ function makeTarget(index: number) {
     seedUrls: [`https://example.com/products/${suffix}`],
     accessPolicyId: pack.accessPolicyId,
     packId: pack.id,
-    priority: 100 - index,
+    priority: 0,
   });
 }
 
-function makeCompilerInput(profile: SimulationProfile) {
+export function createSimulationCompilerInput(profile: SimulationProfile) {
   return Schema.decodeUnknownSync(CrawlPlanCompilerInputSchema)({
     createdAt: CREATED_AT,
     defaults: {
@@ -539,7 +558,7 @@ function fingerprintCheckpoints(
 
 export function runSimulationSample(profile: SimulationProfile) {
   return Effect.gen(function* () {
-    const compiledPlans = yield* compileCrawlPlans(makeCompilerInput(profile));
+    const compiledPlans = yield* compileCrawlPlans(createSimulationCompilerInput(profile));
     const harness = yield* makeRuntimeLayer(profile);
 
     const startedAt = performance.now();

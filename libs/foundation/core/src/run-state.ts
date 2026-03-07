@@ -22,6 +22,11 @@ const RunTimeoutMsSchema = TimeoutMsSchema;
 const UnitIntervalSchema = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)).check(
   Schema.isLessThanOrEqualTo(1),
 );
+const FLOAT_TOLERANCE = 1e-9;
+
+function approximatelyEquals(left: number, right: number) {
+  return Math.abs(left - right) <= FLOAT_TOLERANCE;
+}
 
 export const RunStageSchema = Schema.Literals([
   "capture",
@@ -155,9 +160,17 @@ class RunBudgetUtilizationBase extends Schema.Class<RunBudgetUtilizationBase>(
 
 export const RunBudgetUtilizationSchema = RunBudgetUtilizationBase.pipe(
   Schema.refine(
-    (budget): budget is Schema.Schema.Type<typeof RunBudgetUtilizationBase> =>
-      budget.remainingTimeoutMs <= budget.configuredTimeoutMs &&
-      budget.stepsUntilNextCheckpoint <= budget.checkpointInterval,
+    (budget): budget is Schema.Schema.Type<typeof RunBudgetUtilizationBase> => {
+      const expectedRemainingTimeoutMs = Math.max(budget.configuredTimeoutMs - budget.elapsedMs, 0);
+      const expectedTimeoutUtilization = Math.min(budget.elapsedMs / budget.configuredTimeoutMs, 1);
+
+      return (
+        budget.remainingTimeoutMs <= budget.configuredTimeoutMs &&
+        budget.remainingTimeoutMs === expectedRemainingTimeoutMs &&
+        approximatelyEquals(budget.timeoutUtilization, expectedTimeoutUtilization) &&
+        budget.stepsUntilNextCheckpoint <= budget.checkpointInterval
+      );
+    },
     {
       message:
         "Expected run budget utilization views with bounded timeout and checkpoint budget metrics.",
@@ -230,17 +243,38 @@ class WorkflowInspectionSnapshotBase extends Schema.Class<WorkflowInspectionSnap
 
 export const WorkflowInspectionSnapshotSchema = WorkflowInspectionSnapshotBase.pipe(
   Schema.refine(
-    (inspection): inspection is Schema.Schema.Type<typeof WorkflowInspectionSnapshotBase> =>
-      inspection.runId === inspection.stats.runId &&
-      inspection.status === inspection.stats.outcome &&
-      inspection.startedAt === inspection.stats.startedAt &&
-      inspection.updatedAt === inspection.stats.updatedAt &&
-      inspection.progress.plannedSteps === inspection.stats.plannedSteps &&
-      inspection.progress.completedSteps === inspection.stats.completedSteps &&
-      inspection.progress.checkpointCount === inspection.stats.checkpointCount &&
-      inspection.progress.artifactCount === inspection.stats.artifactCount &&
-      ((inspection.status === "failed" && inspection.error !== undefined) ||
-        (inspection.status !== "failed" && inspection.error === undefined)),
+    (inspection): inspection is Schema.Schema.Type<typeof WorkflowInspectionSnapshotBase> => {
+      const expectedCompletionRatio =
+        inspection.progress.plannedSteps === 0
+          ? 0
+          : inspection.progress.completedSteps / inspection.progress.plannedSteps;
+      const hasPendingSteps = inspection.progress.pendingSteps > 0;
+      const nextStepAligned =
+        (inspection.nextStepId === undefined && !hasPendingSteps) ||
+        (inspection.nextStepId !== undefined &&
+          inspection.progress.pendingStepIds.includes(inspection.nextStepId));
+      const succeededSnapshotAligned =
+        inspection.status !== "succeeded" ||
+        (inspection.progress.pendingSteps === 0 &&
+          inspection.nextStepId === undefined &&
+          approximatelyEquals(inspection.progress.completionRatio, 1));
+
+      return (
+        inspection.runId === inspection.stats.runId &&
+        inspection.status === inspection.stats.outcome &&
+        inspection.startedAt === inspection.stats.startedAt &&
+        inspection.updatedAt === inspection.stats.updatedAt &&
+        inspection.progress.plannedSteps === inspection.stats.plannedSteps &&
+        inspection.progress.completedSteps === inspection.stats.completedSteps &&
+        inspection.progress.checkpointCount === inspection.stats.checkpointCount &&
+        inspection.progress.artifactCount === inspection.stats.artifactCount &&
+        approximatelyEquals(inspection.progress.completionRatio, expectedCompletionRatio) &&
+        nextStepAligned &&
+        succeededSnapshotAligned &&
+        ((inspection.status === "failed" && inspection.error !== undefined) ||
+          (inspection.status !== "failed" && inspection.error === undefined))
+      );
+    },
     {
       message:
         "Expected workflow inspection snapshots with aligned run stats, progress accounting, and failure metadata.",

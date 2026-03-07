@@ -104,6 +104,107 @@ describe("foundation-core workflow state", () => {
       }),
     ).toThrow();
   });
+
+  it("rejects workflow inspection snapshots with misaligned status, progress, and failure metadata", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)({
+        runId: "run-001",
+        planId: "run-plan-001",
+        targetId: "target-product-001",
+        packId: "pack-example-com",
+        accessPolicyId: "policy-default",
+        concurrencyBudgetId: "budget-run-001",
+        entryUrl: "https://example.com/products/001",
+        status: "running",
+        stage: "extract",
+        nextStepId: "step-extract-001",
+        startedAt: "2026-03-06T10:00:00.000Z",
+        updatedAt: "2026-03-06T10:01:00.000Z",
+        storedAt: "2026-03-06T10:01:00.000Z",
+        stats: {
+          runId: "run-001",
+          plannedSteps: 3,
+          completedSteps: 1,
+          checkpointCount: 1,
+          artifactCount: 1,
+          outcome: "failed",
+          startedAt: "2026-03-06T10:00:00.000Z",
+          updatedAt: "2026-03-06T10:01:00.000Z",
+        },
+        progress: {
+          plannedSteps: 3,
+          completedSteps: 1,
+          pendingSteps: 1,
+          checkpointCount: 1,
+          artifactCount: 1,
+          completionRatio: 1 / 3,
+          completedStepIds: ["step-capture-001"],
+          pendingStepIds: ["step-extract-001"],
+        },
+        budget: {
+          maxAttempts: 3,
+          configuredTimeoutMs: 30_000,
+          elapsedMs: 1_000,
+          remainingTimeoutMs: 29_000,
+          timeoutUtilization: 1_000 / 30_000,
+          checkpointInterval: 2,
+          stepsUntilNextCheckpoint: 1,
+        },
+        error: {
+          code: "parser_failure",
+          retryable: false,
+          message: "Unexpected extractor drift",
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(WorkflowInspectionSnapshotSchema)({
+        runId: "run-002",
+        planId: "run-plan-002",
+        targetId: "target-product-002",
+        packId: "pack-example-com",
+        accessPolicyId: "policy-default",
+        concurrencyBudgetId: "budget-run-002",
+        entryUrl: "https://example.com/products/002",
+        status: "succeeded",
+        stage: "reflect",
+        nextStepId: "step-reflect-001",
+        startedAt: "2026-03-06T10:00:00.000Z",
+        updatedAt: "2026-03-06T10:05:00.000Z",
+        storedAt: "2026-03-06T10:05:00.000Z",
+        stats: {
+          runId: "run-002",
+          plannedSteps: 3,
+          completedSteps: 3,
+          checkpointCount: 2,
+          artifactCount: 2,
+          outcome: "succeeded",
+          startedAt: "2026-03-06T10:00:00.000Z",
+          updatedAt: "2026-03-06T10:05:00.000Z",
+        },
+        progress: {
+          plannedSteps: 3,
+          completedSteps: 3,
+          pendingSteps: 0,
+          checkpointCount: 2,
+          artifactCount: 2,
+          completionRatio: 1,
+          completedStepIds: ["step-capture-001", "step-extract-001", "step-reflect-001"],
+          pendingStepIds: [],
+        },
+        budget: {
+          maxAttempts: 3,
+          configuredTimeoutMs: 30_000,
+          elapsedMs: 1_000,
+          remainingTimeoutMs: 25_000,
+          timeoutUtilization: 0.1,
+          checkpointInterval: 2,
+          stepsUntilNextCheckpoint: 0,
+        },
+      }),
+    ).toThrow();
+  });
 });
 
 describe("foundation-core config and storage contracts", () => {
