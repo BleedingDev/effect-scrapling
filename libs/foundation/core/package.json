@@ -20,6 +20,7 @@
     "./pack-registry-runtime": "./src/pack-registry-runtime.ts",
     "./pack-candidate-generator": "./src/pack-candidate-generator.ts",
     "./pack-governance-runtime": "./src/pack-governance-runtime.ts",
+    "./reflection-engine-runtime": "./src/reflection-engine-runtime.ts",
     "./reflector-runtime": "./src/reflector-runtime.ts",
     "./run-state": "./src/run-state.ts",
     "./selector-trust-decay": "./src/selector-trust-decay.ts",

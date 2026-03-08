@@ -141,6 +141,10 @@ Operator runbooks:
 - [E5 operations and rollback drill](docs/runbooks/e5-operations-rollback-drill.md)
 - [E5 security review](docs/runbooks/e5-security-review.md)
 - [E6 pack registry resolution](docs/runbooks/e6-pack-registry-resolution.md)
+- [E6 site pack DSL contracts](docs/runbooks/e6-site-pack-dsl-contracts.md)
+- [E6 pack lifecycle state machine](docs/runbooks/e6-pack-lifecycle-state-machine.md)
+- [E6 selector trust decay](docs/runbooks/e6-selector-trust-decay.md)
+- [E6 pack candidate generator](docs/runbooks/e6-pack-candidate-generator.md)
 - [E6 pack governance actions](docs/runbooks/e6-pack-governance-actions.md)
 - [E6 pack versioning and immutable active policy](docs/runbooks/e6-pack-versioning-immutable-active.md)
 - [E6 reflector clustering](docs/runbooks/e6-reflector-clustering.md)
@@ -230,6 +234,13 @@ E6 pack-registry operators can run
 library-level through `@effect-scrapling/foundation-core/pack-registry-runtime`
 and `@effect-scrapling/foundation-core/site-pack`; there is no dedicated CLI or
 API wrapper yet.
+
+E6 reflection operators can run
+`bun test tests/libs/foundation-core-reflection-engine-runtime.test.ts` and
+`bun test tests/libs/foundation-core-validator-ladder-runtime.test.ts`. Today
+that surface is library-level through
+`@effect-scrapling/foundation-core/reflection-engine-runtime`; there is no
+dedicated CLI or API wrapper yet.
 
 E6 pack-governance operators can run
 `bun test tests/libs/foundation-core-pack-governance-runtime.test.ts` and

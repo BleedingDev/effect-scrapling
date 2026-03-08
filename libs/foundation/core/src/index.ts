@@ -221,6 +221,11 @@ export {
   makeHttpAccess,
 } from "./http-access-runtime.ts";
 export {
+  ReflectionEngineLive,
+  decidePackPromotion,
+  makeReflectionEngine,
+} from "./reflection-engine-runtime.ts";
+export {
   AccessPlanner,
   ArtifactExporter,
   BrowserAccess,
