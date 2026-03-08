@@ -365,7 +365,7 @@ function buildConfidenceFinding(input: {
 
 function compareFindings(left: RegressionFinding, right: RegressionFinding) {
   return (
-    right.severity.localeCompare(left.severity) ||
+    compareSeverity(right.severity, left.severity) ||
     left.packId.localeCompare(right.packId) ||
     left.caseId.localeCompare(right.caseId) ||
     (left.field ?? "").localeCompare(right.field ?? "") ||

@@ -21,28 +21,28 @@
   "measurements": {
     "baselineCorpus": {
       "samples": 3,
-      "minMs": 59.798,
-      "meanMs": 66.868,
-      "p95Ms": 71.353,
-      "maxMs": 71.353
+      "minMs": 42.805,
+      "meanMs": 48.135,
+      "p95Ms": 51.815,
+      "maxMs": 51.815
     },
     "incumbentComparison": {
       "samples": 3,
-      "minMs": 141.717,
-      "meanMs": 150.971,
-      "p95Ms": 157.126,
-      "maxMs": 157.126
+      "minMs": 130.697,
+      "meanMs": 139.307,
+      "p95Ms": 145.345,
+      "maxMs": 145.345
     },
-    "heapDeltaKiB": 3165.556
+    "heapDeltaKiB": 3014.296
   },
   "comparison": {
     "baselinePath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e7-performance-budget-baseline.json",
     "comparable": true,
     "incompatibleReason": null,
     "deltas": {
-      "baselineCorpusP95Ms": -43.497,
-      "incumbentComparisonP95Ms": 10.239,
-      "heapDeltaKiB": 32.273
+      "baselineCorpusP95Ms": -63.035,
+      "incumbentComparisonP95Ms": -1.542,
+      "heapDeltaKiB": -118.987
     }
   },
   "violations": [],

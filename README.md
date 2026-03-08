@@ -153,6 +153,8 @@ Operator runbooks:
 - [E6 security review](docs/runbooks/e6-security-review.md)
 - [E6 performance budget](docs/runbooks/e6-performance-budget.md)
 - [E6 operations and rollback drill](docs/runbooks/e6-operations-rollback-drill.md)
+- [E7 drift regression analysis](docs/runbooks/e7-drift-regression-analysis.md)
+- [E7 performance budget](docs/runbooks/e7-performance-budget.md)
 - [E6 post-validation triage](docs/artifacts/e6-post-validation-triage.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`

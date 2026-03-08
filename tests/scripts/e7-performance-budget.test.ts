@@ -72,4 +72,41 @@ describe("e7 performance budget benchmark harness", () => {
       await rm(directory, { force: true, recursive: true });
     }
   });
+
+  it("writes an incomparable scorecard when the persisted baseline sample size does not match", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "e7-performance-budget-"));
+    const baselinePath = join(directory, "baseline.json");
+    const artifactPath = join(directory, "artifact.json");
+
+    try {
+      await runBenchmark(["--artifact", baselinePath, "--sample-size", "3", "--warmup", "0"]);
+
+      const artifact = await runBenchmark([
+        "--artifact",
+        artifactPath,
+        "--baseline",
+        baselinePath,
+        "--sample-size",
+        "2",
+        "--warmup",
+        "0",
+      ]);
+      const persisted = Schema.decodeUnknownSync(PerformanceBudgetArtifactSchema)(
+        JSON.parse(await readFile(artifactPath, "utf8")),
+      );
+
+      expect(persisted).toEqual(artifact);
+      expect(persisted.comparison.comparable).toBe(false);
+      expect(persisted.comparison.incompatibleReason).toBe(
+        "Expected baseline sampleSize 2, received 3.",
+      );
+      expect(persisted.comparison.deltas).toEqual({
+        baselineCorpusP95Ms: null,
+        incumbentComparisonP95Ms: null,
+        heapDeltaKiB: null,
+      });
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
 });

@@ -123,4 +123,76 @@ describe("foundation-core performance gate runtime", () => {
       heapDeltaKiB: null,
     });
   });
+
+  it("suppresses deltas when the baseline warmup count is incompatible", async () => {
+    const baseline = await Effect.runPromise(
+      evaluatePerformanceBudget(makeInput({ warmupIterations: 2 })),
+    );
+    const artifact = await Effect.runPromise(
+      evaluatePerformanceBudget(
+        makeInput({
+          baselinePath: "/tmp/e7-performance-budget-baseline.json",
+          baseline,
+        }),
+      ),
+    );
+
+    expect(artifact.comparison.comparable).toBe(false);
+    expect(artifact.comparison.incompatibleReason).toBe(
+      "Expected baseline warmupIterations 1, received 2.",
+    );
+    expect(artifact.comparison.deltas).toEqual({
+      baselineCorpusP95Ms: null,
+      incumbentComparisonP95Ms: null,
+      heapDeltaKiB: null,
+    });
+  });
+
+  it("passes when measurements land exactly on the configured budget thresholds", async () => {
+    const artifact = await Effect.runPromise(
+      evaluatePerformanceBudget(
+        makeInput({
+          measurements: {
+            baselineCorpus: summarizeMeasurements([500, 500, 500]),
+            incumbentComparison: summarizeMeasurements([1000, 1000, 1000]),
+            heapDeltaKiB: 16_384,
+          },
+        }),
+      ),
+    );
+
+    expect(artifact.status).toBe("pass");
+    expect(artifact.violations).toEqual([]);
+  });
+
+  it("suppresses deltas when the baseline workload profile is incompatible", async () => {
+    const baseline = await Effect.runPromise(
+      evaluatePerformanceBudget(
+        makeInput({
+          profile: {
+            caseCount: 3,
+            packCount: 2,
+          },
+        }),
+      ),
+    );
+    const artifact = await Effect.runPromise(
+      evaluatePerformanceBudget(
+        makeInput({
+          baselinePath: "/tmp/e7-performance-budget-baseline.json",
+          baseline,
+        }),
+      ),
+    );
+
+    expect(artifact.comparison.comparable).toBe(false);
+    expect(artifact.comparison.incompatibleReason).toBe(
+      "Expected the baseline workload profile to match the current benchmark workload profile.",
+    );
+    expect(artifact.comparison.deltas).toEqual({
+      baselineCorpusP95Ms: null,
+      incumbentComparisonP95Ms: null,
+      heapDeltaKiB: null,
+    });
+  });
 });
