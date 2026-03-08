@@ -246,4 +246,91 @@ describe("foundation-core pack candidate generator", () => {
       expect(Exit.isFailure(exit)).toBe(true);
     }),
   );
+
+  it.effect("rejects signals that produce no actionable selector delta", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        generatePackCandidate({
+          pack: packDefinition,
+          createdAt: "2026-03-08T12:00:00.000Z",
+          signals: [
+            {
+              kind: "regression",
+              field: "price",
+              currentPrimarySelectorPath: "price/primary",
+              selectorCandidate: {
+                path: "price/primary",
+                selector: "[data-testid='price']",
+              },
+              evidenceRefs: ["artifact-price-regression"],
+              observedAt: "2026-03-08T11:00:00.000Z",
+            },
+          ],
+        }),
+      );
+
+      expect(error.message).toContain("no actionable selector candidate delta");
+    }),
+  );
+
+  it.effect("rejects invalid evidence references through shared schema contracts", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        generatePackCandidate({
+          pack: packDefinition,
+          createdAt: "2026-03-08T12:00:00.000Z",
+          signals: [
+            {
+              kind: "fixture",
+              fixtureId: "fixture-price-001",
+              field: "price",
+              selectorCandidate: {
+                path: "price/fixture",
+                selector: "[itemprop='price']",
+              },
+              evidenceRefs: ["artifact-price-a", "artifact-price-a"],
+              observedAt: "2026-03-08T11:30:00.000Z",
+            },
+          ],
+        }),
+      );
+
+      expect(error.message).toContain("evidence references");
+    }),
+  );
+
+  it.effect("keeps active packs immutable even when candidate generation fails", () =>
+    Effect.gen(function* () {
+      const activePackDefinition = Schema.decodeUnknownSync(SitePackDslSchema)({
+        ...Schema.encodeSync(SitePackDslSchema)(packDefinition),
+        pack: {
+          ...Schema.encodeSync(SitePackDslSchema)(packDefinition).pack,
+          state: "active",
+        },
+      });
+
+      const error = yield* Effect.flip(
+        generatePackCandidate({
+          pack: activePackDefinition,
+          createdAt: "2026-03-08T12:00:00.000Z",
+          signals: [
+            {
+              kind: "regression",
+              field: "price",
+              currentPrimarySelectorPath: "price/primary",
+              selectorCandidate: {
+                path: "price/primary",
+                selector: "[data-testid='price']",
+              },
+              evidenceRefs: ["artifact-price-regression"],
+              observedAt: "2026-03-08T11:00:00.000Z",
+            },
+          ],
+        }),
+      );
+
+      expect(error.message).toContain("no actionable selector candidate delta");
+      expect(activePackDefinition.pack.state).toBe("active");
+    }),
+  );
 });

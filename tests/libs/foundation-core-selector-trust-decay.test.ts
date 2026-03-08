@@ -28,6 +28,8 @@ describe("foundation-core selector trust decay", () => {
         selectorPath: "price/primary",
         band: "trusted",
       });
+      expect(summary.records[0]?.band).not.toBe("degraded");
+      expect(summary.records[0]?.band).not.toBe("blocked");
       expect(summary.records[0]?.score).toBeGreaterThanOrEqual(0.8);
     }),
   );
@@ -56,9 +58,36 @@ describe("foundation-core selector trust decay", () => {
         selectorPath: "price/primary",
         band: "degraded",
       });
+      expect(summary.records[0]?.band).not.toBe("trusted");
+      expect(summary.records[0]?.band).not.toBe("blocked");
       expect(summary.records[0]?.score).toBeGreaterThanOrEqual(0.45);
       expect(summary.records[0]?.score).toBeLessThan(0.8);
     }),
+  );
+
+  it.effect(
+    "keeps a single recent hard failure degraded until repeated failures cross the blocked threshold",
+    () =>
+      Effect.gen(function* () {
+        const summary = yield* summarizeSelectorTrust({
+          evaluatedAt: "2026-03-08T12:00:00.000Z",
+          events: [
+            {
+              selectorPath: "price/primary",
+              outcome: "hardFailure",
+              observedAt: "2026-03-08T11:45:00.000Z",
+              evidenceRefs: ["artifact-price-001"],
+            },
+          ],
+        });
+
+        expect(summary.records[0]).toMatchObject({
+          selectorPath: "price/primary",
+          band: "degraded",
+        });
+        expect(summary.records[0]?.band).not.toBe("trusted");
+        expect(summary.records[0]?.band).not.toBe("blocked");
+      }),
   );
 
   it.effect("blocks selectors after repeated recent hard failures", () =>
@@ -85,6 +114,8 @@ describe("foundation-core selector trust decay", () => {
         selectorPath: "price/primary",
         band: "blocked",
       });
+      expect(summary.records[0]?.band).not.toBe("trusted");
+      expect(summary.records[0]?.band).not.toBe("degraded");
       expect(summary.records[0]?.score).toBeLessThan(0.45);
     }),
   );
@@ -174,5 +205,34 @@ describe("foundation-core selector trust decay", () => {
           },
         ]);
       }),
+  );
+
+  it.effect("rejects malformed trust policies through shared schema contracts", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        summarizeSelectorTrust({
+          evaluatedAt: "2026-03-08T12:00:00.000Z",
+          events: [
+            {
+              selectorPath: "price/primary",
+              outcome: "success",
+              observedAt: "2026-03-08T11:00:00.000Z",
+              evidenceRefs: ["artifact-price-001"],
+            },
+          ],
+          policy: {
+            halfLifeHours: 72,
+            priorSuccessWeight: 4,
+            priorFailureWeight: 1,
+            recoverableFailurePenalty: 1.25,
+            hardFailurePenalty: 3,
+            degradedThreshold: 0.8,
+            trustedThreshold: 0.45,
+          },
+        }),
+      );
+
+      expect(error.message).toContain("trustedThreshold");
+    }),
   );
 });
