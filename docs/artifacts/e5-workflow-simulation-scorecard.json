@@ -1,6 +1,6 @@
 {
   "benchmark": "e5-workflow-simulation",
-  "generatedAt": "2026-03-08T04:56:09.402Z",
+  "generatedAt": "2026-03-08T07:53:20.957Z",
   "environment": {
     "bun": "1.3.10",
     "platform": "darwin",
@@ -21,24 +21,24 @@
   "measurements": {
     "workflowDurationMs": {
       "samples": 2,
-      "min": 4111.004,
-      "mean": 4157.42,
-      "p95": 4203.836,
-      "max": 4203.836
+      "min": 4158.985,
+      "mean": 4303.363,
+      "p95": 4447.741,
+      "max": 4447.741
     },
     "observationsPerSecond": {
       "samples": 2,
-      "min": 47575.595,
-      "mean": 48112.757,
-      "p95": 48649.919,
-      "max": 48649.919
+      "min": 44966.648,
+      "mean": 46527.653,
+      "p95": 48088.658,
+      "max": 48088.658
     },
     "checkpointsPerSecond": {
       "samples": 2,
-      "min": 71.363,
-      "mean": 72.169,
-      "p95": 72.975,
-      "max": 72.975
+      "min": 67.45,
+      "mean": 69.792,
+      "p95": 72.133,
+      "max": 72.133
     }
   },
   "stability": {

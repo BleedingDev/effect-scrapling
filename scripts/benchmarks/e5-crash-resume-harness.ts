@@ -47,8 +47,18 @@ import {
   makeInMemoryWorkflowBudgetScheduler,
 } from "../../libs/foundation/core/src/workflow-budget-runtime.ts";
 import {
+  WorkflowWorkClaimStore,
+  WorkflowWorkClaimRecordSchema,
+  makeInMemoryWorkflowWorkClaimStore,
+} from "../../libs/foundation/core/src/workflow-work-claim-store.ts";
+import {
+  BudgetEventSummarySchema,
+  WorkClaimSummarySchema,
+  summarizeBudgetEvents,
+  summarizeWorkClaims,
   SimulationProfileSchema,
   createSimulationCompilerInput,
+  makeEmptyWorkClaimDecisionCounts,
 } from "./e5-workflow-simulation.ts";
 
 const CREATED_AT = "2026-03-07T14:00:00.000Z";
@@ -119,7 +129,13 @@ export const CrashResumeSampleSchema = Schema.Struct({
   restartCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   baseline: Schema.Array(CrashResumeRunSummarySchema),
   recovered: Schema.Array(CrashResumeRunSummarySchema),
+  baselineBudgetEvents: BudgetEventSummarySchema,
+  recoveredBudgetEvents: BudgetEventSummarySchema,
+  baselineWorkClaims: WorkClaimSummarySchema,
+  recoveredWorkClaims: WorkClaimSummarySchema,
   matchedOutputs: Schema.Boolean,
+  matchedBudgetEvents: Schema.Boolean,
+  matchedWorkClaims: Schema.Boolean,
 });
 
 export const CrashResumeArtifactSchema = Schema.Struct({
@@ -279,6 +295,23 @@ function makeCrashResumeHarness(
       createWorkflowBudgetRegistrations(compiledPlans),
       () => new Date(CREATED_AT),
     );
+    const workflowWorkClaimNow = new Date(CREATED_AT);
+    const workflowWorkClaimDecisionCountsRef = yield* Ref.make(makeEmptyWorkClaimDecisionCounts());
+    const baseWorkflowWorkClaimStore = yield* makeInMemoryWorkflowWorkClaimStore(
+      () => workflowWorkClaimNow,
+    );
+    const workflowWorkClaimStore = WorkflowWorkClaimStore.of({
+      ...baseWorkflowWorkClaimStore,
+      claim: (request) =>
+        baseWorkflowWorkClaimStore.claim(request).pipe(
+          Effect.tap(({ decision }) =>
+            Ref.update(workflowWorkClaimDecisionCountsRef, (counts) => ({
+              ...counts,
+              [decision]: counts[decision] + 1,
+            })),
+          ),
+        ),
+    });
 
     const baseLayer = Layer.mergeAll(
       Layer.succeed(HttpAccess)(
@@ -434,6 +467,7 @@ function makeCrashResumeHarness(
             ),
         }),
       ),
+      Layer.succeed(WorkflowWorkClaimStore)(workflowWorkClaimStore),
     );
 
     return {
@@ -448,6 +482,9 @@ function makeCrashResumeHarness(
           }).pipe(Layer.provide(baseLayer)),
         ),
       snapshotStoreRef,
+      workflowBudgetScheduler,
+      workflowWorkClaimDecisionCountsRef,
+      workflowWorkClaimStore,
     };
   });
 }
@@ -603,28 +640,65 @@ function crashResumeOutputsMatch(
   );
 }
 
+function crashResumeBudgetEventsMatch(
+  baseline: CrashResumeSample["baselineBudgetEvents"],
+  recovered: CrashResumeSample["recoveredBudgetEvents"],
+) {
+  return JSON.stringify(baseline) === JSON.stringify(recovered);
+}
+
+function crashResumeWorkClaimsMatch(
+  baseline: CrashResumeSample["baselineWorkClaims"],
+  recovered: CrashResumeSample["recoveredWorkClaims"],
+) {
+  return JSON.stringify(baseline) === JSON.stringify(recovered);
+}
+
+function collectWorkClaims(
+  harness: {
+    readonly workflowWorkClaimStore: {
+      readonly listByRun: (
+        runId: string,
+      ) => Effect.Effect<
+        ReadonlyArray<Schema.Schema.Type<typeof WorkflowWorkClaimRecordSchema>>,
+        unknown
+      >;
+    };
+  },
+  compiledPlans: ReadonlyArray<Schema.Schema.Type<typeof CompiledCrawlPlan>>,
+) {
+  return Effect.forEach(
+    compiledPlans,
+    ({ plan }) => harness.workflowWorkClaimStore.listByRun(plan.id),
+    { concurrency: 1 },
+  ).pipe(Effect.map((records) => records.flat()));
+}
+
 function createCrashResumeArtifact(input: {
-  readonly baseline: ReadonlyArray<CrashResumeRunSummary>;
-  readonly crashAfterSequences: ReadonlyArray<1 | 2>;
   readonly generatedAt: string;
-  readonly profile: SimulationProfile;
-  readonly recovered: ReadonlyArray<CrashResumeRunSummary>;
-  readonly restartCount: number;
+  readonly sample: CrashResumeSample;
 }) {
   const sample = Schema.decodeUnknownSync(CrashResumeSampleSchema)({
-    profile: input.profile,
-    crashAfterSequences: input.crashAfterSequences,
-    restartCount: input.restartCount,
-    baseline: input.baseline,
-    recovered: input.recovered,
-    matchedOutputs: crashResumeOutputsMatch(input.baseline, input.recovered),
+    ...input.sample,
+    matchedOutputs: crashResumeOutputsMatch(input.sample.baseline, input.sample.recovered),
+    matchedBudgetEvents: crashResumeBudgetEventsMatch(
+      input.sample.baselineBudgetEvents,
+      input.sample.recoveredBudgetEvents,
+    ),
+    matchedWorkClaims: crashResumeWorkClaimsMatch(
+      input.sample.baselineWorkClaims,
+      input.sample.recoveredWorkClaims,
+    ),
   });
 
   return Schema.decodeUnknownSync(CrashResumeArtifactSchema)({
     benchmark: "e5-crash-resume-harness",
     generatedAt: input.generatedAt,
     sample,
-    status: sample.matchedOutputs ? "pass" : "fail",
+    status:
+      sample.matchedOutputs && sample.matchedBudgetEvents && sample.matchedWorkClaims
+        ? "pass"
+        : "fail",
   });
 }
 
@@ -672,6 +746,20 @@ export function runCrashResumeSample(
       ({ plan }) => collectRunSummary(recoveredHarness, plan.id),
       { concurrency: 1 },
     );
+    const baselineBudgetEvents = summarizeBudgetEvents(
+      yield* baselineHarness.workflowBudgetScheduler.events(),
+    );
+    const recoveredBudgetEvents = summarizeBudgetEvents(
+      yield* recoveredHarness.workflowBudgetScheduler.events(),
+    );
+    const baselineWorkClaims = summarizeWorkClaims({
+      decisions: yield* Ref.get(baselineHarness.workflowWorkClaimDecisionCountsRef),
+      records: yield* collectWorkClaims(baselineHarness, compiledPlans),
+    });
+    const recoveredWorkClaims = summarizeWorkClaims({
+      decisions: yield* Ref.get(recoveredHarness.workflowWorkClaimDecisionCountsRef),
+      records: yield* collectWorkClaims(recoveredHarness, compiledPlans),
+    });
 
     return Schema.decodeUnknownSync(CrashResumeSampleSchema)({
       profile,
@@ -679,7 +767,16 @@ export function runCrashResumeSample(
       restartCount: recoveredRuns.reduce((total, run) => total + run.restartCount, 0),
       baseline,
       recovered,
+      baselineBudgetEvents,
+      recoveredBudgetEvents,
+      baselineWorkClaims,
+      recoveredWorkClaims,
       matchedOutputs: crashResumeOutputsMatch(baseline, recovered),
+      matchedBudgetEvents: crashResumeBudgetEventsMatch(
+        baselineBudgetEvents,
+        recoveredBudgetEvents,
+      ),
+      matchedWorkClaims: crashResumeWorkClaimsMatch(baselineWorkClaims, recoveredWorkClaims),
     });
   });
 }
@@ -701,12 +798,8 @@ export async function runHarness(
   const runSample = dependencies.runSample ?? runCrashResumeSample;
   const sample = await Effect.runPromise(runSample(profile, options.crashAfterSequences));
   const artifact = createCrashResumeArtifact({
-    profile,
-    crashAfterSequences: options.crashAfterSequences,
     generatedAt: new Date().toISOString(),
-    baseline: sample.baseline,
-    recovered: sample.recovered,
-    restartCount: sample.restartCount,
+    sample,
   });
 
   if (options.artifactPath !== undefined) {

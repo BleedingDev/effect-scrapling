@@ -59,7 +59,29 @@ describe("e5 crash resume harness", () => {
 
     expect(sample.restartCount).toBe(4);
     expect(sample.matchedOutputs).toBe(true);
+    expect(sample.matchedBudgetEvents).toBe(true);
+    expect(sample.matchedWorkClaims).toBe(true);
     expect(sample.baseline).toEqual(sample.recovered);
+    expect(sample.baselineBudgetEvents).toEqual(sample.recoveredBudgetEvents);
+    expect(sample.baselineWorkClaims).toEqual(sample.recoveredWorkClaims);
+    expect(sample.baselineBudgetEvents).toEqual({
+      acquired: 2,
+      rejected: 0,
+      released: 2,
+      peakGlobalInUse: 1,
+      peakPerDomainInUse: 1,
+    });
+    expect(sample.baselineWorkClaims).toEqual({
+      recordCount: 12,
+      maxClaimCount: 1,
+      maxTakeoverCount: 0,
+      decisions: {
+        acquired: 12,
+        alreadyClaimed: 0,
+        alreadyCompleted: 0,
+        superseded: 0,
+      },
+    });
     expect(sample.baseline[0]?.checkpointCount).toBe(3);
     expect(sample.baseline[0]?.stageFingerprint).toBe("snapshot>quality>reflect");
   });
@@ -88,6 +110,8 @@ describe("e5 crash resume harness", () => {
       expect(artifact.status).toBe("pass");
       expect(persisted).toEqual(artifact);
       expect(persisted.sample.matchedOutputs).toBe(true);
+      expect(persisted.sample.matchedBudgetEvents).toBe(true);
+      expect(persisted.sample.matchedWorkClaims).toBe(true);
       expect(persisted.sample.restartCount).toBe(4);
     } finally {
       await rm(directory, { force: true, recursive: true });
@@ -110,6 +134,8 @@ describe("e5 crash resume harness", () => {
     const mismatchedSample = Schema.decodeUnknownSync(CrashResumeSampleSchema)({
       ...baselineSample,
       matchedOutputs: true,
+      matchedBudgetEvents: true,
+      matchedWorkClaims: true,
       recovered: [...baselineSample.recovered].reverse(),
     });
     const stdout = new Array<string>();
@@ -145,6 +171,8 @@ describe("e5 crash resume harness", () => {
 
       expect(artifact.status).toBe("fail");
       expect(artifact.sample.matchedOutputs).toBe(false);
+      expect(artifact.sample.matchedBudgetEvents).toBe(true);
+      expect(artifact.sample.matchedWorkClaims).toBe(true);
       expect(artifact.sample.baseline).not.toEqual(artifact.sample.recovered);
       expect(persisted).toEqual(artifact);
       expect(stdout).toEqual([JSON.stringify(artifact, null, 2)]);

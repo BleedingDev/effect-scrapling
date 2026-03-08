@@ -55,6 +55,7 @@
     "check:e4-performance-budget": "bun run benchmark:e4-performance-budget",
     "benchmark:e5-crash-resume-harness": "bun run scripts/benchmarks/e5-crash-resume-harness.ts --artifact docs/artifacts/e5-crash-resume-harness-scorecard.json",
     "check:e5-crash-resume-harness": "bun run benchmark:e5-crash-resume-harness",
+    "check:e5-duplicate-work-suppression": "bun test tests/libs/foundation-core-workflow-work-claim-store.test.ts tests/libs/foundation-core-durable-workflow-runtime.test.ts",
     "check:e5-checkpoint-persistence-restore": "bun test tests/libs/foundation-core-sqlite-run-checkpoint-store.test.ts tests/libs/foundation-core-durable-workflow-runtime.test.ts",
     "check:e5-workflow-budget-integration": "bun test tests/libs/foundation-core-workflow-budget-runtime.test.ts tests/scripts/e5-workflow-simulation.test.ts tests/scripts/e5-crash-resume-harness.test.ts",
     "benchmark:e5-workflow-simulation": "bun run scripts/benchmarks/e5-workflow-simulation.ts --artifact docs/artifacts/e5-workflow-simulation-scorecard.json",

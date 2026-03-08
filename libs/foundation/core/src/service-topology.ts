@@ -4,6 +4,7 @@ import type { ArtifactMetadataRecord, StorageLocator } from "./config-storage.ts
 import {
   CheckpointCorruption,
   DriftDetected,
+  DuplicateWorkClaim,
   ExtractionMismatch,
   ParserFailure,
   PolicyViolation,
@@ -162,31 +163,31 @@ export class WorkflowRunner extends ServiceMap.Service<
       checkpoint: RunCheckpointEncoded,
     ) => Effect.Effect<
       RunCheckpointEncoded,
-      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+      CheckpointCorruption | DuplicateWorkClaim | ProviderUnavailable | PolicyViolation
     >;
     readonly replayRun: (
       runId: CanonicalIdentifier,
     ) => Effect.Effect<
       Option.Option<WorkflowControlResult>,
-      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+      CheckpointCorruption | DuplicateWorkClaim | ProviderUnavailable | PolicyViolation
     >;
     readonly resumeRun: (
       runId: CanonicalIdentifier,
     ) => Effect.Effect<
       Option.Option<WorkflowControlResult>,
-      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+      CheckpointCorruption | DuplicateWorkClaim | ProviderUnavailable | PolicyViolation
     >;
     readonly retryRun: (
       runId: CanonicalIdentifier,
     ) => Effect.Effect<
       Option.Option<WorkflowControlResult>,
-      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+      CheckpointCorruption | DuplicateWorkClaim | ProviderUnavailable | PolicyViolation
     >;
     readonly start: (
       plan: RunPlan,
     ) => Effect.Effect<
       RunCheckpointEncoded,
-      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+      CheckpointCorruption | DuplicateWorkClaim | ProviderUnavailable | PolicyViolation
     >;
   }
 >()("@effect-scrapling/foundation/WorkflowRunner") {}

@@ -3,6 +3,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Effect, Layer, Option, Ref, Schema, SchemaGetter } from "effect";
+import { AccessBudgetEvent } from "../../libs/foundation/core/src/access-budget-runtime.ts";
 import {
   ArtifactMetadataRecordSchema,
   ArtifactMetadataStore,
@@ -40,6 +41,12 @@ import {
   createWorkflowBudgetRegistrations,
   makeInMemoryWorkflowBudgetScheduler,
 } from "../../libs/foundation/core/src/workflow-budget-runtime.ts";
+import {
+  WorkflowWorkClaimDecisionSchema,
+  WorkflowWorkClaimRecordSchema,
+  WorkflowWorkClaimStore,
+  makeInMemoryWorkflowWorkClaimStore,
+} from "../../libs/foundation/core/src/workflow-work-claim-store.ts";
 
 const CREATED_AT = "2026-03-07T14:00:00.000Z";
 const EXPECTED_CHECKPOINT_STAGE_FINGERPRINT = "snapshot>quality>reflect";
@@ -91,6 +98,28 @@ export const SimulationProfileSchema = Schema.Struct({
   totalObservations: Schema.Int.check(Schema.isGreaterThan(0)),
 });
 
+export const BudgetEventSummarySchema = Schema.Struct({
+  acquired: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  rejected: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  released: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  peakGlobalInUse: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  peakPerDomainInUse: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+});
+
+export const WorkClaimDecisionCountsSchema = Schema.Struct({
+  acquired: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  alreadyClaimed: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  alreadyCompleted: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  superseded: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+});
+
+export const WorkClaimSummarySchema = Schema.Struct({
+  recordCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  maxClaimCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  maxTakeoverCount: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  decisions: WorkClaimDecisionCountsSchema,
+});
+
 export const SimulationMeasurementSchema = Schema.Struct({
   durationMs: Schema.Finite.check(Schema.isGreaterThan(0)),
   observationsPerSecond: Schema.Finite.check(Schema.isGreaterThan(0)),
@@ -98,6 +127,8 @@ export const SimulationMeasurementSchema = Schema.Struct({
   checkpointCount: Schema.Int.check(Schema.isGreaterThan(0)),
   stageFingerprint: Schema.Trim.check(Schema.isNonEmpty()),
   totalObservations: Schema.Int.check(Schema.isGreaterThan(0)),
+  budgetEvents: BudgetEventSummarySchema,
+  workClaims: WorkClaimSummarySchema,
 });
 
 export const BenchmarkArtifactSchema = Schema.Struct({
@@ -144,6 +175,9 @@ export const BenchmarkArtifactSchema = Schema.Struct({
 export type BenchmarkArtifact = Schema.Schema.Type<typeof BenchmarkArtifactSchema>;
 type SimulationProfile = Schema.Schema.Type<typeof SimulationProfileSchema>;
 type SimulationMeasurement = Schema.Schema.Type<typeof SimulationMeasurementSchema>;
+type BudgetEventSummary = Schema.Schema.Type<typeof BudgetEventSummarySchema>;
+type WorkClaimSummary = Schema.Schema.Type<typeof WorkClaimSummarySchema>;
+type WorkClaimDecisionCounts = Schema.Schema.Type<typeof WorkClaimDecisionCountsSchema>;
 
 const pack = Schema.decodeUnknownSync(SitePackSchema)({
   id: "pack-example-com",
@@ -318,7 +352,7 @@ export function createSimulationCompilerInput(profile: SimulationProfile) {
 }
 
 function makeArtifact(plan: Schema.Schema.Type<typeof RunPlanSchema>) {
-  return Schema.decodeUnknownSync(ArtifactMetadataRecordSchema)({
+  return {
     id: `artifact-record-${plan.targetId}`,
     runId: plan.id,
     artifactId: `artifact-${plan.targetId}`,
@@ -332,6 +366,42 @@ function makeArtifact(plan: Schema.Schema.Type<typeof RunPlanSchema>) {
     sizeBytes: 4_096,
     mediaType: "text/html",
     storedAt: CREATED_AT,
+  } satisfies Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>;
+}
+
+export function makeEmptyWorkClaimDecisionCounts(): WorkClaimDecisionCounts {
+  return {
+    acquired: 0,
+    alreadyClaimed: 0,
+    alreadyCompleted: 0,
+    superseded: 0,
+  };
+}
+
+export function summarizeBudgetEvents(
+  events: ReadonlyArray<Schema.Schema.Type<typeof AccessBudgetEvent>>,
+): BudgetEventSummary {
+  return Schema.decodeUnknownSync(BudgetEventSummarySchema)({
+    acquired: events.filter(({ kind }) => kind === "acquired").length,
+    rejected: events.filter(({ kind }) => kind === "rejected").length,
+    released: events.filter(({ kind }) => kind === "released").length,
+    peakGlobalInUse: Math.max(0, ...events.map(({ snapshot }) => snapshot.globalInUse)),
+    peakPerDomainInUse: Math.max(
+      0,
+      ...events.flatMap(({ snapshot }) => snapshot.domains.map(({ inUse }) => inUse)),
+    ),
+  });
+}
+
+export function summarizeWorkClaims(input: {
+  readonly decisions: WorkClaimDecisionCounts;
+  readonly records: ReadonlyArray<Schema.Schema.Type<typeof WorkflowWorkClaimRecordSchema>>;
+}): WorkClaimSummary {
+  return Schema.decodeUnknownSync(WorkClaimSummarySchema)({
+    recordCount: input.records.length,
+    maxClaimCount: Math.max(0, ...input.records.map(({ claimCount }) => claimCount)),
+    maxTakeoverCount: Math.max(0, ...input.records.map(({ takeoverCount }) => takeoverCount)),
+    decisions: input.decisions,
   });
 }
 
@@ -340,7 +410,7 @@ function makeSnapshot(
   artifactId: string,
   observationsPerTarget: number,
 ) {
-  return Schema.decodeUnknownSync(SnapshotSchema)({
+  return {
     id: `snapshot-${plan.targetId}`,
     targetId: plan.targetId,
     observations: Array.from({ length: observationsPerTarget }, (_unused, index) => ({
@@ -351,7 +421,7 @@ function makeSnapshot(
     })),
     qualityScore: 0.99,
     createdAt: CREATED_AT,
-  });
+  } satisfies Schema.Schema.Type<typeof SnapshotSchema>;
 }
 
 function makeRuntimeLayer(
@@ -373,6 +443,23 @@ function makeRuntimeLayer(
       createWorkflowBudgetRegistrations(compiledPlans),
       () => new Date(CREATED_AT),
     );
+    const workflowWorkClaimNow = new Date(CREATED_AT);
+    const workflowWorkClaimDecisionCountsRef = yield* Ref.make(makeEmptyWorkClaimDecisionCounts());
+    const baseWorkflowWorkClaimStore = yield* makeInMemoryWorkflowWorkClaimStore(
+      () => workflowWorkClaimNow,
+    );
+    const workflowWorkClaimStore = WorkflowWorkClaimStore.of({
+      ...baseWorkflowWorkClaimStore,
+      claim: (request) =>
+        baseWorkflowWorkClaimStore.claim(request).pipe(
+          Effect.tap(({ decision }) =>
+            Ref.update(workflowWorkClaimDecisionCountsRef, (counts) => ({
+              ...counts,
+              [decision]: counts[decision] + 1,
+            })),
+          ),
+        ),
+    });
 
     const baseLayer = Layer.mergeAll(
       Layer.succeed(HttpAccess)(
@@ -441,44 +528,40 @@ function makeRuntimeLayer(
       Layer.succeed(DiffEngine)(
         DiffEngine.of({
           compare: (baseline, candidate) =>
-            Effect.succeed(
-              Schema.decodeUnknownSync(SnapshotDiffSchema)({
-                id: `diff-${candidate.id}`,
-                baselineSnapshotId: baseline.id,
-                candidateSnapshotId: candidate.id,
-                metrics: {
-                  fieldRecallDelta: 0.01,
-                  falsePositiveDelta: -0.01,
-                  driftDelta: -0.01,
-                  latencyDeltaMs: -25,
-                  memoryDelta: -4,
-                },
-                createdAt: CREATED_AT,
-              }),
-            ),
+            Effect.succeed({
+              id: `diff-${candidate.id}`,
+              baselineSnapshotId: baseline.id,
+              candidateSnapshotId: candidate.id,
+              metrics: {
+                fieldRecallDelta: 0.01,
+                falsePositiveDelta: -0.01,
+                driftDelta: -0.01,
+                latencyDeltaMs: -25,
+                memoryDelta: -4,
+              },
+              createdAt: CREATED_AT,
+            } satisfies Schema.Schema.Type<typeof SnapshotDiffSchema>),
         }),
       ),
       Layer.succeed(QualityGate)(
         QualityGate.of({
           evaluate: (diff) =>
-            Effect.succeed(
-              Schema.decodeUnknownSync(QualityVerdictSchema)({
-                id: `verdict-${diff.id}`,
-                packId: pack.id,
-                snapshotDiffId: diff.id,
-                action: "promote-shadow",
-                gates: [
-                  { name: "requiredFieldCoverage", status: "pass" },
-                  { name: "falsePositiveRate", status: "pass" },
-                  { name: "incumbentComparison", status: "pass" },
-                  { name: "replayDeterminism", status: "pass" },
-                  { name: "workflowResume", status: "pass" },
-                  { name: "soakStability", status: "pass" },
-                  { name: "securityRedaction", status: "pass" },
-                ],
-                createdAt: CREATED_AT,
-              }),
-            ),
+            Effect.succeed({
+              id: `verdict-${diff.id}`,
+              packId: pack.id,
+              snapshotDiffId: diff.id,
+              action: "promote-shadow",
+              gates: [
+                { name: "requiredFieldCoverage", status: "pass" },
+                { name: "falsePositiveRate", status: "pass" },
+                { name: "incumbentComparison", status: "pass" },
+                { name: "replayDeterminism", status: "pass" },
+                { name: "workflowResume", status: "pass" },
+                { name: "soakStability", status: "pass" },
+                { name: "securityRedaction", status: "pass" },
+              ],
+              createdAt: CREATED_AT,
+            } satisfies Schema.Schema.Type<typeof QualityVerdictSchema>),
         }),
       ),
       Layer.succeed(PackRegistry)(
@@ -491,17 +574,15 @@ function makeRuntimeLayer(
       Layer.succeed(ReflectionEngine)(
         ReflectionEngine.of({
           decide: (_pack, verdict) =>
-            Effect.succeed(
-              Schema.encodeSync(PackPromotionDecisionSchema)({
-                id: `decision-${verdict.id}`,
-                packId: pack.id,
-                fromState: "shadow",
-                toState: "active",
-                triggerVerdictId: verdict.id,
-                action: "active",
-                createdAt: CREATED_AT,
-              }),
-            ),
+            Effect.succeed({
+              id: `decision-${verdict.id}`,
+              packId: pack.id,
+              fromState: "shadow",
+              toState: "active",
+              triggerVerdictId: verdict.id,
+              action: "active",
+              createdAt: CREATED_AT,
+            } satisfies Schema.Schema.Type<typeof PackPromotionDecisionSchema>),
         }),
       ),
       Layer.succeed(RunCheckpointStore)(
@@ -528,6 +609,7 @@ function makeRuntimeLayer(
             ),
         }),
       ),
+      Layer.succeed(WorkflowWorkClaimStore)(workflowWorkClaimStore),
     );
 
     return {
@@ -541,6 +623,9 @@ function makeRuntimeLayer(
         }).pipe(Layer.provide(baseLayer)),
       ),
       snapshotStoreRef,
+      workflowBudgetScheduler,
+      workflowWorkClaimDecisionCountsRef,
+      workflowWorkClaimStore,
     };
   });
 }
@@ -593,6 +678,13 @@ export function runSimulationSample(profile: SimulationProfile) {
 
     const checkpointRecords = yield* Ref.get(harness.checkpointStoreRef);
     const snapshots = yield* Ref.get(harness.snapshotStoreRef);
+    const workClaimRecords = (yield* Effect.forEach(
+      compiledPlans,
+      ({ plan }) => harness.workflowWorkClaimStore.listByRun(plan.id),
+      { concurrency: 1 },
+    )).flat();
+    const workClaimDecisions = yield* Ref.get(harness.workflowWorkClaimDecisionCountsRef);
+    const budgetEvents = yield* harness.workflowBudgetScheduler.events();
     const totalObservations = [...snapshots.values()].reduce(
       (total, snapshot) => total + snapshot.observations.length,
       0,
@@ -608,6 +700,11 @@ export function runSimulationSample(profile: SimulationProfile) {
       checkpointCount,
       stageFingerprint,
       totalObservations,
+      budgetEvents: summarizeBudgetEvents(budgetEvents),
+      workClaims: summarizeWorkClaims({
+        decisions: workClaimDecisions,
+        records: workClaimRecords,
+      }),
     });
   });
 }
@@ -676,12 +773,15 @@ export function buildArtifact(
   baseline: BenchmarkArtifact | undefined,
 ) {
   const expectedCheckpointCount = profile.targetCount * 3;
-  const firstSample = samples[0];
-  if (firstSample === undefined) {
+  if (samples[0] === undefined) {
     throw new Error("Expected at least one simulation sample.");
   }
-  const checkpointCounts = new Set(samples.map(({ checkpointCount }) => checkpointCount));
-  const stageFingerprints = new Set(samples.map(({ stageFingerprint }) => stageFingerprint));
+  const observedCheckpointCounts = [
+    ...new Set(samples.map(({ checkpointCount }) => checkpointCount)),
+  ];
+  const observedStageFingerprints = [
+    ...new Set(samples.map(({ stageFingerprint }) => stageFingerprint)),
+  ].sort((left, right) => left.localeCompare(right));
 
   const body = {
     sampleSize: options.sampleSize,
@@ -699,11 +799,11 @@ export function buildArtifact(
     },
     stability: {
       expectedCheckpointCount,
-      observedCheckpointCount: firstSample.checkpointCount,
-      consistentCheckpointCount: checkpointCounts.size === 1,
+      observedCheckpointCount: Math.min(...observedCheckpointCounts),
+      consistentCheckpointCount: observedCheckpointCounts.length === 1,
       expectedStageFingerprint: EXPECTED_CHECKPOINT_STAGE_FINGERPRINT,
-      observedStageFingerprint: firstSample.stageFingerprint,
-      consistentStageFingerprint: stageFingerprints.size === 1,
+      observedStageFingerprint: observedStageFingerprints.join("|"),
+      consistentStageFingerprint: observedStageFingerprints.length === 1,
     },
     comparison: {
       baselinePath: options.baselinePath ?? null,

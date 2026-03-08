@@ -132,9 +132,11 @@ Operator runbooks:
 - [E5 durable workflow graph fanout fanin](docs/runbooks/e5-durable-workflow-graph-fanout-fanin.md)
 - [E5 checkpoint persistence and restore](docs/runbooks/e5-checkpoint-persistence-restore.md)
 - [E5 crash resume harness](docs/runbooks/e5-crash-resume-harness.md)
+- [E5 duplicate work suppression](docs/runbooks/e5-duplicate-work-suppression.md)
 - [E5 workflow operational controls](docs/runbooks/e5-workflow-operational-controls.md)
 - [E5 resume and replay operations](docs/runbooks/e5-resume-replay-operations.md)
 - [E5 workflow inspection read models](docs/runbooks/e5-workflow-inspection-read-models.md)
+- [E5 workflow budget integration](docs/runbooks/e5-workflow-budget-integration.md)
 - [E5 workflow simulation](docs/runbooks/e5-workflow-simulation.md)
 - `docs/artifacts/e0-post-validation-triage.md`
 
@@ -166,6 +168,18 @@ E5 checkpoint-restore operators can run
 `bun run check:e5-crash-resume-harness`, or
 `bun test tests/libs/foundation-core-sqlite-run-checkpoint-store.test.ts`
 to validate the current SQLite persistence and restore surface.
+
+E5 duplicate-work operators can run
+`bun run check:e5-duplicate-work-suppression`,
+`bun test tests/libs/foundation-core-workflow-work-claim-store.test.ts`, or
+`bun test tests/libs/foundation-core-durable-workflow-runtime.test.ts`
+to validate the current work-claim and duplicate-runner suppression surface.
+
+E5 workflow-budget operators can run
+`bun run check:e5-workflow-budget-integration`,
+`bun test tests/libs/foundation-core-workflow-budget-runtime.test.ts`, or
+`bun run check:e5-workflow-simulation` to validate the current scheduler,
+permit enforcement, and scale-harness behavior.
 
 E5 workflow simulation operators can run
 `bun run benchmark:e5-workflow-simulation`,

@@ -212,6 +212,7 @@ describe("foundation-core config and storage contracts", () => {
     const resolved = resolveRunExecutionConfig({
       defaults: {
         targetId: "target-product-001",
+        targetDomain: "example.com",
         packId: "pack-example-com",
         accessPolicyId: "policy-default",
         entryUrl: "https://example.com/catalog",
@@ -242,6 +243,7 @@ describe("foundation-core config and storage contracts", () => {
 
     expect(Schema.encodeSync(RunExecutionConfigSchema)(resolved)).toEqual({
       targetId: "target-product-001",
+      targetDomain: "example.com",
       packId: "pack-example-com",
       accessPolicyId: "policy-default",
       entryUrl: "https://example.com/products/001",

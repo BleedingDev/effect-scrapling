@@ -41,6 +41,7 @@ import {
 } from "../../libs/foundation/core/src/service-topology.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
 import { SqliteRunCheckpointStoreLive } from "../../libs/foundation/core/src/sqlite-run-checkpoint-store.ts";
+import { SqliteWorkflowWorkClaimStoreLive } from "../../libs/foundation/core/src/sqlite-workflow-work-claim-store.ts";
 
 const CREATED_AT = "2026-03-08T04:00:00.000Z";
 
@@ -376,6 +377,7 @@ function makeSqliteWorkflowLayer(filename: string) {
         }),
       ),
       SqliteRunCheckpointStoreLive({ filename }),
+      SqliteWorkflowWorkClaimStoreLive({ filename: `${filename}.claims` }),
     );
 
     return Layer.mergeAll(
@@ -551,6 +553,91 @@ describe("foundation-core sqlite run checkpoint store", () => {
           );
           expect(inspected.budget.remainingTimeoutMs).toBeLessThan(compiledPlan.plan.timeoutMs);
           expect(Date.parse(inspected.updatedAt) >= Date.parse(CREATED_AT)).toBe(true);
+        } finally {
+          yield* Effect.promise(() => rm(directory, { force: true, recursive: true }));
+        }
+      }),
+  );
+
+  it.effect(
+    "fails restore when the latest persisted SQLite checkpoint is corrupted even if an older checkpoint remains readable",
+    () =>
+      Effect.gen(function* () {
+        const directory = yield* Effect.promise(() =>
+          mkdtemp(join(tmpdir(), "checkpoint-sqlite-latest-")),
+        );
+        const filename = join(directory, "run-checkpoints.sqlite");
+        const firstRecord = makeCheckpointRecord(1);
+        const secondRecord = makeCheckpointRecord(2);
+
+        try {
+          yield* Effect.scoped(
+            Effect.gen(function* () {
+              const store = yield* RunCheckpointStore;
+              yield* store.put(firstRecord);
+              yield* store.put(secondRecord);
+            }).pipe(Effect.provide(SqliteRunCheckpointStoreLive({ filename }))),
+          );
+
+          const database = new Database(filename, { readonly: false, strict: true });
+          try {
+            database
+              .query("update workflow_checkpoint_records set checkpoint_sha256 = ? where id = ?")
+              .run(
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                secondRecord.id,
+              );
+          } finally {
+            database.close();
+          }
+
+          const failure = yield* Effect.scoped(
+            Effect.gen(function* () {
+              const store = yield* RunCheckpointStore;
+              return yield* Effect.flip(store.latest(firstRecord.runId));
+            }).pipe(Effect.provide(SqliteRunCheckpointStoreLive({ filename }))),
+          );
+
+          expect(failure.message).toContain(
+            "Failed to restore the latest durable workflow checkpoint",
+          );
+        } finally {
+          yield* Effect.promise(() => rm(directory, { force: true, recursive: true }));
+        }
+      }),
+  );
+
+  it.effect(
+    "rejects conflicting duplicate checkpoint ids instead of silently overwriting them",
+    () =>
+      Effect.gen(function* () {
+        const directory = yield* Effect.promise(() =>
+          mkdtemp(join(tmpdir(), "checkpoint-sqlite-conflict-")),
+        );
+        const filename = join(directory, "run-checkpoints.sqlite");
+        const firstRecord = makeCheckpointRecord(1);
+        const conflictingCheckpoint = Schema.decodeUnknownSync(RunCheckpointSchema)({
+          ...Schema.encodeSync(RunCheckpointSchema)(firstRecord.checkpoint),
+          stage: "quality",
+          nextStepId: "step-quality",
+        });
+        const conflictingRecord = Schema.decodeUnknownSync(CheckpointRecordSchema)({
+          ...Schema.encodeSync(CheckpointRecordSchema)(firstRecord),
+          checkpoint: Schema.encodeSync(RunCheckpointSchema)(conflictingCheckpoint),
+          sha256: checkpointPayloadSha256(
+            Schema.encodeSync(RunCheckpointSchema)(conflictingCheckpoint),
+          ),
+        });
+
+        try {
+          yield* Effect.scoped(
+            Effect.gen(function* () {
+              const store = yield* RunCheckpointStore;
+              yield* store.put(firstRecord);
+              const failure = yield* Effect.flip(store.put(conflictingRecord));
+              expect(failure.message).toContain("already exists in SQLite storage");
+            }).pipe(Effect.provide(SqliteRunCheckpointStoreLive({ filename }))),
+          );
         } finally {
           yield* Effect.promise(() => rm(directory, { force: true, recursive: true }));
         }

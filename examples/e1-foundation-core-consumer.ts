@@ -36,6 +36,7 @@ export function runFoundationCoreConsumerExample() {
     const runConfig = resolveRunExecutionConfig({
       defaults: {
         targetId: targetProfile.id,
+        targetDomain: targetProfile.domain,
         packId: "pack-example-com",
         accessPolicyId: "policy-default",
         entryUrl: "https://example.com/catalog",

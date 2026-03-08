@@ -3,7 +3,7 @@ import { describe, expect, it } from "@effect-native/bun-test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Effect, Layer, Option, Ref, Schema } from "effect";
+import { Deferred, Effect, Layer, Option, Ref, Schema } from "effect";
 import {
   ArtifactMetadataRecordSchema,
   ArtifactMetadataStore,
@@ -40,7 +40,12 @@ import {
 } from "../../libs/foundation/core/src/service-topology.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
 import { SqliteRunCheckpointStoreLive } from "../../libs/foundation/core/src/sqlite-run-checkpoint-store.ts";
+import { SqliteWorkflowWorkClaimStoreLive } from "../../libs/foundation/core/src/sqlite-workflow-work-claim-store.ts";
 import { ParserFailure, TimeoutError } from "../../libs/foundation/core/src/tagged-errors.ts";
+import {
+  WorkflowWorkClaimStore,
+  makeInMemoryWorkflowWorkClaimStore,
+} from "../../libs/foundation/core/src/workflow-work-claim-store.ts";
 
 const CREATED_AT = "2026-03-07T12:30:00.000Z";
 
@@ -124,9 +129,14 @@ function makeSnapshot(targetId: string, artifactId: string, snapshotId: string) 
   });
 }
 
+type WorkflowWorkClaimStoreService = ReturnType<typeof WorkflowWorkClaimStore.of>;
+
 function makeWorkflowHarnessBase(options?: {
   readonly browserTimeoutOnFirstCapture?: boolean;
+  readonly captureBlocker?: Deferred.Deferred<void>;
   readonly extractorFailureMessage?: string;
+  readonly runnerInstanceId?: string;
+  readonly workflowWorkClaimStoreFactory?: () => Effect.Effect<WorkflowWorkClaimStoreService>;
 }) {
   return Effect.gen(function* () {
     let nowTick = 0;
@@ -137,12 +147,20 @@ function makeWorkflowHarnessBase(options?: {
       new Map<string, Schema.Schema.Type<typeof SnapshotSchema>>(),
     );
     const reflectionCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
+    const workflowWorkClaimStore = yield* (
+      options?.workflowWorkClaimStoreFactory?.() ?? makeInMemoryWorkflowWorkClaimStore()
+    );
 
     const supportLayer = Layer.mergeAll(
       Layer.succeed(HttpAccess)(
         HttpAccess.of({
           capture: (plan) =>
             Ref.update(httpCallsRef, (calls) => [...calls, plan.targetId]).pipe(
+              Effect.andThen(
+                options?.captureBlocker === undefined
+                  ? Effect.void
+                  : Deferred.await(options.captureBlocker),
+              ),
               Effect.as([makeArtifact(plan.targetId)]),
             ),
         }),
@@ -161,6 +179,10 @@ function makeWorkflowHarnessBase(options?: {
                     message: "Synthetic access timeout for controlled retry.",
                   }),
                 );
+              }
+
+              if (options?.captureBlocker !== undefined) {
+                yield* Deferred.await(options.captureBlocker);
               }
 
               return [makeArtifact(plan.targetId)];
@@ -275,6 +297,7 @@ function makeWorkflowHarnessBase(options?: {
             ),
         }),
       ),
+      Layer.succeed(WorkflowWorkClaimStore)(workflowWorkClaimStore),
     );
 
     return {
@@ -286,6 +309,9 @@ function makeWorkflowHarnessBase(options?: {
         const baseLayer = Layer.mergeAll(supportLayer, storageLayer);
         const runtimeLayer = DurableWorkflowRuntimeLive({
           now: () => new Date(Date.parse(CREATED_AT) + nowTick++ * 1_000),
+          ...(options?.runnerInstanceId === undefined
+            ? {}
+            : { runnerInstanceId: options.runnerInstanceId }),
           resolveBaselineSnapshot: ({ candidateSnapshot }) =>
             Effect.succeed(
               makeSnapshot(
@@ -305,16 +331,22 @@ function makeWorkflowHarnessBase(options?: {
 
 function makeTestLayer(options?: {
   readonly browserTimeoutOnFirstCapture?: boolean;
+  readonly captureBlocker?: Deferred.Deferred<void>;
+  readonly checkpointStoreRef?: Ref.Ref<
+    ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>
+  >;
   readonly extractorFailureMessage?: string;
+  readonly runnerInstanceId?: string;
+  readonly workflowWorkClaimStoreFactory?: () => Effect.Effect<WorkflowWorkClaimStoreService>;
 }) {
   return Effect.gen(function* () {
     const harness = yield* makeWorkflowHarnessBase(options);
     const artifactStoreRef = yield* Ref.make(
       new Map<string, Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>>(),
     );
-    const checkpointStoreRef = yield* Ref.make(
-      [] as ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>,
-    );
+    const checkpointStoreRef =
+      options?.checkpointStoreRef ??
+      (yield* Ref.make([] as ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>));
     const storageLayer = Layer.mergeAll(
       Layer.succeed(ArtifactMetadataStore)(
         ArtifactMetadataStore.of({
@@ -413,6 +445,7 @@ function makeSqliteTestLayer(
         }),
       ),
       SqliteRunCheckpointStoreLive({ filename: databaseFilename }),
+      SqliteWorkflowWorkClaimStoreLive({ filename: `${databaseFilename}.claims` }),
     );
 
     return {
@@ -979,7 +1012,7 @@ describe("foundation-core durable workflow runtime", () => {
   );
 
   it.effect(
-    "restores from SQLite-backed checkpoints across runtime restarts and falls back to the latest valid checkpoint",
+    "fails SQLite-backed resume across runtime restarts when the latest checkpoint is corrupted",
     () =>
       withSqliteDatabaseFile((databaseFilename) =>
         Effect.gen(function* () {
@@ -1031,65 +1064,15 @@ describe("foundation-core durable workflow runtime", () => {
           yield* corruptLatestSqliteCheckpoint(databaseFilename, compiledPlan.plan.id);
 
           const recoveredHarness = yield* makeSqliteTestLayer(databaseFilename);
-          const recovered = yield* Effect.gen(function* () {
+          const recoveryFailure = yield* Effect.gen(function* () {
             const workflowRunner = yield* WorkflowRunner;
-            return yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
-              Effect.flatMap(
-                Option.match({
-                  onNone: () =>
-                    Effect.fail(
-                      new Error(
-                        "Expected SQLite-backed durable workflow recovery resumeRun to resolve",
-                      ),
-                    ),
-                  onSome: Effect.succeed,
-                }),
-              ),
-            );
+            return yield* Effect.flip(workflowRunner.resumeRun(compiledPlan.plan.id));
           }).pipe(Effect.provide(recoveredHarness.layer));
 
-          expect(Schema.encodeSync(WorkflowControlResultSchema)(recovered)).toMatchObject({
-            operation: "resume",
-            sourceCheckpointId: started.id,
-            requestedRunId: compiledPlan.plan.id,
-            resolvedRunId: compiledPlan.plan.id,
-            checkpoint: {
-              sequence: 2,
-              stage: "quality",
-            },
-          });
+          expect(recoveryFailure.message).toContain(
+            "Failed to restore the latest durable workflow checkpoint",
+          );
           expect(yield* Ref.get(recoveredHarness.browserCallsRef)).toEqual([]);
-
-          const finished = yield* Effect.gen(function* () {
-            const workflowRunner = yield* WorkflowRunner;
-            return yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
-              Effect.flatMap(
-                Option.match({
-                  onNone: () =>
-                    Effect.fail(
-                      new Error(
-                        "Expected SQLite-backed durable workflow final resumeRun to resolve",
-                      ),
-                    ),
-                  onSome: Effect.succeed,
-                }),
-              ),
-            );
-          }).pipe(Effect.provide(recoveredHarness.layer));
-
-          expect(Schema.encodeSync(WorkflowControlResultSchema)(finished)).toMatchObject({
-            operation: "resume",
-            sourceCheckpointId: recovered.checkpoint.id,
-            requestedRunId: compiledPlan.plan.id,
-            resolvedRunId: compiledPlan.plan.id,
-            checkpoint: {
-              sequence: 3,
-              stage: "reflect",
-              stats: {
-                outcome: "succeeded",
-              },
-            },
-          });
         }),
       ),
   );
@@ -1182,6 +1165,123 @@ describe("foundation-core durable workflow runtime", () => {
           },
         });
       }),
+  );
+
+  it.effect("fails when a workflow step loses its work claim before completion", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+
+      const harness = yield* makeTestLayer({
+        workflowWorkClaimStoreFactory: () =>
+          makeInMemoryWorkflowWorkClaimStore().pipe(
+            Effect.map((workflowWorkClaimStore) =>
+              WorkflowWorkClaimStore.of({
+                ...workflowWorkClaimStore,
+                complete: () => Effect.succeed(Option.none()),
+              }),
+            ),
+          ),
+      });
+      const { checkpoints, inspection, startFailure } = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        const startFailure = yield* Effect.flip(workflowRunner.start(compiledPlan.plan));
+        const checkpoints = yield* Ref.get(harness.checkpointStoreRef);
+        const inspection = yield* workflowRunner.inspect(compiledPlan.plan.id);
+
+        return {
+          checkpoints,
+          inspection,
+          startFailure,
+        };
+      }).pipe(Effect.provide(harness.layer));
+
+      expect(startFailure.message).toContain("lost its work claim before completion");
+      expect(checkpoints).toHaveLength(0);
+      expect(inspection).toEqual(Option.none());
+    }),
+  );
+
+  it.effect(
+    "rejects a concurrent duplicate runner while another runtime still holds the step claim",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+          const compiledPlan = compiledPlans[0];
+          if (compiledPlan === undefined) {
+            throw new Error("Expected a compiled crawl plan.");
+          }
+
+          const captureBlocker = yield* Deferred.make<void>();
+          const sharedCheckpointStoreRef = yield* Ref.make(
+            [] as ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>,
+          );
+          const sharedClaimStore = yield* makeInMemoryWorkflowWorkClaimStore();
+          const runnerA = yield* makeTestLayer({
+            captureBlocker,
+            checkpointStoreRef: sharedCheckpointStoreRef,
+            runnerInstanceId: "runner-a",
+            workflowWorkClaimStoreFactory: () => Effect.succeed(sharedClaimStore),
+          });
+          const runnerB = yield* makeTestLayer({
+            checkpointStoreRef: sharedCheckpointStoreRef,
+            runnerInstanceId: "runner-b",
+            workflowWorkClaimStoreFactory: () => Effect.succeed(sharedClaimStore),
+          });
+
+          yield* Effect.gen(function* () {
+            const workflowRunner = yield* WorkflowRunner;
+            return yield* workflowRunner.start(compiledPlan.plan);
+          }).pipe(Effect.provide(runnerA.layer), Effect.asVoid, Effect.forkScoped);
+
+          yield* Effect.yieldNow;
+
+          const duplicateFailure = yield* Effect.gen(function* () {
+            const workflowRunner = yield* WorkflowRunner;
+            return yield* Effect.flip(workflowRunner.start(compiledPlan.plan));
+          }).pipe(Effect.provide(runnerB.layer));
+
+          expect(duplicateFailure.message).toContain("already claimed");
+
+          yield* Deferred.succeed(captureBlocker, undefined);
+          const checkpoints = yield* (function awaitCheckpoint(
+            attemptsRemaining: number,
+          ): Effect.Effect<
+            ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>,
+            Error
+          > {
+            return Effect.gen(function* () {
+              const records = yield* Ref.get(runnerA.checkpointStoreRef);
+              if (records.length > 0) {
+                return records;
+              }
+
+              if (attemptsRemaining === 0) {
+                return yield* Effect.fail(
+                  new Error("Expected the claimed workflow runner to persist a checkpoint."),
+                );
+              }
+
+              yield* Effect.yieldNow;
+              return yield* awaitCheckpoint(attemptsRemaining - 1);
+            });
+          })(10);
+          expect(Schema.encodeSync(RunCheckpointSchema)(checkpoints[0]!.checkpoint)).toMatchObject({
+            id: `checkpoint-${compiledPlan.plan.id}-0001`,
+            runId: compiledPlan.plan.id,
+            sequence: 1,
+            stage: "snapshot",
+            nextStepId: "step-snapshot",
+          });
+          expect(checkpoints).toHaveLength(1);
+          expect(yield* Ref.get(runnerA.browserCallsRef)).toEqual([compiledPlan.plan.targetId]);
+          expect(yield* Ref.get(runnerB.browserCallsRef)).toEqual([]);
+        }),
+      ),
   );
 
   it.effect(

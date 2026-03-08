@@ -68,6 +68,37 @@ function decodeStoredCheckpointRow(row: unknown, label: string) {
   });
 }
 
+function embeddedCheckpointMatchesRecord(
+  record: Schema.Schema.Type<typeof CheckpointRecordSchema>,
+) {
+  return (
+    record.checkpoint.id === record.id &&
+    record.checkpoint.runId === record.runId &&
+    record.checkpoint.planId === record.planId
+  );
+}
+
+function validateResumeTokenJson(
+  checkpoint: Schema.Schema.Type<typeof RunCheckpointSchema>,
+  label: string,
+) {
+  const resumeToken = checkpoint.resumeToken;
+  if (resumeToken === undefined) {
+    return Effect.void;
+  }
+
+  return Effect.try({
+    try: () => {
+      JSON.parse(resumeToken);
+    },
+    catch: (cause) =>
+      toCheckpointCorruption(
+        `${label} contains an invalid durable workflow resume token payload.`,
+        cause,
+      ),
+  });
+}
+
 function prepareSqliteDirectory(config: SqliteRunCheckpointStoreConfig) {
   if (config.filename === ":memory:") {
     return Effect.void;
@@ -197,16 +228,19 @@ export function SqliteRunCheckpointStoreLive(config: unknown) {
         function* (row: unknown, label: string) {
           const decodedRow = yield* decodeStoredCheckpointRow(row, label);
           const record = yield* decodeStoredCheckpoint(decodedRow.payloadJson, label);
-          const encodedCheckpoint = Schema.encodeSync(RunCheckpointSchema)(record.checkpoint);
-          const computedSha256 = checkpointPayloadSha256(encodedCheckpoint);
+          yield* validateResumeTokenJson(record.checkpoint, label);
+          const computedCheckpointSha256 = checkpointPayloadSha256(
+            Schema.encodeSync(RunCheckpointSchema)(record.checkpoint),
+          );
 
           if (
+            !embeddedCheckpointMatchesRecord(record) ||
             record.id !== decodedRow.id ||
             record.runId !== decodedRow.runId ||
             record.planId !== decodedRow.planId ||
             record.checkpoint.sequence !== decodedRow.checkpointSequence ||
+            record.sha256 !== computedCheckpointSha256 ||
             record.sha256 !== decodedRow.checkpointSha256 ||
-            record.sha256 !== computedSha256 ||
             record.storedAt !== decodedRow.storedAt
           ) {
             return yield* Effect.fail(
@@ -248,6 +282,14 @@ export function SqliteRunCheckpointStoreLive(config: unknown) {
               );
 
               if (Option.isSome(decoded)) {
+                if (latestCorruption !== undefined) {
+                  return yield* Effect.fail(
+                    new CheckpointCorruption({
+                      message: `Failed to restore the latest durable workflow checkpoint for run ${runId}. ${latestCorruption.message}`,
+                    }),
+                  );
+                }
+
                 return decoded;
               }
             }
@@ -264,8 +306,41 @@ export function SqliteRunCheckpointStoreLive(config: unknown) {
           }),
         put: (record) =>
           Effect.gen(function* () {
+            const encodedCanonicalRecord = yield* Effect.try({
+              try: () => {
+                const serializedRecord = JSON.stringify({
+                  ...Schema.encodeSync(CheckpointRecordSchema)(record),
+                  sha256: "0".repeat(64),
+                });
+                const parsedRecord = JSON.parse(serializedRecord);
+                const normalizedRecord =
+                  Schema.decodeUnknownSync(CheckpointRecordSchema)(parsedRecord);
+                const encodedNormalizedRecord =
+                  Schema.encodeSync(CheckpointRecordSchema)(normalizedRecord);
+                const parsedNormalizedRecord = JSON.parse(JSON.stringify(encodedNormalizedRecord));
+                return {
+                  ...parsedNormalizedRecord,
+                  sha256: checkpointPayloadSha256(parsedNormalizedRecord.checkpoint),
+                };
+              },
+              catch: (cause) =>
+                toCheckpointCorruption(
+                  `Checkpoint ${record.id} failed SQLite canonicalization.`,
+                  cause,
+                ),
+            });
+
+            const canonicalRecord = yield* Effect.try({
+              try: () => Schema.decodeUnknownSync(CheckpointRecordSchema)(encodedCanonicalRecord),
+              catch: (cause) =>
+                toCheckpointCorruption(
+                  `Checkpoint ${record.id} failed SQLite record finalization.`,
+                  cause,
+                ),
+            });
+
             const encodedRecord = yield* Effect.try({
-              try: () => JSON.stringify(Schema.encodeSync(CheckpointRecordSchema)(record)),
+              try: () => JSON.stringify(encodedCanonicalRecord),
               catch: (cause) =>
                 toCheckpointCorruption(
                   `Checkpoint ${record.id} failed to encode for SQLite persistence.`,
@@ -273,35 +348,68 @@ export function SqliteRunCheckpointStoreLive(config: unknown) {
                 ),
             });
 
+            const existingRow = yield* loadCheckpointRowById(canonicalRecord.id);
+            if (existingRow !== null && existingRow !== undefined) {
+              const existingRecord = yield* decodeCheckpointRow(
+                existingRow,
+                `Checkpoint ${canonicalRecord.id}`,
+              ).pipe(
+                Effect.map(Option.some),
+                Effect.catchTag("CheckpointCorruption", () => Effect.succeed(Option.none())),
+              );
+
+              if (Option.isSome(existingRecord)) {
+                const existingCheckpointSha256 = checkpointPayloadSha256(
+                  Schema.encodeSync(RunCheckpointSchema)(existingRecord.value.checkpoint),
+                );
+                const incomingCheckpointSha256 = checkpointPayloadSha256(
+                  Schema.encodeSync(RunCheckpointSchema)(canonicalRecord.checkpoint),
+                );
+
+                if (existingCheckpointSha256 !== incomingCheckpointSha256) {
+                  return yield* Effect.fail(
+                    new CheckpointCorruption({
+                      message: `Checkpoint ${canonicalRecord.id} already exists in SQLite storage with a different checksum.`,
+                    }),
+                  );
+                }
+
+                return existingRecord.value;
+              }
+            }
+
             yield* Effect.try({
               try: () =>
                 putCheckpointRecord.run(
-                  record.id,
-                  record.runId,
-                  record.planId,
-                  record.checkpoint.sequence,
-                  record.sha256,
-                  record.storedAt,
+                  canonicalRecord.id,
+                  canonicalRecord.runId,
+                  canonicalRecord.planId,
+                  canonicalRecord.checkpoint.sequence,
+                  canonicalRecord.sha256,
+                  canonicalRecord.storedAt,
                   encodedRecord,
                 ),
               catch: (cause) =>
                 toProviderUnavailable("Failed to persist a checkpoint to the SQLite store.", cause),
             });
 
-            const storedRow = yield* loadCheckpointRowById(record.id);
+            const storedRow = yield* loadCheckpointRowById(canonicalRecord.id);
             if (storedRow === null || storedRow === undefined) {
               return yield* Effect.fail(
                 new ProviderUnavailable({
-                  message: `Checkpoint ${record.id} was not readable after SQLite persistence.`,
+                  message: `Checkpoint ${canonicalRecord.id} was not readable after SQLite persistence.`,
                 }),
               );
             }
 
-            const storedRecord = yield* decodeCheckpointRow(storedRow, `Checkpoint ${record.id}`);
-            if (storedRecord.sha256 !== record.sha256) {
+            const storedRecord = yield* decodeCheckpointRow(
+              storedRow,
+              `Checkpoint ${canonicalRecord.id}`,
+            );
+            if (storedRecord.sha256 !== canonicalRecord.sha256) {
               return yield* Effect.fail(
                 new CheckpointCorruption({
-                  message: `Checkpoint ${record.id} already exists in SQLite storage with a different checksum.`,
+                  message: `Checkpoint ${canonicalRecord.id} already exists in SQLite storage with a different checksum.`,
                 }),
               );
             }

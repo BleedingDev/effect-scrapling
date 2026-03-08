@@ -1,6 +1,6 @@
 {
   "benchmark": "e5-crash-resume-harness",
-  "generatedAt": "2026-03-08T04:55:56.027Z",
+  "generatedAt": "2026-03-08T07:53:07.390Z",
   "sample": {
     "profile": {
       "targetCount": 4,
@@ -496,7 +496,45 @@
         }
       }
     ],
-    "matchedOutputs": true
+    "baselineBudgetEvents": {
+      "acquired": 4,
+      "rejected": 0,
+      "released": 4,
+      "peakGlobalInUse": 1,
+      "peakPerDomainInUse": 1
+    },
+    "recoveredBudgetEvents": {
+      "acquired": 4,
+      "rejected": 0,
+      "released": 4,
+      "peakGlobalInUse": 1,
+      "peakPerDomainInUse": 1
+    },
+    "baselineWorkClaims": {
+      "recordCount": 24,
+      "maxClaimCount": 1,
+      "maxTakeoverCount": 0,
+      "decisions": {
+        "acquired": 24,
+        "alreadyClaimed": 0,
+        "alreadyCompleted": 0,
+        "superseded": 0
+      }
+    },
+    "recoveredWorkClaims": {
+      "recordCount": 24,
+      "maxClaimCount": 1,
+      "maxTakeoverCount": 0,
+      "decisions": {
+        "acquired": 24,
+        "alreadyClaimed": 0,
+        "alreadyCompleted": 0,
+        "superseded": 0
+      }
+    },
+    "matchedOutputs": true,
+    "matchedBudgetEvents": true,
+    "matchedWorkClaims": true
   },
   "status": "pass"
 }

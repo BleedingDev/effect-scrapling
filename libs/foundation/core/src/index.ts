@@ -167,6 +167,7 @@ export {
   StorageLocator,
   StorageLocatorSchema,
   checkpointPayloadSha256,
+  legacyCheckpointPayloadSha256,
   resolveRunExecutionConfig,
   type ArtifactMetadataRecordEncoded,
   type CheckpointRecordEncoded,
@@ -174,6 +175,7 @@ export {
   type RunExecutionConfigEncoded,
 } from "./config-storage.ts";
 export { SqliteRunCheckpointStoreLive } from "./sqlite-run-checkpoint-store.ts";
+export { SqliteWorkflowWorkClaimStoreLive } from "./sqlite-workflow-work-claim-store.ts";
 export {
   AccessPlannerDecision,
   AccessPlannerDecisionSchema,
@@ -208,3 +210,31 @@ export {
   TargetRegistry,
   WorkflowRunner,
 } from "./service-topology.ts";
+export {
+  WorkflowWorkClaimCheckpoint,
+  WorkflowWorkClaimCheckpointSchema,
+  WorkflowWorkClaimCompletionRequest,
+  WorkflowWorkClaimCompletionRequestSchema,
+  WorkflowWorkClaimCorruption,
+  WorkflowWorkClaimDecisionRecord,
+  WorkflowWorkClaimDecisionRecordSchema,
+  WorkflowWorkClaimDecisionSchema,
+  WorkflowWorkClaimKey,
+  WorkflowWorkClaimKeySchema,
+  WorkflowWorkClaimRecord,
+  WorkflowWorkClaimRecordSchema,
+  WorkflowWorkClaimReleaseRequest,
+  WorkflowWorkClaimReleaseRequestSchema,
+  WorkflowWorkClaimRenewalRequest,
+  WorkflowWorkClaimRenewalRequestSchema,
+  WorkflowWorkClaimRequest,
+  WorkflowWorkClaimRequestSchema,
+  WorkflowWorkClaimStatusSchema,
+  WorkflowWorkClaimStore,
+  makeInMemoryWorkflowWorkClaimStore,
+  workflowWorkClaimRecordSha256,
+  type WorkflowWorkClaimDecision,
+  type WorkflowWorkClaimKeyEncoded,
+  type WorkflowWorkClaimRecordEncoded,
+  type WorkflowWorkClaimStatus,
+} from "./workflow-work-claim-store.ts";

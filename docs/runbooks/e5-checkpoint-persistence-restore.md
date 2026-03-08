@@ -16,8 +16,8 @@ This runbook is intentionally limited to behavior that exists today in:
 Important scope limits from the real implementation:
 
 - the SQLite store validates persisted checkpoint identity and checksum on read
-- `latest(runId)` falls back to the latest valid checkpoint when newer rows are
-  corrupted
+- `latest(runId)` rejects a corrupted latest row even if an older row remains
+  readable
 - restore semantics are exercised through the durable workflow runtime and the
   E5 crash-resume harness
 - the current repository surface is library-first; there is no dedicated API or
@@ -52,13 +52,14 @@ bun run benchmark:e5-crash-resume-harness
 The focused checkpoint suites currently prove:
 
 - checkpoint rows persist across reopened SQLite handles
-- durable workflows resume from the latest valid persisted checkpoint after a
-  runtime rebuild
+- durable workflows resume from the latest persisted checkpoint after a runtime
+  rebuild when that checkpoint still decodes through the shared contracts
 - `latest(runId)` fails deterministically when every persisted row is corrupted
-- runtime-level restore continues from the latest valid checkpoint even when a
-  newer persisted row is invalid
+- `latest(runId)` also fails deterministically when the newest persisted row is
+  corrupted, even if an older row still decodes
 - crash-resume harness output matches the no-crash baseline across forced
-  restart boundaries
+  restart boundaries, including structured budget-event and work-claim parity
+  evidence in the emitted artifact
 
 ## Practical Execution
 
@@ -99,17 +100,24 @@ The requested run id does not exist in the current SQLite file. Verify the
 runtime is pointed at the expected checkpoint database before debugging the
 workflow graph.
 
-### Latest-checkpoint fallback stops working
+### Restore now fails because the latest checkpoint is corrupted
 
-Treat that as a regression. The current store is expected to skip corrupted
-newer rows and recover from the latest valid durable checkpoint when one still
-exists.
+That is the current contract, not an operator-only anomaly. Preserve the
+failing row, keep the failing artifact unchanged, and fix or roll back the
+candidate persistence change instead of forcing a fallback to an older row.
 
 ### Crash-resume output drifts from the baseline
 
 Treat that as a workflow restore regression, not as an operator-only issue. Keep
 the failing artifact unchanged, rerun `check:e5-checkpoint-persistence-restore`,
 and only continue after the persistence/runtime diff is understood.
+
+### Crash-resume output matches but budget or work-claim evidence drifts
+
+Treat that as a restart-path regression anyway. The current artifact encodes
+`baselineBudgetEvents`, `recoveredBudgetEvents`, `baselineWorkClaims`, and
+`recoveredWorkClaims`, so drift there means the restore path no longer matches
+steady-state orchestration behavior.
 
 ## Rollout And Rollback
 
@@ -123,7 +131,7 @@ Use this sequence before promoting a checkpoint persistence change:
 Rollback guidance:
 
 - if checksum verification can be bypassed, roll back immediately
-- if restore no longer resumes from the latest valid checkpoint, roll back
-  immediately
+- if restore starts silently skipping a corrupted latest row without an
+  intentional contract change and review, roll back immediately
 - if corruption handling mutates or deletes the failing row instead of surfacing
   the fault, roll back and preserve the evidence

@@ -5,6 +5,7 @@ import { ArtifactKindSchema, ArtifactVisibilitySchema } from "./budget-lease-art
 import { CheckpointCorruption, ProviderUnavailable } from "./tagged-errors.ts";
 import { RunCheckpointSchema } from "./run-state.ts";
 import {
+  CanonicalDomainSchema,
   CanonicalHttpUrlSchema,
   CanonicalIdentifierSchema,
   CanonicalKeySchema,
@@ -38,6 +39,7 @@ export const RunConfigSourceSchema = Schema.Literals([
 
 export class RunExecutionConfig extends Schema.Class<RunExecutionConfig>("RunExecutionConfig")({
   targetId: CanonicalIdentifierSchema,
+  targetDomain: CanonicalDomainSchema,
   packId: CanonicalIdentifierSchema,
   accessPolicyId: CanonicalIdentifierSchema,
   entryUrl: CanonicalHttpUrlSchema,
@@ -56,6 +58,7 @@ export const RunExecutionConfigSchema = RunExecutionConfig;
 
 export const RunExecutionConfigOverrideSchema = Schema.Struct({
   targetId: Schema.optional(CanonicalIdentifierSchema),
+  targetDomain: Schema.optional(CanonicalDomainSchema),
   packId: Schema.optional(CanonicalIdentifierSchema),
   accessPolicyId: Schema.optional(CanonicalIdentifierSchema),
   entryUrl: Schema.optional(CanonicalHttpUrlSchema),
@@ -128,9 +131,9 @@ export class CheckpointRecord extends Schema.Class<CheckpointRecord>("Checkpoint
 
 export const CheckpointRecordSchema = CheckpointRecord;
 
-function stableSerialize(value: unknown): string {
+function legacyStableSerialize(value: unknown): string {
   if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
+    return `[${value.map((entry) => legacyStableSerialize(entry)).join(",")}]`;
   }
 
   if (typeof value === "object" && value !== null) {
@@ -140,17 +143,50 @@ function stableSerialize(value: unknown): string {
 
     return `{${Object.keys(value)
       .sort((left, right) => left.localeCompare(right))
-      .map((key) => `${JSON.stringify(key)}:${stableSerialize(Reflect.get(value, key))}`)
+      .map((key) => `${JSON.stringify(key)}:${legacyStableSerialize(Reflect.get(value, key))}`)
       .join(",")}}`;
   }
 
   return JSON.stringify(value);
 }
 
+function normalizeStableValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => (entry === undefined ? null : normalizeStableValue(entry)));
+  }
+
+  if (typeof value === "object" && value !== null) {
+    if (Object.prototype.toString.call(value) === "[object Date]") {
+      return value;
+    }
+
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([_key, entryValue]) => entryValue !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entryValue]) => [key, normalizeStableValue(entryValue)]),
+    );
+  }
+
+  return value;
+}
+
+function stableSerialize(value: unknown): string {
+  return JSON.stringify(normalizeStableValue(value));
+}
+
 export function checkpointPayloadSha256(
   checkpoint: Schema.Codec.Encoded<typeof RunCheckpointSchema>,
 ) {
   return createHash("sha256").update(stableSerialize(checkpoint), "utf8").digest("hex");
+}
+
+export function legacyCheckpointPayloadSha256(
+  checkpoint: Schema.Codec.Encoded<typeof RunCheckpointSchema>,
+) {
+  return createHash("sha256")
+    .update(legacyStableSerialize(normalizeStableValue(checkpoint)), "utf8")
+    .digest("hex");
 }
 
 export class ArtifactMetadataStore extends ServiceMap.Service<

@@ -44,6 +44,7 @@ describe("E1 security review verification", () => {
 
     const invalidRunConfig = {
       targetId: "target-product-001",
+      targetDomain: "example.com",
       packId: "pack-example-com",
       accessPolicyId: "policy-default",
       entryUrl: "https://user:password@example.com/products/001",

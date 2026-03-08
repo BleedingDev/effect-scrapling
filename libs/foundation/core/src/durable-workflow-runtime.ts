@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Effect, Layer, Option, Predicate, Schema } from "effect";
 import { BudgetExceededError } from "./access-budget-runtime.ts";
 import {
@@ -37,6 +38,7 @@ import {
   CheckpointCorruption,
   type CoreErrorEnvelope,
   DriftDetected,
+  DuplicateWorkClaim,
   ExtractionMismatch,
   ParserFailure,
   PolicyViolation,
@@ -45,6 +47,14 @@ import {
   TimeoutError,
   toCoreErrorEnvelope,
 } from "./tagged-errors.ts";
+import {
+  WorkflowWorkClaimCompletionRequestSchema,
+  WorkflowWorkClaimKeySchema,
+  WorkflowWorkClaimRecordSchema,
+  WorkflowWorkClaimReleaseRequestSchema,
+  WorkflowWorkClaimRequestSchema,
+  WorkflowWorkClaimStore,
+} from "./workflow-work-claim-store.ts";
 
 const workflowStageOrder = [
   "capture",
@@ -93,31 +103,13 @@ export type DurableWorkflowBaselineResolver = (input: {
 export type DurableWorkflowRuntimeOptions = {
   readonly now?: () => Date;
   readonly createRunId?: (plan: RunPlan) => string;
+  readonly runnerInstanceId?: string;
   readonly resolveBaselineSnapshot?: DurableWorkflowBaselineResolver;
   readonly withWorkflowBudgetPermit?: <A, E, R>(input: {
     readonly effect: Effect.Effect<A, E, R>;
     readonly plan: RunPlan;
   }) => Effect.Effect<A, E | BudgetExceededError | PolicyViolation | ProviderUnavailable, R>;
 };
-
-function stableSerialize(value: unknown): string {
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
-  }
-
-  if (typeof value === "object" && value !== null) {
-    if (Object.prototype.toString.call(value) === "[object Date]") {
-      return JSON.stringify(value);
-    }
-
-    return `{${Object.keys(value)
-      .sort((left, right) => left.localeCompare(right))
-      .map((key) => `${JSON.stringify(key)}:${stableSerialize(Reflect.get(value, key))}`)
-      .join(",")}}`;
-  }
-
-  return JSON.stringify(value);
-}
 
 function hasFailureMessage(cause: unknown): cause is { readonly message: string } {
   if (typeof cause !== "object" || cause === null) {
@@ -170,6 +162,13 @@ function toWorkflowFailure(
     return {
       error: new PolicyViolation({ message: cause.message }),
       failure: toCoreErrorEnvelope(new PolicyViolation({ message: cause.message })),
+    };
+  }
+
+  if (Predicate.isTagged("DuplicateWorkClaim")(cause) && hasFailureMessage(cause)) {
+    return {
+      error: new ProviderUnavailable({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new DuplicateWorkClaim({ message: cause.message })),
     };
   }
 
@@ -328,7 +327,7 @@ function buildResumeContext(input: {
 }
 
 function encodeResumeToken(context: WorkflowResumeContext) {
-  return stableSerialize(Schema.encodeSync(WorkflowResumeContextSchema)(context));
+  return JSON.stringify(Schema.encodeSync(WorkflowResumeContextSchema)(context));
 }
 
 function decodeResumeToken(token: string) {
@@ -380,6 +379,86 @@ function createReplayRunId(input: {
   readonly replayedAt: Date;
 }) {
   return `${input.runId}-replay-${formatSequence(input.checkpointSequence)}-${formatReplayStamp(input.replayedAt)}`;
+}
+
+function createClaimantId(runId: string, runnerInstanceId: string) {
+  return `workflow-runner-${runnerInstanceId}-${runId}`;
+}
+
+function createWorkDedupeKey(step: WorkflowStep) {
+  return `workflow/${step.stage}/${step.id}`;
+}
+
+function createWorkClaimId(input: {
+  readonly checkpointSequence: number;
+  readonly runId: string;
+  readonly runnerInstanceId: string;
+  readonly step: WorkflowStep;
+}) {
+  return `claim-${input.runnerInstanceId}-${input.runId}-${input.step.id}-${formatSequence(input.checkpointSequence + 1)}`;
+}
+
+function createCheckpointSourceId(runId: string, sequence: number) {
+  return sequence === 0
+    ? `checkpoint-seed-${runId}`
+    : `checkpoint-${runId}-${formatSequence(sequence)}`;
+}
+
+function makeWorkflowWorkClaimKey(runId: string, step: WorkflowStep) {
+  return {
+    runId,
+    dedupeKey: createWorkDedupeKey(step),
+  } satisfies Schema.Schema.Type<typeof WorkflowWorkClaimKeySchema>;
+}
+
+function makeWorkflowWorkClaimRequest(input: {
+  readonly checkpointSequence: number;
+  readonly runId: string;
+  readonly runnerInstanceId: string;
+  readonly step: WorkflowStep;
+  readonly plan: RunPlan;
+}) {
+  return {
+    key: makeWorkflowWorkClaimKey(input.runId, input.step),
+    checkpoint: {
+      planId: input.plan.id,
+      checkpointId: createCheckpointSourceId(input.runId, input.checkpointSequence),
+      checkpointSequence: input.checkpointSequence + 1,
+      stage: input.step.stage,
+      stepId: input.step.id,
+    },
+    claimId: createWorkClaimId(input),
+    claimantId: createClaimantId(input.runId, input.runnerInstanceId),
+    ttlMs: input.plan.timeoutMs,
+  } satisfies Schema.Schema.Type<typeof WorkflowWorkClaimRequestSchema>;
+}
+
+function makeWorkflowWorkClaimReleaseRequest(input: {
+  readonly claimId: string;
+  readonly releaseReason: string;
+  readonly runId: string;
+  readonly step: WorkflowStep;
+}) {
+  return {
+    key: makeWorkflowWorkClaimKey(input.runId, input.step),
+    claimId: input.claimId,
+    releaseReason: input.releaseReason,
+  } satisfies Schema.Schema.Type<typeof WorkflowWorkClaimReleaseRequestSchema>;
+}
+
+function makeWorkflowWorkClaimCompletionRequest(input: {
+  readonly artifactIds: ReadonlyArray<string>;
+  readonly claimId: string;
+  readonly resumeToken: string;
+  readonly runId: string;
+  readonly step: WorkflowStep;
+}) {
+  return {
+    key: makeWorkflowWorkClaimKey(input.runId, input.step),
+    claimId: input.claimId,
+    artifactIds: input.artifactIds,
+    resumeToken: input.resumeToken,
+  } satisfies Schema.Schema.Type<typeof WorkflowWorkClaimCompletionRequestSchema>;
 }
 
 function resolveStep(plan: RunPlan, stepId: string) {
@@ -494,6 +573,7 @@ function validateCheckpointAgainstPlan(
 export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions = {}) {
   const now = options.now ?? (() => new Date());
   const createRunId = options.createRunId ?? ((plan: RunPlan) => plan.id);
+  const runnerInstanceId = options.runnerInstanceId ?? randomUUID();
   const resolveBaselineSnapshot: DurableWorkflowBaselineResolver =
     options.resolveBaselineSnapshot ?? ((input) => Effect.succeed(input.candidateSnapshot));
   const withWorkflowBudgetPermit =
@@ -513,6 +593,7 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
     const snapshotStore = yield* SnapshotStore;
     const artifactMetadataStore = yield* ArtifactMetadataStore;
     const checkpointStore = yield* RunCheckpointStore;
+    const workflowWorkClaimStore = yield* WorkflowWorkClaimStore;
 
     const loadArtifacts = Effect.fn("DurableWorkflowRunner.loadArtifacts")(function* (
       artifactIds: ReadonlyArray<string>,
@@ -533,6 +614,28 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
         ),
       );
     });
+
+    const restoreClaimedStepState = Effect.fn("DurableWorkflowRunner.restoreClaimedStepState")(
+      function* (
+        state: WorkflowExecutionState,
+        step: WorkflowStep,
+        record: Schema.Schema.Type<typeof WorkflowWorkClaimRecordSchema>,
+      ) {
+        if (record.resumeToken === undefined) {
+          return yield* Effect.fail(
+            new CheckpointCorruption({
+              message: `Durable workflow work claim for ${step.id} is missing a persisted resume token.`,
+            }),
+          );
+        }
+
+        const context = yield* decodeResumeToken(record.resumeToken);
+        return yield* advanceState(state, step, {
+          artifactIds: record.artifactIds ?? state.artifactIds,
+          context,
+        });
+      },
+    );
 
     const loadSnapshot = Effect.fn("DurableWorkflowRunner.loadSnapshot")(function* (
       snapshotId: string,
@@ -652,16 +755,24 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
           }),
       });
       const encodedCheckpoint = Schema.encodeSync(RunCheckpointSchema)(checkpoint);
+      const locator = yield* Effect.try({
+        try: () =>
+          Schema.decodeUnknownSync(StorageLocatorSchema)({
+            namespace: `checkpoints/${state.plan.targetId}`,
+            key: `${state.runId}/${formatSequence(sequence)}.json`,
+          }),
+        catch: (cause) =>
+          new CheckpointCorruption({
+            message: `Failed to encode durable workflow checkpoint locator through shared contracts. ${readCauseMessage(cause, "Unknown checkpoint locator schema failure.")}`,
+          }),
+      });
       const record = yield* Effect.try({
         try: () =>
           Schema.decodeUnknownSync(CheckpointRecordSchema)({
             id: checkpoint.id,
             runId: checkpoint.runId,
             planId: checkpoint.planId,
-            locator: Schema.decodeUnknownSync(StorageLocatorSchema)({
-              namespace: `checkpoints/${state.plan.targetId}`,
-              key: `${state.runId}/${formatSequence(sequence)}.json`,
-            }),
+            locator,
             checkpoint,
             sha256: checkpointPayloadSha256(encodedCheckpoint),
             encoding: "json",
@@ -866,6 +977,101 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
       }
     });
 
+    const executeStepWithClaim = Effect.fn("DurableWorkflowRunner.executeStepWithClaim")(function* (
+      state: WorkflowExecutionState,
+      step: WorkflowStep,
+      sourceCheckpointSequence: number,
+    ) {
+      const claimId = createWorkClaimId({
+        checkpointSequence: sourceCheckpointSequence,
+        runId: state.runId,
+        runnerInstanceId,
+        step,
+      });
+      const claimDecision = yield* workflowWorkClaimStore.claim(
+        makeWorkflowWorkClaimRequest({
+          checkpointSequence: sourceCheckpointSequence,
+          runId: state.runId,
+          runnerInstanceId,
+          step,
+          plan: state.plan,
+        }),
+      );
+
+      switch (claimDecision.decision) {
+        case "acquired": {
+          const executedStep = yield* executeStep(state, step).pipe(
+            Effect.match({
+              onFailure: (error) => ({ kind: "failure" as const, error }),
+              onSuccess: (nextState) => ({ kind: "success" as const, nextState }),
+            }),
+          );
+
+          if (executedStep.kind === "failure") {
+            yield* workflowWorkClaimStore
+              .release(
+                makeWorkflowWorkClaimReleaseRequest({
+                  claimId,
+                  releaseReason: readCauseMessage(
+                    executedStep.error,
+                    `Durable workflow ${step.id} released after step failure.`,
+                  ),
+                  runId: state.runId,
+                  step,
+                }),
+              )
+              .pipe(
+                Effect.match({
+                  onFailure: () => undefined,
+                  onSuccess: () => undefined,
+                }),
+              );
+
+            return yield* Effect.fail(executedStep.error);
+          }
+
+          yield* workflowWorkClaimStore
+            .complete(
+              makeWorkflowWorkClaimCompletionRequest({
+                artifactIds: executedStep.nextState.artifactIds,
+                claimId,
+                resumeToken: encodeResumeToken(executedStep.nextState.context),
+                runId: state.runId,
+                step,
+              }),
+            )
+            .pipe(
+              Effect.flatMap(
+                Option.match({
+                  onNone: () =>
+                    Effect.fail(
+                      new DuplicateWorkClaim({
+                        message: `Durable workflow step ${step.id} lost its work claim before completion and must be retried.`,
+                      }),
+                    ),
+                  onSome: Effect.succeed,
+                }),
+              ),
+            );
+
+          return executedStep.nextState;
+        }
+
+        case "alreadyCompleted":
+        case "superseded": {
+          return yield* restoreClaimedStepState(state, step, claimDecision.record);
+        }
+
+        case "alreadyClaimed": {
+          return yield* Effect.fail(
+            new DuplicateWorkClaim({
+              message: `Durable workflow step ${step.id} is already claimed and cannot be duplicated concurrently.`,
+            }),
+          );
+        }
+      }
+    });
+
     const runUntilCheckpoint = Effect.fn("DurableWorkflowRunner.runUntilCheckpoint")(function* (
       state: WorkflowExecutionState,
       startingSequence: number,
@@ -887,28 +1093,44 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
         }
 
         const step = yield* resolveStep(nextState.plan, nextStepId);
-        nextState = yield* Effect.matchEffect(executeStep(nextState, step), {
-          onFailure: (error) => {
-            if (Predicate.isTagged("CheckpointCorruption")(error)) {
-              return Effect.fail(error);
-            }
+        const stepResult = yield* executeStepWithClaim(
+          nextState,
+          step,
+          startingSequence + executedSinceCheckpoint,
+        ).pipe(
+          Effect.match({
+            onFailure: (error) => ({ kind: "failure" as const, error }),
+            onSuccess: (state) => ({ kind: "success" as const, state }),
+          }),
+        );
 
-            const workflowFailure = toWorkflowFailure(
-              error,
-              `Durable workflow ${step.stage} stage failed.`,
-            );
+        if (stepResult.kind === "success") {
+          nextState = stepResult.state;
+          executedSinceCheckpoint += 1;
+          continue;
+        }
 
-            return persistCheckpoint(
-              nextState,
-              startingSequence + 1,
-              "failed",
-              workflowFailure.failure,
-              control,
-            ).pipe(Effect.andThen(Effect.fail(workflowFailure.error)));
-          },
-          onSuccess: Effect.succeed,
-        });
-        executedSinceCheckpoint += 1;
+        const error = stepResult.error;
+        if (Predicate.isTagged("CheckpointCorruption")(error)) {
+          return yield* Effect.fail(error);
+        }
+
+        if (Predicate.isTagged("DuplicateWorkClaim")(error)) {
+          return yield* Effect.fail(error);
+        }
+
+        const workflowFailure = toWorkflowFailure(
+          error,
+          `Durable workflow ${step.stage} stage failed.`,
+        );
+
+        return yield* persistCheckpoint(
+          nextState,
+          startingSequence + 1,
+          "failed",
+          workflowFailure.failure,
+          control,
+        ).pipe(Effect.andThen(Effect.fail(workflowFailure.error)));
       }
 
       return yield* persistCheckpoint(

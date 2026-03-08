@@ -250,7 +250,32 @@ describe("foundation-core crawl plan runtime", () => {
       yield* Match.value(error).pipe(
         Match.tag("PolicyViolation", ({ message }) =>
           Effect.sync(() => {
-            expect(message).toContain("must preserve targetId, packId, and accessPolicyId");
+            expect(message).toContain(
+              "must preserve targetId, targetDomain, packId, and accessPolicyId",
+            );
+          }),
+        ),
+        Match.exhaustive,
+      );
+
+      const targetDomainError = yield* compileCrawlPlans({
+        ...encodeCompilerInput(makeCompileInput()),
+        entries: [
+          {
+            ...encodeCompilerInput(makeCompileInput()).entries[0],
+            runConfig: {
+              targetDomain: "budget-bypass.example.net",
+            },
+          },
+        ],
+      }).pipe(Effect.flip);
+
+      yield* Match.value(targetDomainError).pipe(
+        Match.tag("PolicyViolation", ({ message }) =>
+          Effect.sync(() => {
+            expect(message).toContain(
+              "must preserve targetId, targetDomain, packId, and accessPolicyId",
+            );
           }),
         ),
         Match.exhaustive,

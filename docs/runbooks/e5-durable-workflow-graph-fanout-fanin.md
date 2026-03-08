@@ -39,8 +39,8 @@ Current contract guarantees:
 
 - durable checkpoint queues must remain aligned with the canonical graph order
 - resumed runs reject corrupted or reordered pending-step graphs
-- replayed runs start from the latest valid checkpoint but keep the same graph
-  semantics
+- replayed runs keep the same graph semantics and reject corrupted persisted
+  state instead of inferring fallback graph progress
 - final inspection snapshots reflect the terminal graph state exactly
 
 ## Practical Execution

@@ -77,6 +77,7 @@ const accessPolicy = Schema.decodeUnknownSync(AccessPolicySchema)({
 const resolvedConfig = resolveRunExecutionConfig({
   defaults: {
     targetId: targetProfile.id,
+    targetDomain: targetProfile.domain,
     packId: sitePack.id,
     accessPolicyId: accessPolicy.id,
     entryUrl: "https://example.com/catalog",

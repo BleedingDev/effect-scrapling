@@ -15,6 +15,7 @@ export class WorkflowBudgetRegistration extends Schema.Class<WorkflowBudgetRegis
 )({
   concurrencyBudgetId: CanonicalIdentifierSchema,
   accessPolicyId: CanonicalIdentifierSchema,
+  targetDomain: CanonicalDomainSchema,
   concurrencyBudget: ConcurrencyBudgetSchema,
 }) {}
 
@@ -64,16 +65,6 @@ function decodeRegistrations(input: unknown) {
   });
 }
 
-function derivePlanDomain(plan: Schema.Schema.Type<typeof RunPlanSchema>) {
-  return Effect.try({
-    try: () => Schema.decodeUnknownSync(CanonicalDomainSchema)(new URL(plan.entryUrl).hostname),
-    catch: () =>
-      new PolicyViolation({
-        message: `Workflow budget scheduling requires a canonical domain host for ${plan.entryUrl}.`,
-      }),
-  });
-}
-
 function toSharedWorkflowBudget(
   plan: Schema.Schema.Type<typeof RunPlanSchema>,
   budget: WorkflowBudget,
@@ -90,12 +81,16 @@ export function createWorkflowBudgetRegistrations(
   compiledPlans: ReadonlyArray<{
     readonly concurrencyBudget: WorkflowBudget;
     readonly plan: Schema.Schema.Type<typeof RunPlanSchema>;
+    readonly resolvedConfig: {
+      readonly targetDomain: string;
+    };
   }>,
 ) {
   return Schema.decodeUnknownSync(WorkflowBudgetRegistrationsSchema)(
-    compiledPlans.map(({ concurrencyBudget, plan }) => ({
+    compiledPlans.map(({ concurrencyBudget, plan, resolvedConfig }) => ({
       concurrencyBudgetId: plan.concurrencyBudgetId,
       accessPolicyId: plan.accessPolicyId,
+      targetDomain: resolvedConfig.targetDomain,
       concurrencyBudget,
     })),
   );
@@ -137,7 +132,11 @@ export function makeInMemoryWorkflowBudgetScheduler(
         );
       }
 
-      return toSharedWorkflowBudget(plan, registration.concurrencyBudget);
+      const budget = toSharedWorkflowBudget(plan, registration.concurrencyBudget);
+      return {
+        budget,
+        domain: registration.targetDomain,
+      } as const;
     });
 
     const withPermit = Effect.fn("WorkflowBudgetScheduler.withPermit")(function* <A, E, R>(
@@ -145,13 +144,12 @@ export function makeInMemoryWorkflowBudgetScheduler(
       effect: Effect.Effect<A, E, R>,
     ) {
       const plan = yield* decodeRunPlan(planInput);
-      const budget = yield* resolveSharedBudget(plan);
-      const domain = yield* derivePlanDomain(plan);
+      const { budget, domain } = yield* resolveSharedBudget(plan);
       return yield* accessBudgetManager.withPermit(budget, domain, effect);
     });
 
     const inspect = Effect.fn("WorkflowBudgetScheduler.inspect")(function* (planInput: unknown) {
-      const budget = yield* resolveSharedBudget(planInput);
+      const { budget } = yield* resolveSharedBudget(planInput);
       return yield* accessBudgetManager.inspect(budget);
     });
 

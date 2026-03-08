@@ -125,6 +125,7 @@ function buildRunExecutionDefaults(entry: CrawlPlanCompilerEntry) {
 
   return {
     targetId: entry.target.id,
+    targetDomain: entry.target.domain,
     packId: entry.pack.id,
     accessPolicyId: entry.accessPolicy.id,
     entryUrl,
@@ -154,12 +155,13 @@ function resolveEntryConfig(
 
   if (
     resolved.targetId !== entry.target.id ||
+    resolved.targetDomain !== entry.target.domain ||
     resolved.packId !== entry.pack.id ||
     resolved.accessPolicyId !== entry.accessPolicy.id
   ) {
     throw new PolicyViolation({
       message:
-        "Resolved crawl-plan execution config must preserve targetId, packId, and accessPolicyId from the entry contract.",
+        "Resolved crawl-plan execution config must preserve targetId, targetDomain, packId, and accessPolicyId from the entry contract.",
     });
   }
 

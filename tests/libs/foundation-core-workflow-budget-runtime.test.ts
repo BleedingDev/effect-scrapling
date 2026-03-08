@@ -30,6 +30,10 @@ import {
   createWorkflowBudgetRegistrations,
   makeInMemoryWorkflowBudgetScheduler,
 } from "../../libs/foundation/core/src/workflow-budget-runtime.ts";
+import {
+  WorkflowWorkClaimStore,
+  makeInMemoryWorkflowWorkClaimStore,
+} from "../../libs/foundation/core/src/workflow-work-claim-store.ts";
 
 const CREATED_AT = "2026-03-08T05:00:00.000Z";
 
@@ -120,6 +124,72 @@ function makeSnapshot(plan: Schema.Schema.Type<typeof RunPlanSchema>, artifactId
 }
 
 describe("foundation-core workflow budget runtime", () => {
+  it.effect("rejects plans whose workflow budget registration is missing", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(
+        makeCompilerInput({
+          entries: [
+            {
+              targetId: "target-primary",
+              domain: "example.com",
+              entryUrl: "https://example.com/products/primary",
+            },
+          ],
+          globalConcurrency: 1,
+          perDomainConcurrency: 1,
+        }),
+      );
+      const firstPlan = compiledPlans[0]?.plan;
+
+      if (firstPlan === undefined) {
+        throw new Error("Expected a compiled plan for workflow budget scheduling.");
+      }
+
+      const scheduler = yield* makeInMemoryWorkflowBudgetScheduler([]);
+      const permitFailure = yield* Effect.flip(scheduler.withPermit(firstPlan, Effect.void));
+      const inspectFailure = yield* Effect.flip(scheduler.inspect(firstPlan));
+
+      expect(permitFailure.message).toContain("could not resolve concurrency budget");
+      expect(inspectFailure.message).toContain("could not resolve concurrency budget");
+    }),
+  );
+
+  it.effect("rejects plans whose workflow budget registration drifts from the access policy", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(
+        makeCompilerInput({
+          entries: [
+            {
+              targetId: "target-primary",
+              domain: "example.com",
+              entryUrl: "https://example.com/products/primary",
+            },
+          ],
+          globalConcurrency: 1,
+          perDomainConcurrency: 1,
+        }),
+      );
+      const firstPlan = compiledPlans[0]?.plan;
+
+      if (firstPlan === undefined) {
+        throw new Error("Expected a compiled plan for workflow budget scheduling.");
+      }
+
+      const mismatchedRegistrations = createWorkflowBudgetRegistrations(compiledPlans).map(
+        (registration) => ({
+          ...registration,
+          accessPolicyId: "policy-mismatched",
+        }),
+      );
+      const scheduler = yield* makeInMemoryWorkflowBudgetScheduler(mismatchedRegistrations);
+      const permitFailure = yield* Effect.flip(scheduler.withPermit(firstPlan, Effect.void));
+      const inspectFailure = yield* Effect.flip(scheduler.inspect(firstPlan));
+
+      expect(permitFailure.message).toContain("preserve the access policy identity");
+      expect(inspectFailure.message).toContain("preserve the access policy identity");
+    }),
+  );
+
   it.effect("coalesces equivalent workflow budgets into shared global and per-domain pools", () =>
     Effect.scoped(
       Effect.gen(function* () {
@@ -165,19 +235,32 @@ describe("foundation-core workflow budget runtime", () => {
         const firstFiber = yield* scheduler
           .withPermit(firstPlan, Deferred.await(releaseFirst))
           .pipe(Effect.forkScoped);
+
+        yield* Effect.yieldNow;
+
+        const domainFailure = yield* Effect.flip(scheduler.withPermit(firstPlan, Effect.void));
+        const domainSnapshot = yield* scheduler.inspect(firstPlan);
         const secondFiber = yield* scheduler
           .withPermit(secondPlan, Deferred.await(releaseSecond))
           .pipe(Effect.forkScoped);
 
         yield* Effect.yieldNow;
 
-        const domainFailure = yield* Effect.flip(scheduler.withPermit(firstPlan, Effect.void));
         const globalFailure = yield* Effect.flip(
           scheduler.withPermit(globalProbePlan, Effect.void),
         );
 
         expect(domainFailure.message).toContain("denied access");
         expect(globalFailure.message).toContain("denied access");
+        expect(domainSnapshot.globalInUse).toBe(1);
+        expect(domainSnapshot.domains).toEqual([
+          {
+            domain: "example.com",
+            capacity: 1,
+            available: 0,
+            inUse: 1,
+          },
+        ]);
 
         const snapshot = yield* scheduler.inspect(firstPlan);
         expect(snapshot.globalInUse).toBe(2);
@@ -208,8 +291,8 @@ describe("foundation-core workflow budget runtime", () => {
         const events = yield* scheduler.events();
         expect(events.map(({ kind }) => kind)).toEqual([
           "acquired",
-          "acquired",
           "rejected",
+          "acquired",
           "rejected",
           "released",
           "released",
@@ -252,6 +335,7 @@ describe("foundation-core workflow budget runtime", () => {
             createWorkflowBudgetRegistrations(compiledPlans),
             () => new Date(CREATED_AT),
           );
+          const workflowWorkClaimStore = yield* makeInMemoryWorkflowWorkClaimStore();
           const captureCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
           const checkpointStoreRef = yield* Ref.make(
             [] as ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>,
@@ -380,6 +464,7 @@ describe("foundation-core workflow budget runtime", () => {
                   ),
               }),
             ),
+            Layer.succeed(WorkflowWorkClaimStore)(workflowWorkClaimStore),
           );
           const runtimeLayer = Layer.mergeAll(
             baseLayer,

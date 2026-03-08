@@ -10,6 +10,7 @@ export const CoreErrorCodeSchema = Schema.Literals([
   "drift_detected",
   "checkpoint_corruption",
   "policy_violation",
+  "duplicate_work_claim",
   "provider_unavailable",
 ] as const);
 
@@ -47,6 +48,10 @@ export class PolicyViolation extends Data.TaggedError("PolicyViolation")<{
   readonly message: string;
 }> {}
 
+export class DuplicateWorkClaim extends Data.TaggedError("DuplicateWorkClaim")<{
+  readonly message: string;
+}> {}
+
 export class ProviderUnavailable extends Data.TaggedError("ProviderUnavailable")<{
   readonly message: string;
 }> {}
@@ -59,6 +64,7 @@ export type CoreTaggedError =
   | DriftDetected
   | CheckpointCorruption
   | PolicyViolation
+  | DuplicateWorkClaim
   | ProviderUnavailable;
 
 export type CoreErrorCode = Schema.Schema.Type<typeof CoreErrorCodeSchema>;
@@ -84,6 +90,9 @@ export const toCoreErrorEnvelope = Match.type<CoreTaggedError>().pipe(
     toEnvelope("checkpoint_corruption", false, message),
   ),
   Match.tag("PolicyViolation", ({ message }) => toEnvelope("policy_violation", false, message)),
+  Match.tag("DuplicateWorkClaim", ({ message }) =>
+    toEnvelope("duplicate_work_claim", true, message),
+  ),
   Match.tag("ProviderUnavailable", ({ message }) =>
     toEnvelope("provider_unavailable", true, message),
   ),

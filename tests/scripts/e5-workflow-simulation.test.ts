@@ -19,6 +19,26 @@ import {
   summarizeMeasurements,
 } from "../../scripts/benchmarks/e5-workflow-simulation.ts";
 
+const stableBudgetEvents = {
+  acquired: 2,
+  rejected: 0,
+  released: 2,
+  peakGlobalInUse: 2,
+  peakPerDomainInUse: 2,
+} as const;
+
+const stableWorkClaims = {
+  recordCount: 2,
+  maxClaimCount: 1,
+  maxTakeoverCount: 0,
+  decisions: {
+    acquired: 2,
+    alreadyClaimed: 0,
+    alreadyCompleted: 0,
+    superseded: 0,
+  },
+} as const;
+
 describe("e5 workflow simulation benchmark harness", () => {
   it("parses explicit benchmark options through schema-backed integer decoding", () => {
     expect(
@@ -70,6 +90,20 @@ describe("e5 workflow simulation benchmark harness", () => {
     expect(sample.totalObservations).toBe(10);
     expect(sample.checkpointCount).toBe(6);
     expect(sample.stageFingerprint).toBe("snapshot>quality>reflect");
+    expect(sample.budgetEvents).toEqual({
+      acquired: 2,
+      rejected: 0,
+      released: 2,
+      peakGlobalInUse: 1,
+      peakPerDomainInUse: 1,
+    });
+    expect(sample.workClaims.recordCount).toBeGreaterThan(0);
+    expect(sample.workClaims.maxClaimCount).toBe(1);
+    expect(sample.workClaims.maxTakeoverCount).toBe(0);
+    expect(sample.workClaims.decisions.alreadyClaimed).toBe(0);
+    expect(sample.workClaims.decisions.alreadyCompleted).toBe(0);
+    expect(sample.workClaims.decisions.superseded).toBe(0);
+    expect(sample.workClaims.decisions.acquired).toBe(sample.workClaims.recordCount);
     expect(sample.durationMs).toBeGreaterThan(0);
   });
 
@@ -85,6 +119,11 @@ describe("e5 workflow simulation benchmark harness", () => {
     expect(sample.totalObservations).toBe(101);
     expect(sample.checkpointCount).toBe(303);
     expect(sample.stageFingerprint).toBe("snapshot>quality>reflect");
+    expect(sample.budgetEvents.acquired).toBe(101);
+    expect(sample.budgetEvents.rejected).toBe(0);
+    expect(sample.budgetEvents.released).toBe(101);
+    expect(sample.workClaims.maxClaimCount).toBe(1);
+    expect(sample.workClaims.maxTakeoverCount).toBe(0);
   });
 
   it("compiles large simulation profiles in deterministic canonical target order", async () => {
@@ -116,7 +155,7 @@ describe("e5 workflow simulation benchmark harness", () => {
         "--artifact",
         baselinePath,
         "--targets",
-        "20",
+        "40",
         "--observations-per-target",
         "500",
         "--sample-size",
@@ -131,7 +170,7 @@ describe("e5 workflow simulation benchmark harness", () => {
         "--baseline",
         baselinePath,
         "--targets",
-        "20",
+        "40",
         "--observations-per-target",
         "500",
         "--sample-size",
@@ -145,8 +184,8 @@ describe("e5 workflow simulation benchmark harness", () => {
 
       expect(artifact.status).toBe("pass");
       expect(persisted).toEqual(artifact);
-      expect(persisted.profile.totalObservations).toBe(10_000);
-      expect(persisted.stability.observedCheckpointCount).toBe(60);
+      expect(persisted.profile.totalObservations).toBe(20_000);
+      expect(persisted.stability.observedCheckpointCount).toBe(120);
       expect(persisted.stability.consistentCheckpointCount).toBe(true);
       expect(persisted.stability.observedStageFingerprint).toBe("snapshot>quality>reflect");
       expect(persisted.stability.consistentStageFingerprint).toBe(true);
@@ -180,6 +219,8 @@ describe("e5 workflow simulation benchmark harness", () => {
           checkpointCount: 6,
           stageFingerprint: "snapshot>quality>reflect",
           totalObservations: 10,
+          budgetEvents: stableBudgetEvents,
+          workClaims: stableWorkClaims,
         },
         {
           durationMs: 110,
@@ -188,6 +229,8 @@ describe("e5 workflow simulation benchmark harness", () => {
           checkpointCount: 6,
           stageFingerprint: "snapshot>quality>reflect",
           totalObservations: 10,
+          budgetEvents: stableBudgetEvents,
+          workClaims: stableWorkClaims,
         },
       ],
       undefined,
@@ -206,6 +249,8 @@ describe("e5 workflow simulation benchmark harness", () => {
           checkpointCount: 5,
           stageFingerprint: "snapshot>reflect",
           totalObservations: 10,
+          budgetEvents: stableBudgetEvents,
+          workClaims: stableWorkClaims,
         },
         {
           durationMs: 20_500,
@@ -214,6 +259,8 @@ describe("e5 workflow simulation benchmark harness", () => {
           checkpointCount: 5,
           stageFingerprint: "snapshot>reflect",
           totalObservations: 10,
+          budgetEvents: stableBudgetEvents,
+          workClaims: stableWorkClaims,
         },
       ],
       baseline,
@@ -265,6 +312,8 @@ describe("e5 workflow simulation benchmark harness", () => {
           checkpointCount: 6,
           stageFingerprint: "snapshot>quality>reflect",
           totalObservations: 10,
+          budgetEvents: stableBudgetEvents,
+          workClaims: stableWorkClaims,
         },
         {
           durationMs: 100,
@@ -273,13 +322,19 @@ describe("e5 workflow simulation benchmark harness", () => {
           checkpointCount: 5,
           stageFingerprint: "snapshot>reflect",
           totalObservations: 10,
+          budgetEvents: stableBudgetEvents,
+          workClaims: stableWorkClaims,
         },
       ],
       baseline,
     );
 
     expect(flakyCandidate.status).toBe("fail");
+    expect(flakyCandidate.stability.observedCheckpointCount).toBe(5);
     expect(flakyCandidate.stability.consistentCheckpointCount).toBe(false);
+    expect(flakyCandidate.stability.observedStageFingerprint).toBe(
+      "snapshot>quality>reflect|snapshot>reflect",
+    );
     expect(flakyCandidate.stability.consistentStageFingerprint).toBe(false);
     expect(
       flakyCandidate.violations.some((message) =>
