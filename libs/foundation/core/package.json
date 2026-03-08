@@ -18,11 +18,13 @@
     "./observation-snapshot": "./src/observation-snapshot.ts",
     "./pack-registry-runtime": "./src/pack-registry-runtime.ts",
     "./pack-candidate-generator": "./src/pack-candidate-generator.ts",
+    "./reflector-runtime": "./src/reflector-runtime.ts",
     "./run-state": "./src/run-state.ts",
     "./selector-trust-decay": "./src/selector-trust-decay.ts",
     "./service-topology": "./src/service-topology.ts",
     "./site-pack": "./src/site-pack.ts",
     "./tagged-errors": "./src/tagged-errors.ts",
+    "./validator-ladder-runtime": "./src/validator-ladder-runtime.ts",
     "./workflow-work-claim-store": "./src/workflow-work-claim-store.ts"
   }
 }
