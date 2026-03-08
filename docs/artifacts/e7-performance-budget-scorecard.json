@@ -1,0 +1,50 @@
+{
+  "benchmark": "e7-performance-budget",
+  "benchmarkId": "e7-performance-budget",
+  "generatedAt": "2026-03-08T16:00:00.000Z",
+  "environment": {
+    "bun": "1.3.10",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "sampleSize": 3,
+  "warmupIterations": 1,
+  "profile": {
+    "caseCount": 2,
+    "packCount": 2
+  },
+  "budgets": {
+    "baselineCorpusP95Ms": 500,
+    "incumbentComparisonP95Ms": 1200,
+    "heapDeltaKiB": 16384
+  },
+  "measurements": {
+    "baselineCorpus": {
+      "samples": 3,
+      "minMs": 59.798,
+      "meanMs": 66.868,
+      "p95Ms": 71.353,
+      "maxMs": 71.353
+    },
+    "incumbentComparison": {
+      "samples": 3,
+      "minMs": 141.717,
+      "meanMs": 150.971,
+      "p95Ms": 157.126,
+      "maxMs": 157.126
+    },
+    "heapDeltaKiB": 3165.556
+  },
+  "comparison": {
+    "baselinePath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e7-performance-budget-baseline.json",
+    "comparable": true,
+    "incompatibleReason": null,
+    "deltas": {
+      "baselineCorpusP95Ms": -43.497,
+      "incumbentComparisonP95Ms": 10.239,
+      "heapDeltaKiB": 32.273
+    }
+  },
+  "violations": [],
+  "status": "pass"
+}

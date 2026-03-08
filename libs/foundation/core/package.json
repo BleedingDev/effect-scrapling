@@ -14,6 +14,7 @@
     "./config-storage": "./src/config-storage.ts",
     "./crawl-plan-runtime": "./src/crawl-plan-runtime.ts",
     "./diff-verdict": "./src/diff-verdict.ts",
+    "./drift-regression-runtime": "./src/drift-regression-runtime.ts",
     "./durable-workflow-runtime": "./src/durable-workflow-runtime.ts",
     "./baseline-corpus-runtime": "./src/baseline-corpus-runtime.ts",
     "./incumbent-comparison-runtime": "./src/incumbent-comparison-runtime.ts",
@@ -30,6 +31,7 @@
     "./site-pack": "./src/site-pack.ts",
     "./tagged-errors": "./src/tagged-errors.ts",
     "./validator-ladder-runtime": "./src/validator-ladder-runtime.ts",
+    "./performance-gate-runtime": "./src/performance-gate-runtime.ts",
     "./workflow-work-claim-store": "./src/workflow-work-claim-store.ts"
   }
 }
