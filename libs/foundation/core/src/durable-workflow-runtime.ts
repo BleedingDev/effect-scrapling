@@ -13,9 +13,11 @@ import {
   RunCheckpointSchema,
   RunOutcomeSchema,
   RunPlanSchema,
+  WorkflowControlAuditSchema,
   WorkflowControlResultSchema,
   WorkflowInspectionSnapshotSchema,
   type RunPlan,
+  type WorkflowControlOperation,
 } from "./run-state.ts";
 import { CanonicalIdentifierSchema } from "./schema-primitives.ts";
 import {
@@ -250,6 +252,7 @@ function buildInspectionSnapshot(input: {
       stepsUntilNextCheckpoint:
         pendingSteps === 0 ? 0 : Math.min(input.plan.checkpointInterval, pendingSteps),
     },
+    ...(input.checkpoint.control === undefined ? {} : { control: input.checkpoint.control }),
     ...(input.checkpoint.failure === undefined ? {} : { error: input.checkpoint.failure }),
   });
 }
@@ -576,6 +579,10 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
       sequence: number,
       outcome: Schema.Schema.Type<typeof RunOutcomeSchema>,
       failure?: CoreErrorEnvelope,
+      control?: {
+        readonly operation: WorkflowControlOperation;
+        readonly sourceCheckpointId: string;
+      },
     ) {
       const storedAt = now().toISOString();
       const stageStep = yield* resolveCheckpointStage(
@@ -583,6 +590,21 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
         state.completedStepIds,
         state.pendingStepIds,
       );
+      const controlAudit =
+        control === undefined
+          ? undefined
+          : yield* Effect.try({
+              try: () =>
+                Schema.decodeUnknownSync(WorkflowControlAuditSchema)({
+                  operation: control.operation,
+                  sourceCheckpointId: control.sourceCheckpointId,
+                  requestedAt: storedAt,
+                }),
+              catch: (cause) =>
+                new CheckpointCorruption({
+                  message: `Failed to encode durable workflow control audit metadata through shared contracts. ${readCauseMessage(cause, "Unknown workflow control audit schema failure.")}`,
+                }),
+            });
       const checkpoint = yield* Effect.try({
         try: () =>
           Schema.decodeUnknownSync(RunCheckpointSchema)({
@@ -598,6 +620,7 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
             pendingStepIds: state.pendingStepIds,
             artifactIds: state.artifactIds,
             resumeToken: encodeResumeToken(state.context),
+            ...(controlAudit === undefined ? {} : { control: controlAudit }),
             ...(failure === undefined ? {} : { failure }),
             stats: {
               runId: state.runId,
@@ -831,6 +854,10 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
     const runUntilCheckpoint = Effect.fn("DurableWorkflowRunner.runUntilCheckpoint")(function* (
       state: WorkflowExecutionState,
       startingSequence: number,
+      control?: {
+        readonly operation: WorkflowControlOperation;
+        readonly sourceCheckpointId: string;
+      },
     ) {
       let nextState = state;
       let executedSinceCheckpoint = 0;
@@ -861,6 +888,7 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
               startingSequence + 1,
               "failed",
               workflowFailure.failure,
+              control,
             ).pipe(Effect.andThen(Effect.fail(workflowFailure.error)));
           },
           onSuccess: Effect.succeed,
@@ -872,13 +900,15 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
         nextState,
         startingSequence + 1,
         nextState.pendingStepIds.length === 0 ? "succeeded" : "running",
+        undefined,
+        control,
       );
     });
 
     const buildWorkflowControlResult = Effect.fn(
       "DurableWorkflowRunner.buildWorkflowControlResult",
     )(function* (input: {
-      readonly operation: "resume" | "replay";
+      readonly operation: WorkflowControlOperation;
       readonly requestedRunId: string;
       readonly sourceCheckpointId: string;
       readonly checkpoint: Schema.Schema.Type<typeof RunCheckpointSchema>;
@@ -907,6 +937,33 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
         onSome: ({ checkpoint }) => inspectCheckpoint(checkpoint).pipe(Effect.map(Option.some)),
       });
     });
+
+    const restoreExecutionState = Effect.fn("DurableWorkflowRunner.restoreExecutionState")(
+      function* (checkpoint: Schema.Schema.Type<typeof RunCheckpointSchema>) {
+        if (checkpoint.resumeToken === undefined) {
+          return yield* Effect.fail(
+            new CheckpointCorruption({
+              message:
+                "Durable workflow checkpoints require a resume token for operator control operations.",
+            }),
+          );
+        }
+
+        const context = yield* decodeResumeToken(checkpoint.resumeToken);
+        const decodedPlan = yield* decodePlan(context.plan);
+        yield* validateCheckpointAgainstPlan(checkpoint, decodedPlan, context.runId);
+
+        return {
+          runId: checkpoint.runId,
+          plan: decodedPlan,
+          completedStepIds: checkpoint.completedStepIds,
+          pendingStepIds: checkpoint.pendingStepIds,
+          artifactIds: checkpoint.artifactIds,
+          context,
+          startedAt: checkpoint.stats.startedAt,
+        } satisfies WorkflowExecutionState;
+      },
+    );
 
     const start = Effect.fn("DurableWorkflowRunner.start")(function* (plan: RunPlan) {
       const decodedPlan = yield* decodePlan(plan);
@@ -966,38 +1023,192 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
       ).pipe(Effect.flatMap(decodeCheckpoint));
     });
 
-    const resume = Effect.fn("DurableWorkflowRunner.resume")(function* (
-      checkpoint: Schema.Codec.Encoded<typeof RunCheckpointSchema>,
+    const resumeFromCheckpoint = Effect.fn("DurableWorkflowRunner.resumeFromCheckpoint")(function* (
+      checkpoint: Schema.Schema.Type<typeof RunCheckpointSchema>,
+      operation: "resume" | "retry",
     ) {
-      const decodedCheckpoint = yield* decodeCheckpoint(checkpoint);
-      if (decodedCheckpoint.resumeToken === undefined) {
+      if (checkpoint.stats.outcome === "cancelled") {
+        const operationName = operation === "retry" ? "retried" : "resumed";
         return yield* Effect.fail(
-          new CheckpointCorruption({
-            message: "Durable workflow checkpoints require a resume token for restart and replay.",
+          new PolicyViolation({
+            message: `Durable workflow ${checkpoint.runId} was cancelled and cannot be ${operationName}.`,
           }),
         );
       }
 
-      const context = yield* decodeResumeToken(decodedCheckpoint.resumeToken);
-      const decodedPlan = yield* decodePlan(context.plan);
-      yield* validateCheckpointAgainstPlan(decodedCheckpoint, decodedPlan, context.runId);
-
-      if (decodedCheckpoint.pendingStepIds.length === 0) {
-        return Schema.encodeSync(RunCheckpointSchema)(decodedCheckpoint);
+      if (operation === "resume" && checkpoint.stats.outcome === "failed") {
+        return yield* Effect.fail(
+          new PolicyViolation({
+            message:
+              "Failed durable workflow checkpoints require explicit retryRun control instead of resume.",
+          }),
+        );
       }
 
+      if (operation === "retry") {
+        if (checkpoint.stats.outcome !== "failed") {
+          return yield* Effect.fail(
+            new PolicyViolation({
+              message:
+                "Controlled durable workflow retry requires the latest checkpoint to be failed.",
+            }),
+          );
+        }
+
+        if (checkpoint.failure?.retryable !== true) {
+          return yield* Effect.fail(
+            new PolicyViolation({
+              message: "Controlled durable workflow retry requires a retryable failure envelope.",
+            }),
+          );
+        }
+      }
+
+      if (checkpoint.pendingStepIds.length === 0) {
+        return Schema.encodeSync(RunCheckpointSchema)(checkpoint);
+      }
+
+      const state = yield* restoreExecutionState(checkpoint);
       return yield* runUntilCheckpoint(
-        {
-          runId: decodedCheckpoint.runId,
-          plan: decodedPlan,
-          completedStepIds: decodedCheckpoint.completedStepIds,
-          pendingStepIds: decodedCheckpoint.pendingStepIds,
-          artifactIds: decodedCheckpoint.artifactIds,
-          context,
-          startedAt: decodedCheckpoint.stats.startedAt,
-        },
-        decodedCheckpoint.sequence,
+        state,
+        checkpoint.sequence,
+        operation === "retry"
+          ? {
+              operation: "retry",
+              sourceCheckpointId: checkpoint.id,
+            }
+          : undefined,
       );
+    });
+
+    const resume = Effect.fn("DurableWorkflowRunner.resume")(function* (
+      checkpoint: Schema.Codec.Encoded<typeof RunCheckpointSchema>,
+    ) {
+      const decodedCheckpoint = yield* decodeCheckpoint(checkpoint);
+      return yield* resumeFromCheckpoint(decodedCheckpoint, "resume");
+    });
+
+    const cancelRun = Effect.fn("DurableWorkflowRunner.cancelRun")(function* (runId: string) {
+      const latestRecord = yield* findLatestCheckpointRecord(runId);
+      return yield* Option.match(latestRecord, {
+        onNone: () => Effect.succeed(Option.none()),
+        onSome: ({ checkpoint }) =>
+          Effect.gen(function* () {
+            if (checkpoint.stats.outcome === "cancelled") {
+              const auditableCheckpoint =
+                checkpoint.control === undefined
+                  ? yield* Effect.try({
+                      try: () =>
+                        Schema.decodeUnknownSync(RunCheckpointSchema)({
+                          ...Schema.encodeSync(RunCheckpointSchema)(checkpoint),
+                          control: {
+                            operation: "cancel",
+                            sourceCheckpointId: checkpoint.id,
+                            requestedAt: checkpoint.storedAt,
+                          },
+                        }),
+                      catch: (cause) =>
+                        new CheckpointCorruption({
+                          message: `Failed to synthesize durable workflow cancel audit metadata for an existing cancelled checkpoint. ${readCauseMessage(cause, "Unknown synthetic cancel audit schema failure.")}`,
+                        }),
+                    })
+                  : checkpoint;
+
+              return yield* buildWorkflowControlResult({
+                operation: "cancel",
+                requestedRunId: auditableCheckpoint.runId,
+                sourceCheckpointId:
+                  auditableCheckpoint.control?.sourceCheckpointId ?? checkpoint.id,
+                checkpoint: auditableCheckpoint,
+              }).pipe(Effect.map(Option.some));
+            }
+
+            if (checkpoint.pendingStepIds.length === 0) {
+              return yield* Effect.fail(
+                new PolicyViolation({
+                  message: `Durable workflow ${checkpoint.runId} has no pending work to cancel.`,
+                }),
+              );
+            }
+
+            const state = yield* restoreExecutionState(checkpoint);
+            const cancelledCheckpoint = yield* persistCheckpoint(
+              state,
+              checkpoint.sequence + 1,
+              "cancelled",
+              undefined,
+              {
+                operation: "cancel",
+                sourceCheckpointId: checkpoint.id,
+              },
+            ).pipe(Effect.flatMap(decodeCheckpoint));
+
+            return yield* buildWorkflowControlResult({
+              operation: "cancel",
+              requestedRunId: checkpoint.runId,
+              sourceCheckpointId: checkpoint.id,
+              checkpoint: cancelledCheckpoint,
+            }).pipe(Effect.map(Option.some));
+          }),
+      });
+    });
+
+    const deferRun = Effect.fn("DurableWorkflowRunner.deferRun")(function* (runId: string) {
+      const latestRecord = yield* findLatestCheckpointRecord(runId);
+      return yield* Option.match(latestRecord, {
+        onNone: () => Effect.succeed(Option.none()),
+        onSome: ({ checkpoint }) =>
+          Effect.gen(function* () {
+            if (
+              checkpoint.control?.operation === "defer" &&
+              checkpoint.stats.outcome === "running"
+            ) {
+              return yield* buildWorkflowControlResult({
+                operation: "defer",
+                requestedRunId: checkpoint.runId,
+                sourceCheckpointId: checkpoint.control.sourceCheckpointId,
+                checkpoint,
+              }).pipe(Effect.map(Option.some));
+            }
+
+            if (checkpoint.stats.outcome !== "running") {
+              return yield* Effect.fail(
+                new PolicyViolation({
+                  message:
+                    "Durable workflow defer control only applies to running checkpoints with pending work.",
+                }),
+              );
+            }
+
+            if (checkpoint.pendingStepIds.length === 0) {
+              return yield* Effect.fail(
+                new PolicyViolation({
+                  message:
+                    "Durable workflow defer control requires pending work on the latest checkpoint.",
+                }),
+              );
+            }
+
+            const state = yield* restoreExecutionState(checkpoint);
+            const deferredCheckpoint = yield* persistCheckpoint(
+              state,
+              checkpoint.sequence + 1,
+              "running",
+              undefined,
+              {
+                operation: "defer",
+                sourceCheckpointId: checkpoint.id,
+              },
+            ).pipe(Effect.flatMap(decodeCheckpoint));
+
+            return yield* buildWorkflowControlResult({
+              operation: "defer",
+              requestedRunId: checkpoint.runId,
+              sourceCheckpointId: checkpoint.id,
+              checkpoint: deferredCheckpoint,
+            }).pipe(Effect.map(Option.some));
+          }),
+      });
     });
 
     const replayRun = Effect.fn("DurableWorkflowRunner.replayRun")(function* (runId: string) {
@@ -1042,11 +1253,34 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
       });
     });
 
+    const retryRun = Effect.fn("DurableWorkflowRunner.retryRun")(function* (runId: string) {
+      const latestRecord = yield* findLatestCheckpointRecord(runId);
+      return yield* Option.match(latestRecord, {
+        onNone: () => Effect.succeed(Option.none()),
+        onSome: ({ checkpoint }) =>
+          resumeFromCheckpoint(checkpoint, "retry").pipe(
+            Effect.flatMap(decodeCheckpoint),
+            Effect.flatMap((retriedCheckpoint) =>
+              buildWorkflowControlResult({
+                operation: "retry",
+                requestedRunId: checkpoint.runId,
+                sourceCheckpointId: checkpoint.id,
+                checkpoint: retriedCheckpoint,
+              }),
+            ),
+            Effect.map(Option.some),
+          ),
+      });
+    });
+
     return WorkflowRunner.of({
+      cancelRun,
+      deferRun,
       inspect,
       replayRun,
       resume,
       resumeRun,
+      retryRun,
       start,
     });
   });

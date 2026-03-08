@@ -340,10 +340,13 @@ function provideServices() {
     ),
     Layer.succeed(WorkflowRunner)(
       WorkflowRunner.of({
+        cancelRun: () => Effect.succeed(Option.none()),
+        deferRun: () => Effect.succeed(Option.none()),
         inspect: () => Effect.succeed(Option.some(inspection)),
         replayRun: () => Effect.succeed(Option.none()),
         resume: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
         resumeRun: () => Effect.succeed(Option.none()),
+        retryRun: () => Effect.succeed(Option.none()),
         start: () => Effect.succeed(Schema.encodeSync(RunCheckpointSchema)(checkpoint)),
       }),
     ),

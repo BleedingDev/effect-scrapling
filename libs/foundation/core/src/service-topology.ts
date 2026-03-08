@@ -146,6 +146,18 @@ export class WorkflowRunner extends ServiceMap.Service<
       Option.Option<WorkflowInspectionSnapshot>,
       CheckpointCorruption | ProviderUnavailable
     >;
+    readonly cancelRun: (
+      runId: CanonicalIdentifier,
+    ) => Effect.Effect<
+      Option.Option<WorkflowControlResult>,
+      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+    >;
+    readonly deferRun: (
+      runId: CanonicalIdentifier,
+    ) => Effect.Effect<
+      Option.Option<WorkflowControlResult>,
+      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+    >;
     readonly resume: (
       checkpoint: RunCheckpointEncoded,
     ) => Effect.Effect<
@@ -159,6 +171,12 @@ export class WorkflowRunner extends ServiceMap.Service<
       CheckpointCorruption | ProviderUnavailable | PolicyViolation
     >;
     readonly resumeRun: (
+      runId: CanonicalIdentifier,
+    ) => Effect.Effect<
+      Option.Option<WorkflowControlResult>,
+      CheckpointCorruption | ProviderUnavailable | PolicyViolation
+    >;
+    readonly retryRun: (
       runId: CanonicalIdentifier,
     ) => Effect.Effect<
       Option.Option<WorkflowControlResult>,

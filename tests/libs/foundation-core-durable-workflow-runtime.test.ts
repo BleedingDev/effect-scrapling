@@ -35,7 +35,7 @@ import {
   WorkflowRunner,
 } from "../../libs/foundation/core/src/service-topology.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
-import { ParserFailure } from "../../libs/foundation/core/src/tagged-errors.ts";
+import { ParserFailure, TimeoutError } from "../../libs/foundation/core/src/tagged-errors.ts";
 
 const CREATED_AT = "2026-03-07T12:30:00.000Z";
 
@@ -119,10 +119,14 @@ function makeSnapshot(targetId: string, artifactId: string, snapshotId: string) 
   });
 }
 
-function makeTestLayer(options?: { readonly extractorFailureMessage?: string }) {
+function makeTestLayer(options?: {
+  readonly browserTimeoutOnFirstCapture?: boolean;
+  readonly extractorFailureMessage?: string;
+}) {
   return Effect.gen(function* () {
     let nowTick = 0;
     const browserCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
+    const browserAttemptRef = yield* Ref.make(0);
     const httpCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
     const artifactStoreRef = yield* Ref.make(
       new Map<string, Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>>(),
@@ -147,9 +151,21 @@ function makeTestLayer(options?: { readonly extractorFailureMessage?: string }) 
       Layer.succeed(BrowserAccess)(
         BrowserAccess.of({
           capture: (plan) =>
-            Ref.update(browserCallsRef, (calls) => [...calls, plan.targetId]).pipe(
-              Effect.as([makeArtifact(plan.targetId)]),
-            ),
+            Effect.gen(function* () {
+              const attemptNumber = (yield* Ref.get(browserAttemptRef)) + 1;
+              yield* Ref.set(browserAttemptRef, attemptNumber);
+              yield* Ref.update(browserCallsRef, (calls) => [...calls, plan.targetId]);
+
+              if (attemptNumber === 1 && options?.browserTimeoutOnFirstCapture === true) {
+                return yield* Effect.fail(
+                  new TimeoutError({
+                    message: "Synthetic access timeout for controlled retry.",
+                  }),
+                );
+              }
+
+              return [makeArtifact(plan.targetId)];
+            }),
         }),
       ),
       Layer.succeed(CaptureStore)(
@@ -606,19 +622,25 @@ describe("foundation-core durable workflow runtime", () => {
       }),
   );
 
-  it.effect("returns none for explicit resume and replay operations on unknown run ids", () =>
+  it.effect("returns none for explicit workflow control operations on unknown run ids", () =>
     Effect.gen(function* () {
       const harness = yield* makeTestLayer();
-      const { replayed, resumed } = yield* Effect.gen(function* () {
+      const { cancelled, deferred, replayed, resumed, retried } = yield* Effect.gen(function* () {
         const workflowRunner = yield* WorkflowRunner;
         return {
+          cancelled: yield* workflowRunner.cancelRun("run-missing"),
+          deferred: yield* workflowRunner.deferRun("run-missing"),
           replayed: yield* workflowRunner.replayRun("run-missing"),
           resumed: yield* workflowRunner.resumeRun("run-missing"),
+          retried: yield* workflowRunner.retryRun("run-missing"),
         };
       }).pipe(Effect.provide(harness.layer));
 
+      expect(Option.isNone(cancelled)).toBe(true);
+      expect(Option.isNone(deferred)).toBe(true);
       expect(Option.isNone(replayed)).toBe(true);
       expect(Option.isNone(resumed)).toBe(true);
+      expect(Option.isNone(retried)).toBe(true);
     }),
   );
 
@@ -909,5 +931,298 @@ describe("foundation-core durable workflow runtime", () => {
           },
         });
       }),
+  );
+
+  it.effect(
+    "defers a running workflow without advancing steps and keeps the control auditable",
+    () =>
+      Effect.gen(function* () {
+        const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+        const compiledPlan = compiledPlans[0];
+        if (compiledPlan === undefined) {
+          throw new Error("Expected a compiled crawl plan.");
+        }
+        const startedCheckpointId = `checkpoint-${compiledPlan.plan.id}-0001`;
+        const harness = yield* makeTestLayer();
+        const { deferred, deferredInspection, resumed } = yield* Effect.gen(function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+          const started = Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded);
+          const deferred = yield* workflowRunner.deferRun(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () => Effect.fail(new Error("Expected deferRun to resolve a run")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+          const deferredInspection = yield* workflowRunner.inspect(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(new Error("Expected deferred workflow inspection to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+          const resumed = yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () => Effect.fail(new Error("Expected resumeRun after defer to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+
+          expect(started.id).toBe(startedCheckpointId);
+          return {
+            deferred,
+            deferredInspection,
+            resumed,
+          };
+        }).pipe(Effect.provide(harness.layer));
+
+        const deferredEncoded = Schema.encodeSync(WorkflowControlResultSchema)(deferred);
+        expect(deferredEncoded.operation).toBe("defer");
+        expect(deferredEncoded.requestedRunId).toBe(compiledPlan.plan.id);
+        expect(deferredEncoded.resolvedRunId).toBe(compiledPlan.plan.id);
+        expect(deferredEncoded.sourceCheckpointId).toBe(startedCheckpointId);
+        expect(deferredEncoded.checkpoint.sequence).toBe(2);
+        expect(deferredEncoded.checkpoint.stage).toBe("snapshot");
+        expect(deferredEncoded.checkpoint.completedStepIds).toEqual([
+          "step-capture",
+          "step-extract",
+        ]);
+        expect(deferredEncoded.checkpoint.pendingStepIds).toEqual([
+          "step-snapshot",
+          "step-diff",
+          "step-quality",
+          "step-reflect",
+        ]);
+        expect(deferredEncoded.checkpoint.control).toEqual({
+          operation: "defer",
+          sourceCheckpointId: startedCheckpointId,
+          requestedAt: "2026-03-07T12:30:01.000Z",
+        });
+        expect(
+          Schema.encodeSync(WorkflowInspectionSnapshotSchema)(deferredInspection),
+        ).toMatchObject({
+          runId: compiledPlan.plan.id,
+          status: "running",
+          stage: "snapshot",
+          nextStepId: "step-snapshot",
+          control: {
+            operation: "defer",
+            sourceCheckpointId: startedCheckpointId,
+            requestedAt: "2026-03-07T12:30:01.000Z",
+          },
+        });
+
+        const resumedEncoded = Schema.encodeSync(WorkflowControlResultSchema)(resumed);
+        expect(resumedEncoded.operation).toBe("resume");
+        expect(resumedEncoded.sourceCheckpointId).toBe(deferredEncoded.checkpoint.id);
+        expect(resumedEncoded.checkpoint.sequence).toBe(3);
+        expect(resumedEncoded.checkpoint.stage).toBe("quality");
+        expect(resumedEncoded.checkpoint.control).toBeUndefined();
+        expect(yield* Ref.get(harness.checkpointStoreRef)).toHaveLength(3);
+      }),
+  );
+
+  it.effect("cancels a workflow and rejects later resume attempts", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+      const startedCheckpointId = `checkpoint-${compiledPlan.plan.id}-0001`;
+      const harness = yield* makeTestLayer();
+      const { cancelled, inspection, resumeFailure } = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        yield* workflowRunner.start(compiledPlan.plan);
+        const cancelled = yield* workflowRunner.cancelRun(compiledPlan.plan.id).pipe(
+          Effect.flatMap(
+            Option.match({
+              onNone: () => Effect.fail(new Error("Expected cancelRun to resolve a run")),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+        const inspection = yield* workflowRunner.inspect(compiledPlan.plan.id).pipe(
+          Effect.flatMap(
+            Option.match({
+              onNone: () =>
+                Effect.fail(new Error("Expected cancelled workflow inspection to resolve")),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+
+        return {
+          cancelled,
+          inspection,
+          resumeFailure: yield* Effect.flip(workflowRunner.resumeRun(compiledPlan.plan.id)),
+        };
+      }).pipe(Effect.provide(harness.layer));
+
+      const cancelledEncoded = Schema.encodeSync(WorkflowControlResultSchema)(cancelled);
+      expect(cancelledEncoded.operation).toBe("cancel");
+      expect(cancelledEncoded.sourceCheckpointId).toBe(startedCheckpointId);
+      expect(cancelledEncoded.checkpoint.stats.outcome).toBe("cancelled");
+      expect(cancelledEncoded.checkpoint.control).toEqual({
+        operation: "cancel",
+        sourceCheckpointId: startedCheckpointId,
+        requestedAt: "2026-03-07T12:30:01.000Z",
+      });
+      expect(Schema.encodeSync(WorkflowInspectionSnapshotSchema)(inspection)).toMatchObject({
+        runId: compiledPlan.plan.id,
+        status: "cancelled",
+        stage: "snapshot",
+        control: {
+          operation: "cancel",
+          sourceCheckpointId: startedCheckpointId,
+          requestedAt: "2026-03-07T12:30:01.000Z",
+        },
+      });
+      expect(resumeFailure.message).toContain("was cancelled and cannot be resumed");
+    }),
+  );
+
+  it.effect("returns an auditable control result for legacy cancelled checkpoints", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+      const startedCheckpointId = `checkpoint-${compiledPlan.plan.id}-0001`;
+      const harness = yield* makeTestLayer();
+      const cancelled = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        yield* workflowRunner.start(compiledPlan.plan);
+        yield* Ref.update(harness.checkpointStoreRef, (records) =>
+          records.map((record) =>
+            record.runId === compiledPlan.plan.id
+              ? Schema.decodeUnknownSync(CheckpointRecordSchema)({
+                  ...Schema.encodeSync(CheckpointRecordSchema)(record),
+                  checkpoint: {
+                    ...Schema.encodeSync(RunCheckpointSchema)(record.checkpoint),
+                    stats: {
+                      ...Schema.encodeSync(RunCheckpointSchema)(record.checkpoint).stats,
+                      outcome: "cancelled",
+                    },
+                  },
+                })
+              : record,
+          ),
+        );
+
+        return yield* workflowRunner.cancelRun(compiledPlan.plan.id).pipe(
+          Effect.flatMap(
+            Option.match({
+              onNone: () =>
+                Effect.fail(new Error("Expected cancelRun to resolve a legacy cancelled run")),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+      }).pipe(Effect.provide(harness.layer));
+
+      expect(Schema.encodeSync(WorkflowControlResultSchema)(cancelled)).toMatchObject({
+        operation: "cancel",
+        requestedRunId: compiledPlan.plan.id,
+        resolvedRunId: compiledPlan.plan.id,
+        sourceCheckpointId: startedCheckpointId,
+        checkpoint: {
+          stats: {
+            outcome: "cancelled",
+          },
+          control: {
+            operation: "cancel",
+            sourceCheckpointId: startedCheckpointId,
+            requestedAt: CREATED_AT,
+          },
+        },
+      });
+    }),
+  );
+
+  it.effect("retries only retryable failed workflows through the control surface", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+      const startedCheckpointId = `checkpoint-${compiledPlan.plan.id}-0001`;
+
+      const retryableHarness = yield* makeTestLayer({
+        browserTimeoutOnFirstCapture: true,
+      });
+      const retryable = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        const startFailure = yield* Effect.flip(workflowRunner.start(compiledPlan.plan));
+        const retried = yield* workflowRunner.retryRun(compiledPlan.plan.id).pipe(
+          Effect.flatMap(
+            Option.match({
+              onNone: () => Effect.fail(new Error("Expected retryRun to resolve a run")),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+        const inspection = yield* workflowRunner.inspect(compiledPlan.plan.id).pipe(
+          Effect.flatMap(
+            Option.match({
+              onNone: () =>
+                Effect.fail(new Error("Expected retried workflow inspection to resolve")),
+              onSome: Effect.succeed,
+            }),
+          ),
+        );
+        return {
+          inspection,
+          retried,
+          startFailure,
+        };
+      }).pipe(Effect.provide(retryableHarness.layer));
+
+      expect(retryable.startFailure.message).toContain("Synthetic access timeout");
+      expect(Schema.encodeSync(WorkflowControlResultSchema)(retryable.retried)).toMatchObject({
+        operation: "retry",
+        requestedRunId: compiledPlan.plan.id,
+        resolvedRunId: compiledPlan.plan.id,
+        sourceCheckpointId: startedCheckpointId,
+        checkpoint: {
+          sequence: 2,
+          stage: "snapshot",
+          control: {
+            operation: "retry",
+            sourceCheckpointId: startedCheckpointId,
+            requestedAt: "2026-03-07T12:30:01.000Z",
+          },
+        },
+      });
+      expect(
+        Schema.encodeSync(WorkflowInspectionSnapshotSchema)(retryable.inspection),
+      ).toMatchObject({
+        runId: compiledPlan.plan.id,
+        status: "running",
+        stage: "snapshot",
+        control: {
+          operation: "retry",
+        },
+      });
+
+      const nonRetryableHarness = yield* makeTestLayer({
+        extractorFailureMessage: "Synthetic extractor failure for inspection replay.",
+      });
+      const nonRetryableFailure = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        yield* Effect.flip(workflowRunner.start(compiledPlan.plan));
+        return yield* Effect.flip(workflowRunner.retryRun(compiledPlan.plan.id));
+      }).pipe(Effect.provide(nonRetryableHarness.layer));
+
+      expect(nonRetryableFailure.message).toContain("requires a retryable failure envelope");
+    }),
   );
 });
