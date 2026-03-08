@@ -111,6 +111,43 @@ describe("foundation-core site pack DSL", () => {
     ).toThrow();
   });
 
+  it("rejects reused candidate paths even when the selector field changes", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(SitePackDslSchema)({
+        ...validSitePackDsl,
+        selectors: [
+          validSitePackDsl.selectors[0],
+          {
+            field: "availability",
+            candidates: [
+              {
+                path: "product/title/primary",
+                selector: "[data-availability]",
+              },
+            ],
+            fallbackPolicy: {
+              maxFallbackCount: 0,
+              fallbackConfidenceImpact: 0,
+              maxConfidenceImpact: 0,
+            },
+          },
+        ],
+        assertions: {
+          requiredFields: [
+            {
+              field: "title",
+              minimumConfidence: 0.8,
+            },
+            {
+              field: "availability",
+            },
+          ],
+          businessInvariants: [],
+        },
+      }),
+    ).toThrow();
+  });
+
   it("rejects assertions that reference undeclared selector fields", () => {
     expect(() =>
       Schema.decodeUnknownSync(SitePackDslSchema)({
@@ -122,6 +159,28 @@ describe("foundation-core site pack DSL", () => {
             },
           ],
           businessInvariants: [],
+        },
+      }),
+    ).toThrow();
+  });
+
+  it("rejects unsafe domain patterns and whitespace in pack versions", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(SitePackDslSchema)({
+        ...validSitePackDsl,
+        pack: {
+          ...validSitePackDsl.pack,
+          domainPattern: "https://shop.example.com",
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(SitePackDslSchema)({
+        ...validSitePackDsl,
+        pack: {
+          ...validSitePackDsl.pack,
+          version: "2026.03.08 rc1",
         },
       }),
     ).toThrow();
