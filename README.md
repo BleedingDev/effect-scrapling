@@ -141,6 +141,8 @@ Operator runbooks:
 - [E5 operations and rollback drill](docs/runbooks/e5-operations-rollback-drill.md)
 - [E5 security review](docs/runbooks/e5-security-review.md)
 - [E6 pack registry resolution](docs/runbooks/e6-pack-registry-resolution.md)
+- [E6 pack governance actions](docs/runbooks/e6-pack-governance-actions.md)
+- [E6 pack versioning and immutable active policy](docs/runbooks/e6-pack-versioning-immutable-active.md)
 - [E6 reflector clustering](docs/runbooks/e6-reflector-clustering.md)
 - [E6 validator ladder](docs/runbooks/e6-validator-ladder.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
@@ -228,6 +230,13 @@ E6 pack-registry operators can run
 library-level through `@effect-scrapling/foundation-core/pack-registry-runtime`
 and `@effect-scrapling/foundation-core/site-pack`; there is no dedicated CLI or
 API wrapper yet.
+
+E6 pack-governance operators can run
+`bun test tests/libs/foundation-core-pack-governance-runtime.test.ts` and
+`bun test tests/libs/foundation-core-pack-lifecycle-runtime.test.ts`. Today that
+surface is library-level through
+`@effect-scrapling/foundation-core/pack-governance-runtime`; there is no
+dedicated CLI or API wrapper yet.
 
 ## CLI
 
