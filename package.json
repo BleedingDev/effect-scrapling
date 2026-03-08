@@ -51,7 +51,7 @@
     "example:e5-sdk-consumer": "bun run examples/e5-sdk-consumer.ts",
     "example:e4-sdk-consumer": "bun run examples/e4-sdk-consumer.ts",
     "example:e1-foundation-core-consumer": "bun run examples/e1-foundation-core-consumer.ts",
-    "check:e8-workspace-operations": "bun test tests/sdk/e8-workspace-operations.test.ts tests/apps/cli-app.test.ts tests/apps/api-app.test.ts",
+    "check:e8-workspace-operations": "bun test tests/sdk/e8-workspace-operations.test.ts tests/sdk/e8-control-plane.test.ts tests/apps/cli-app.test.ts tests/apps/api-app.test.ts",
     "check:e1-capability-slice": "bun test tests/guardrails/e1-capability-slice.verify.test.ts && bun run example:e1-capability-slice",
     "check:e2-capability-slice": "bun test tests/examples/e2-capability-slice.test.ts && bun run example:e2-capability-slice",
     "check:e2-sdk-consumer": "bun test tests/sdk/e2-consumer-example.test.ts && bun run example:e2-sdk-consumer",

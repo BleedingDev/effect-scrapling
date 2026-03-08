@@ -1,7 +1,26 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
-import { runWorkspaceDoctor, showWorkspaceConfig } from "./e8.ts";
+import {
+  runAccessPreviewOperation,
+  runCrawlCompileOperation,
+  runExtractRunOperation,
+  runPackCreateOperation,
+  runPackInspectOperation,
+  runPackPromoteOperation,
+  runPackValidateOperation,
+  runQualityCompareOperation,
+  runQualityVerifyOperation,
+  runRenderPreviewOperation,
+  runSnapshotDiffOperation,
+  runTargetImportOperation,
+  runTargetListOperation,
+  runWorkflowInspectOperation,
+  runWorkflowResumeOperation,
+  runWorkflowRunOperation,
+  runWorkspaceDoctor,
+  showWorkspaceConfig,
+} from "./e8.ts";
 import {
   isBrowserError,
   isExtractionError,
@@ -9,14 +28,7 @@ import {
   isNetworkError,
 } from "./sdk/error-guards.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
-import {
-  accessPreview,
-  extractRun,
-  FetchService,
-  FetchServiceLive,
-  type FetchClient,
-  renderPreview,
-} from "./sdk/scraper.ts";
+import { type FetchClient } from "./sdk/scraper.ts";
 
 type ParsedArgs = {
   readonly positionals: string[];
@@ -29,9 +41,22 @@ Usage:
   effect-scrapling doctor
   effect-scrapling workspace doctor
   effect-scrapling workspace config show
+  effect-scrapling target import --input '<json>'
+  effect-scrapling target list --input '<json>'
+  effect-scrapling pack create --input '<json>'
+  effect-scrapling pack inspect --input '<json>'
+  effect-scrapling pack validate --input '<json>'
+  effect-scrapling pack promote --input '<json>'
   effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling crawl compile --input '<json>'
+  effect-scrapling workflow run --input '<json>'
+  effect-scrapling workflow resume --input '<json>'
+  effect-scrapling workflow inspect --input '<json>'
+  effect-scrapling quality diff --input '<json>'
+  effect-scrapling quality verify --input '<json>'
+  effect-scrapling quality compare --input '<json>'
 
 Examples:
   effect-scrapling workspace doctor
@@ -134,6 +159,33 @@ function parseFlagOrValue(
   return trimmed;
 }
 
+function parseJsonInput(options: Record<string, string | boolean>, name = "input"): unknown {
+  const input = parseNonEmptyString(name, getOption(options, name));
+  if (input === undefined) {
+    throw new InvalidInputError({
+      message: `Missing required option: --${name}`,
+    });
+  }
+
+  try {
+    return JSON.parse(input);
+  } catch (error) {
+    throw new InvalidInputError({
+      message: `Option --${name} must be valid JSON`,
+      details: String(error),
+    });
+  }
+}
+
+function assertNoExtraAction(action: string | undefined, commandPath: ReadonlyArray<string>): void {
+  if (action !== undefined) {
+    throw new InvalidInputError({
+      message: `Unexpected positional segment: ${action}`,
+      details: `Command ${commandPath.join(" ")} does not accept additional positional arguments`,
+    });
+  }
+}
+
 function unwrapFailure(cause: Cause.Cause<unknown>): unknown {
   return Option.getOrElse(Cause.findErrorOption(cause), () => new Error(Cause.pretty(cause)));
 }
@@ -144,21 +196,6 @@ async function runEffect<A, E>(effect: Effect.Effect<A, E, never>): Promise<A> {
     return exit.value;
   }
   throw unwrapFailure(exit.cause);
-}
-
-function provideFetchService<A, E>(
-  effect: Effect.Effect<A, E, FetchService>,
-  fetchClient?: FetchClient,
-): Effect.Effect<A, E, never> {
-  if (fetchClient) {
-    return effect.pipe(
-      Effect.provideService(FetchService, {
-        fetch: fetchClient,
-      }),
-    );
-  }
-
-  return effect.pipe(Effect.provide(FetchServiceLive));
 }
 
 function encodeCliJson(payload: unknown): string {
@@ -251,7 +288,44 @@ export async function executeCli(
       return { exitCode: 0, output: encodeCliJson(config) };
     }
 
+    if (command === "target" && subcommand === "import") {
+      assertNoExtraAction(action, ["target", "import"]);
+      const result = await runEffect(runTargetImportOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "target" && subcommand === "list") {
+      assertNoExtraAction(action, ["target", "list"]);
+      const result = await runEffect(runTargetListOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "pack" && subcommand === "create") {
+      assertNoExtraAction(action, ["pack", "create"]);
+      const result = await runEffect(runPackCreateOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "pack" && subcommand === "inspect") {
+      assertNoExtraAction(action, ["pack", "inspect"]);
+      const result = await runEffect(runPackInspectOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "pack" && subcommand === "validate") {
+      assertNoExtraAction(action, ["pack", "validate"]);
+      const result = await runEffect(runPackValidateOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "pack" && subcommand === "promote") {
+      assertNoExtraAction(action, ["pack", "promote"]);
+      const result = await runEffect(runPackPromoteOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
     if (command === "access" && subcommand === "preview") {
+      assertNoExtraAction(action, ["access", "preview"]);
       const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
       const timeoutMs = parseNonEmptyString(
         "timeout-ms",
@@ -289,11 +363,12 @@ export async function executeCli(
       if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
       if (Object.keys(browser).length > 0) payload.browser = browser;
 
-      const result = await runEffect(provideFetchService(accessPreview(payload), fetchClient));
+      const result = await runEffect(runAccessPreviewOperation(payload, fetchClient));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "render" && subcommand === "preview") {
+      assertNoExtraAction(action, ["render", "preview"]);
       const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
       const timeoutMs = parseNonEmptyString(
         "timeout-ms",
@@ -329,11 +404,20 @@ export async function executeCli(
       if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
       if (Object.keys(browser).length > 0) payload.browser = browser;
 
-      const result = await runEffect(provideFetchService(renderPreview(payload), fetchClient));
+      const result = await runEffect(runRenderPreviewOperation(payload, fetchClient));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if ((command === "extract" && subcommand === "run") || command === "scrape") {
+      if (command === "extract") {
+        assertNoExtraAction(action, ["extract", "run"]);
+      }
+      if (command === "scrape" && subcommand !== undefined) {
+        throw new InvalidInputError({
+          message: `Unexpected positional segment: ${subcommand}`,
+          details: "Command scrape does not accept additional positional arguments",
+        });
+      }
       const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
       const selector = parseNonEmptyString("selector", getOption(parsed.options, "selector"));
       const attr = parseNonEmptyString("attr", getOption(parsed.options, "attr"));
@@ -379,7 +463,49 @@ export async function executeCli(
       if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
       if (Object.keys(browser).length > 0) payload.browser = browser;
 
-      const result = await runEffect(provideFetchService(extractRun(payload), fetchClient));
+      const result = await runEffect(runExtractRunOperation(payload, fetchClient));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "crawl" && subcommand === "compile") {
+      assertNoExtraAction(action, ["crawl", "compile"]);
+      const result = await runEffect(runCrawlCompileOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "workflow" && subcommand === "run") {
+      assertNoExtraAction(action, ["workflow", "run"]);
+      const result = await runEffect(runWorkflowRunOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "workflow" && subcommand === "resume") {
+      assertNoExtraAction(action, ["workflow", "resume"]);
+      const result = await runEffect(runWorkflowResumeOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "workflow" && subcommand === "inspect") {
+      assertNoExtraAction(action, ["workflow", "inspect"]);
+      const result = await runEffect(runWorkflowInspectOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "quality" && subcommand === "diff") {
+      assertNoExtraAction(action, ["quality", "diff"]);
+      const result = await runEffect(runSnapshotDiffOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "quality" && subcommand === "verify") {
+      assertNoExtraAction(action, ["quality", "verify"]);
+      const result = await runEffect(runQualityVerifyOperation(parseJsonInput(parsed.options)));
+      return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "quality" && subcommand === "compare") {
+      assertNoExtraAction(action, ["quality", "compare"]);
+      const result = await runEffect(runQualityCompareOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
