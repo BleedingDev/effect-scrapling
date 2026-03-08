@@ -2,11 +2,14 @@
 
 ## Purpose
 
-Use this runbook when operators or SDK consumers need to validate or troubleshoot
-the current E5 durable workflow control surface for explicit resume and replay
-operations.
+Use this runbook when operators or SDK consumers need the focused E5 guidance
+for explicit resume and replay operations.
 
-This runbook is intentionally limited to behavior that exists today in:
+For the full control surface, including `inspect`, `cancelRun`, `deferRun`, and
+`retryRun`, use [E5 workflow operational controls](./e5-workflow-operational-controls.md).
+
+This runbook is intentionally limited to the resume/replay subset that exists
+today in:
 
 - `libs/foundation/core/src/service-topology.ts`
 - `libs/foundation/core/src/durable-workflow-runtime.ts`
@@ -16,7 +19,7 @@ This runbook is intentionally limited to behavior that exists today in:
 
 There is no standalone CLI or API endpoint for these operations today.
 
-The supported control surface is the library-level `WorkflowRunner` service:
+The supported subset is the library-level `WorkflowRunner` service:
 
 ```ts
 const workflowRunner = yield* WorkflowRunner
@@ -93,6 +96,13 @@ shared resume-token schema. Treat that as a durable-state regression, keep the
 failing checkpoint record unchanged for analysis, and roll back the candidate
 runtime change.
 
+### `resumeRun` fails because the run was cancelled
+
+That is expected. Cancellation is terminal for the original run id. Inspect the
+latest checkpoint first and confirm `status === "cancelled"` plus
+`control.operation === "cancel"`. If work still needs to run, start a fresh run
+or use replay from a known-good lineage instead of retrying the cancelled run.
+
 ### `replayRun` returned a new run id unexpectedly
 
 That is the expected behavior. Replay starts a fresh run lineage from the latest
@@ -114,7 +124,12 @@ Rollback guidance:
 
 - if replay/resume starts failing with `CheckpointCorruption`, roll back the
   workflow-runtime candidate rather than weakening schema checks
+- if cancelled runs stop rejecting `resumeRun`, roll back immediately because
+  the documented terminal-cancel contract was broken
 - if replay starts mutating the original run id, roll back immediately because
   that breaks the documented operator contract
 - if only the focused suite fails, stop there and fix the runtime before
   re-running wider repository gates
+
+For broader control-surface rollback guidance, see
+[E5 workflow operational controls](./e5-workflow-operational-controls.md).

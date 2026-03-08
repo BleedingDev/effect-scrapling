@@ -1028,6 +1028,77 @@ describe("foundation-core durable workflow runtime", () => {
       }),
   );
 
+  it.effect("keeps deferred workflows idempotent under repeated defer requests", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+
+      const harness = yield* makeTestLayer();
+      const { firstDeferred, secondDeferred, inspection, afterFirstDefer, afterSecondDefer } =
+        yield* Effect.gen(function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          yield* workflowRunner.start(compiledPlan.plan);
+          const firstDeferred = yield* workflowRunner.deferRun(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () => Effect.fail(new Error("Expected first deferRun to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+          const afterFirstDefer = yield* Ref.get(harness.checkpointStoreRef);
+          const secondDeferred = yield* workflowRunner.deferRun(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () => Effect.fail(new Error("Expected second deferRun to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+          const afterSecondDefer = yield* Ref.get(harness.checkpointStoreRef);
+          const inspection = yield* workflowRunner.inspect(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(new Error("Expected deferred workflow inspection to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+
+          return {
+            firstDeferred,
+            secondDeferred,
+            inspection,
+            afterFirstDefer,
+            afterSecondDefer,
+          };
+        }).pipe(Effect.provide(harness.layer));
+
+      const firstEncoded = Schema.encodeSync(WorkflowControlResultSchema)(firstDeferred);
+      const secondEncoded = Schema.encodeSync(WorkflowControlResultSchema)(secondDeferred);
+
+      expect(firstEncoded).toEqual(secondEncoded);
+      expect(firstEncoded.operation).toBe("defer");
+      expect(firstEncoded.checkpoint.sequence).toBe(2);
+      expect(afterFirstDefer).toHaveLength(2);
+      expect(afterSecondDefer).toHaveLength(2);
+      expect(Schema.encodeSync(WorkflowInspectionSnapshotSchema)(inspection)).toMatchObject({
+        runId: compiledPlan.plan.id,
+        status: "running",
+        stage: "snapshot",
+        control: {
+          operation: "defer",
+          sourceCheckpointId: firstEncoded.sourceCheckpointId,
+          requestedAt: "2026-03-07T12:30:01.000Z",
+        },
+      });
+    }),
+  );
+
   it.effect("cancels a workflow and rejects later resume attempts", () =>
     Effect.gen(function* () {
       const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
@@ -1223,6 +1294,58 @@ describe("foundation-core durable workflow runtime", () => {
       }).pipe(Effect.provide(nonRetryableHarness.layer));
 
       expect(nonRetryableFailure.message).toContain("requires a retryable failure envelope");
+    }),
+  );
+
+  it.effect("rejects resumeRun on failed workflows and preserves the failed checkpoint", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+
+      const harness = yield* makeTestLayer({
+        browserTimeoutOnFirstCapture: true,
+      });
+      const { startFailure, resumeFailure, inspection, checkpoints } = yield* Effect.gen(
+        function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          const startFailure = yield* Effect.flip(workflowRunner.start(compiledPlan.plan));
+          const resumeFailure = yield* Effect.flip(workflowRunner.resumeRun(compiledPlan.plan.id));
+          const inspection = yield* workflowRunner.inspect(compiledPlan.plan.id).pipe(
+            Effect.flatMap(
+              Option.match({
+                onNone: () =>
+                  Effect.fail(new Error("Expected failed workflow inspection to resolve")),
+                onSome: Effect.succeed,
+              }),
+            ),
+          );
+
+          return {
+            startFailure,
+            resumeFailure,
+            inspection,
+            checkpoints: yield* Ref.get(harness.checkpointStoreRef),
+          };
+        },
+      ).pipe(Effect.provide(harness.layer));
+
+      expect(startFailure.message).toContain("Synthetic access timeout for controlled retry.");
+      expect(resumeFailure.message).toContain(
+        "require explicit retryRun control instead of resume",
+      );
+      expect(checkpoints).toHaveLength(1);
+      expect(Schema.encodeSync(WorkflowInspectionSnapshotSchema)(inspection)).toMatchObject({
+        runId: compiledPlan.plan.id,
+        status: "failed",
+        stage: "capture",
+        error: {
+          retryable: true,
+          message: "Synthetic access timeout for controlled retry.",
+        },
+      });
     }),
   );
 });
