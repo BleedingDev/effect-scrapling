@@ -66,6 +66,8 @@ type BrowserPoolLimits = {
   readonly maxQueue: number;
 };
 
+export type BrowserPoolLimitsSnapshot = BrowserPoolLimits;
+
 export type BrowserPoolSnapshot = {
   readonly limits: BrowserPoolLimits;
   readonly activeContexts: number;
@@ -156,6 +158,16 @@ function resolveBrowserPoolConfig(): BrowserPoolConfig {
     maxPages: browserPoolTestConfig?.maxPages ?? DEFAULT_MAX_PAGES,
     maxQueue: browserPoolTestConfig?.maxQueue ?? DEFAULT_MAX_QUEUE,
     loadPlaywright: browserPoolTestConfig?.loadPlaywright ?? loadPlaywright,
+  };
+}
+
+export function readBrowserPoolLimits(): BrowserPoolLimitsSnapshot {
+  const config = resolveBrowserPoolConfig();
+
+  return {
+    maxContexts: config.maxContexts,
+    maxPages: config.maxPages,
+    maxQueue: config.maxQueue,
   };
 }
 

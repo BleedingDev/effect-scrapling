@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
+import { runWorkspaceDoctor, showWorkspaceConfig } from "./e8.ts";
 import {
   isBrowserError,
   isExtractionError,
@@ -15,7 +16,6 @@ import {
   FetchServiceLive,
   type FetchClient,
   renderPreview,
-  runDoctor,
 } from "./sdk/scraper.ts";
 
 type ParsedArgs = {
@@ -27,11 +27,15 @@ const USAGE_TEXT = `effect-scrapling (EffectTS + Bun)
 
 Usage:
   effect-scrapling doctor
+  effect-scrapling workspace doctor
+  effect-scrapling workspace config show
   effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
 
 Examples:
+  effect-scrapling workspace doctor
+  effect-scrapling workspace config show
   effect-scrapling access preview --url "https://example.com"
   effect-scrapling access preview --url "https://example.com" --mode browser --wait-until networkidle --wait-ms 300
   effect-scrapling render preview --url "https://example.com" --wait-until networkidle --wait-ms 300
@@ -237,17 +241,14 @@ export async function executeCli(
       return { exitCode: 0, output: USAGE_TEXT };
     }
 
-    if (command === "doctor") {
-      const doctor = await runEffect(runDoctor());
-      return {
-        exitCode: doctor.ok ? 0 : 1,
-        output: encodeCliJson({
-          ok: doctor.ok,
-          command: "doctor",
-          data: doctor,
-          warnings: doctor.ok ? [] : ["One or more runtime checks failed"],
-        }),
-      };
+    if (command === "doctor" || (command === "workspace" && subcommand === "doctor")) {
+      const doctor = await runEffect(runWorkspaceDoctor());
+      return { exitCode: doctor.ok ? 0 : 1, output: encodeCliJson(doctor) };
+    }
+
+    if (command === "workspace" && subcommand === "config" && action === "show") {
+      const config = await runEffect(showWorkspaceConfig());
+      return { exitCode: 0, output: encodeCliJson(config) };
     }
 
     if (command === "access" && subcommand === "preview") {

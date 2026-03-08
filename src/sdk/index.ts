@@ -3,8 +3,8 @@ export {
   extractRun,
   FetchService,
   FetchServiceLive,
-  renderPreview,
   runDoctor,
+  renderPreview,
   type FetchClient,
 } from "./scraper.ts";
 export {

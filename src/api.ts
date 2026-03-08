@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
+import { runWorkspaceDoctor } from "./e8.ts";
 import { normalizePayload } from "./api-request-payload.ts";
 import {
   isBrowserError,
@@ -21,7 +22,6 @@ import {
   FetchServiceLive,
   type FetchClient,
   renderPreview,
-  runDoctor,
 } from "./sdk/scraper.ts";
 
 function json(body: unknown, status = 200): Response {
@@ -172,13 +172,7 @@ export async function handleApiRequest(req: Request, fetchClient?: FetchClient):
   }
 
   if (req.method === "GET" && url.pathname === "/doctor") {
-    const doctor = await runEffect(runDoctor());
-    return json({
-      ok: doctor.ok,
-      command: "doctor",
-      data: doctor,
-      warnings: doctor.ok ? [] : ["One or more runtime checks failed"],
-    });
+    return json(await runEffect(runWorkspaceDoctor()));
   }
 
   if (req.method === "POST" && url.pathname === "/access/preview") {

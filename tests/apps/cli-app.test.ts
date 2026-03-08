@@ -57,6 +57,36 @@ describe("cli app", () => {
     expect(payload.warnings).toEqual([]);
   });
 
+  it("supports the workspace doctor alias through the shared command core", async () => {
+    const result = await executeCli(["workspace", "doctor"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.command).toBe("doctor");
+    expect(payload.ok).toBe(true);
+    expect(payload.data.ok).toBe(true);
+    expect(payload.warnings).toEqual([]);
+  });
+
+  it("shows deterministic workspace config through the CLI boundary", async () => {
+    const result = await executeCli(["workspace", "config", "show"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.command).toBe("config show");
+    expect(payload.ok).toBe(true);
+    expect(payload.data.package.name).toBe("effect-scrapling");
+    expect(payload.data.browserPool).toEqual({
+      maxContexts: 2,
+      maxPages: 2,
+      maxQueue: 8,
+    });
+    expect(payload.data.sourceOrder).toEqual(["defaults", "sitePack", "targetProfile", "run"]);
+    expect(payload.data.runConfigDefaults.mode).toBe("http");
+    expect(payload.data.runConfigDefaults.render).toBe("never");
+    expect(payload.warnings).toEqual([]);
+  });
+
   it("supports the scrape alias for extract run", async () => {
     const result = await executeCli(
       ["scrape", "--url", "https://example.com/articles/effect-scrapling", "--selector", "h1"],

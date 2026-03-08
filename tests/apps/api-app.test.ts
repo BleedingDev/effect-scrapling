@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
 import { handleApiRequest } from "../../src/api.ts";
+import { runWorkspaceDoctor } from "../../src/e8.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import { RenderPreviewResponseSchema } from "../../src/sdk/schemas.ts";
 import type { FetchClient } from "../../src/sdk/scraper.ts";
@@ -28,12 +29,14 @@ describe("api app", () => {
   it("serves doctor status through the HTTP boundary", async () => {
     const response = await handleApiRequest(new Request("http://localhost/doctor"));
     const payload = await response.json();
+    const sdkPayload = await Effect.runPromise(runWorkspaceDoctor());
 
     expect(response.status).toBe(200);
     expect(payload.command).toBe("doctor");
     expect(payload.ok).toBe(true);
     expect(payload.data.ok).toBe(true);
     expect(payload.warnings).toEqual([]);
+    expect(payload).toEqual(sdkPayload);
   });
 
   it("maps missing access-preview URLs to a 400 API response", async () => {
