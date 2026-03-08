@@ -65,6 +65,8 @@
     "check:e8-sdk-consumer": "bun test tests/sdk/e8-consumer-example.test.ts && bun run example:e8-sdk-consumer",
     "benchmark:e8-performance-budget": "bun run scripts/benchmarks/e8-performance-budget.ts --baseline docs/artifacts/e8-performance-budget-baseline.json --artifact docs/artifacts/e8-performance-budget-scorecard.json",
     "check:e8-performance-budget": "bun test tests/scripts/e8-performance-budget.test.ts && bun run benchmark:e8-performance-budget",
+    "check:e9-security-review": "bun test tests/libs/foundation-core-secret-sanitization.test.ts tests/guardrails/e9-security-review.verify.test.ts",
+    "check:e9-artifact-segregation": "bun test tests/libs/foundation-core-capture-store.test.ts tests/guardrails/e9-security-review.verify.test.ts",
     "check:e1-capability-slice": "bun test tests/guardrails/e1-capability-slice.verify.test.ts && bun run example:e1-capability-slice",
     "check:e2-capability-slice": "bun test tests/examples/e2-capability-slice.test.ts && bun run example:e2-capability-slice",
     "check:e2-sdk-consumer": "bun test tests/sdk/e2-consumer-example.test.ts && bun run example:e2-sdk-consumer",
