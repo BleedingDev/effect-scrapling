@@ -167,6 +167,12 @@ Operator runbooks:
 - [E8 benchmark and artifact export](docs/runbooks/e8-benchmark-artifact-export.md)
 - [E8 parity dry-run replay](docs/runbooks/e8-parity-dry-run-replay.md)
 - [E8 public SDK package](docs/runbooks/e8-public-sdk-package.md)
+- [E8 shared command core](docs/runbooks/e8-shared-command-core.md)
+- [E8 target operations](docs/runbooks/e8-target-operations.md)
+- [E8 pack operations](docs/runbooks/e8-pack-operations.md)
+- [E8 preview operations](docs/runbooks/e8-preview-operations.md)
+- [E8 workflow operations](docs/runbooks/e8-workflow-operations.md)
+- [E8 quality operations](docs/runbooks/e8-quality-operations.md)
 - [E6 post-validation triage](docs/artifacts/e6-post-validation-triage.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`
@@ -610,3 +616,15 @@ Operator workflow, troubleshooting, and rollback guidance:
 Recovery evidence:
 
 - [`docs/artifacts/e3-rollback-drill.md`](docs/artifacts/e3-rollback-drill.md)
+E8 operators can run `bun run check:e8-workspace-operations` to replay the
+shared command core, target, pack, preview, workflow, and quality verification
+lanes through the unified SDK and CLI surface.
+
+E8 capability-slice operators can run `bun run check:e8-capability-slice` or
+`bun run example:e8-capability-slice` to validate one end-to-end executable
+path across workspace, target, pack, preview, workflow, quality, benchmark, and
+parity evidence surfaces.
+
+E8 public-consumer operators can run `bun run check:e8-sdk-consumer` to verify
+the public `effect-scrapling/e8` package surface remains installable and free of
+private repo-path imports.
