@@ -10,6 +10,7 @@ const sensitiveArtifactNamePattern =
 const sensitiveInlineValuePattern =
   /((?:authorization|cookie|token|secret|session|api[-_]?key|password|credential|csrf)[^:=\n]{0,32}\s*[:=]\s*)(\S+)/giu;
 const bearerTokenPattern = /\bBearer\s+\S+/giu;
+const credentialedUrlPattern = /\bhttps?:\/\/[^/\s:@]+:[^@\s/]+@/iu;
 
 function normalizeText(value: string) {
   return value.replace(/\s+/gu, " ").trim();
@@ -64,6 +65,27 @@ export function sanitizeInlineSecrets(value: string) {
       (_match, prefix: string) => `${prefix}${REDACTED_SECRET_VALUE}`,
     )
     .replace(bearerTokenPattern, `Bearer ${REDACTED_SECRET_VALUE}`);
+}
+
+export function containsUnsanitizedSecretMaterial(value: string) {
+  if (credentialedUrlPattern.test(value)) {
+    return true;
+  }
+
+  for (const match of value.matchAll(sensitiveInlineValuePattern)) {
+    const candidate = match[2];
+    if (candidate !== undefined && candidate !== REDACTED_SECRET_VALUE) {
+      return true;
+    }
+  }
+
+  for (const match of value.matchAll(bearerTokenPattern)) {
+    if (match[0] !== `Bearer ${REDACTED_SECRET_VALUE}`) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function shouldSanitizeHeader(name: string) {

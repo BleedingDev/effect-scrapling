@@ -180,6 +180,8 @@ Operator runbooks:
 - [E9 secret sanitization](docs/runbooks/e9-secret-sanitization.md)
 - [E9 raw versus redacted artifact segregation](docs/runbooks/e9-artifact-segregation.md)
 - [E9 security review](docs/runbooks/e9-security-review.md)
+- [E9 optional LLM provider](docs/runbooks/e9-optional-llm-provider.md)
+- [E9 prompt templates with redacted inputs](docs/runbooks/e9-prompt-templates.md)
 - [E8 post-validation triage](docs/artifacts/e8-post-validation-triage.md)
 - [E7 post-validation triage](docs/artifacts/e7-post-validation-triage.md)
 - [E6 post-validation triage](docs/artifacts/e6-post-validation-triage.md)

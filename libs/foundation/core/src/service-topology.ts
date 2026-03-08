@@ -1,6 +1,7 @@
 import { Effect, Option, ServiceMap } from "effect";
 import type { AccessPolicy } from "./access-policy.ts";
 import type { ArtifactMetadataRecord, StorageLocator } from "./config-storage.ts";
+import type { PromptModelInvocation, PromptModelRequest } from "./llm-provider-runtime.ts";
 import {
   CheckpointCorruption,
   DriftDetected,
@@ -200,3 +201,12 @@ export class ArtifactExporter extends ServiceMap.Service<
     ) => Effect.Effect<StorageLocator, PolicyViolation | ProviderUnavailable>;
   }
 >()("@effect-scrapling/foundation/ArtifactExporter") {}
+
+export class PromptModelProvider extends ServiceMap.Service<
+  PromptModelProvider,
+  {
+    readonly invoke: (
+      request: PromptModelRequest,
+    ) => Effect.Effect<PromptModelInvocation, PolicyViolation | ProviderUnavailable>;
+  }
+>()("@effect-scrapling/foundation/PromptModelProvider") {}

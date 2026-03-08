@@ -21,6 +21,7 @@
   ],
   "exports": {
     "./e5": "./src/e5.ts",
+    "./e9": "./src/e9.ts",
     "./e8": "./src/e8.ts",
     "./e7": "./src/e7.ts",
     "./sdk": "./src/sdk/index.ts"
@@ -49,6 +50,8 @@
     "example:e7-capability-slice": "bun run examples/e7-capability-slice.ts",
     "example:e8-capability-slice": "bun run examples/e8-capability-slice.ts",
     "example:e7-sdk-consumer": "bun run examples/e7-sdk-consumer.ts",
+    "check:e9-optional-llm-provider": "bun test tests/libs/foundation-core-llm-provider-runtime.test.ts",
+    "check:e9-prompt-templates": "bun test tests/libs/foundation-core-prompt-template-runtime.test.ts",
     "example:e8-sdk-consumer": "bun run examples/e8-sdk-consumer.ts",
     "example:e6-sdk-consumer": "bun run examples/e6-sdk-consumer.ts",
     "example:e5-sdk-consumer": "bun run examples/e5-sdk-consumer.ts",

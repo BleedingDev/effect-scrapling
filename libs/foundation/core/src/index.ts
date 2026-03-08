@@ -126,6 +126,19 @@ export {
   type SnapshotEncoded,
 } from "./observation-snapshot.ts";
 export {
+  PromptModelCompletion,
+  PromptModelCompletionSchema,
+  PromptModelFinding,
+  PromptModelFindingSchema,
+  PromptModelInvocation,
+  PromptModelInvocationSchema,
+  PromptModelProviderDisabledLive,
+  PromptModelRequest,
+  PromptModelRequestSchema,
+  makeDisabledPromptModelProvider,
+  makeOptionalPromptModelProvider,
+} from "./llm-provider-runtime.ts";
+export {
   PackLifecycleTransitionEvent,
   PackLifecycleTransitionEventSchema,
   PackLifecycleTransitionRequest,
@@ -256,6 +269,16 @@ export {
   makeReflectionEngine,
 } from "./reflection-engine-runtime.ts";
 export {
+  PromptTemplateInput,
+  PromptTemplateInputSchema,
+  PromptTemplateKindSchemaExport,
+  PromptTemplateRender,
+  PromptTemplateRenderSchema,
+  renderPromptTemplate,
+  runPromptTemplate,
+  runPromptTemplateWithProvider,
+} from "./prompt-template-runtime.ts";
+export {
   QualityReportArtifact,
   QualityReportArtifactSchema,
   QualityReportEvidenceBundle,
@@ -298,6 +321,7 @@ export {
   Extractor,
   HttpAccess,
   PackRegistry,
+  PromptModelProvider,
   QualityGate,
   ReflectionEngine,
   SnapshotStore,
