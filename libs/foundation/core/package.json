@@ -18,6 +18,7 @@
     "./durable-workflow-runtime": "./src/durable-workflow-runtime.ts",
     "./baseline-corpus-runtime": "./src/baseline-corpus-runtime.ts",
     "./chaos-provider-suite-runtime": "./src/chaos-provider-suite-runtime.ts",
+    "./extractor-runtime": "./src/extractor-runtime.ts",
     "./incumbent-comparison-runtime": "./src/incumbent-comparison-runtime.ts",
     "./live-canary-runtime": "./src/live-canary-runtime.ts",
     "./observation-snapshot": "./src/observation-snapshot.ts",

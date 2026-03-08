@@ -1,4 +1,12 @@
 export {
+  E9ReferencePackCatalogSchema,
+  E9ReferencePackSchema,
+  alzaTeslaReferencePack,
+  datartTeslaReferencePack,
+  e9TeslaReferencePacks,
+  tsBohemiaTeslaReferencePack,
+} from "./e9-reference-packs.ts";
+export {
   PromptModelCompletionSchema,
   PromptModelFindingSchema,
   PromptModelInvocationSchema,

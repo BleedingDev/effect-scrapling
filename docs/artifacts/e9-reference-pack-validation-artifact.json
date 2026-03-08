@@ -1,0 +1,2439 @@
+{
+  "benchmark": "e9-reference-pack-validation",
+  "validationId": "validation-e9-reference-packs",
+  "generatedAt": "2026-03-08T18:45:00.000Z",
+  "caseCount": 3,
+  "results": [
+    {
+      "domain": "alza",
+      "packId": "pack-alza-cz-tesla-electronics",
+      "extractedSnapshot": {
+        "id": "plan-e9-alza-tesla-001-snapshot",
+        "targetId": "target-e9-alza-tesla-001",
+        "observations": [
+          {
+            "field": "availability",
+            "normalizedValue": "inStock",
+            "confidence": 0.94,
+            "evidenceRefs": [
+              "plan-e9-alza-tesla-001-html"
+            ]
+          },
+          {
+            "field": "price",
+            "normalizedValue": {
+              "amount": 4999,
+              "currency": "CZK"
+            },
+            "confidence": 0.96,
+            "evidenceRefs": [
+              "plan-e9-alza-tesla-001-html"
+            ]
+          },
+          {
+            "field": "productIdentifier",
+            "normalizedValue": {
+              "kind": "sku",
+              "value": "TESLA-S300W"
+            },
+            "confidence": 0.95,
+            "evidenceRefs": [
+              "plan-e9-alza-tesla-001-html"
+            ]
+          },
+          {
+            "field": "title",
+            "normalizedValue": "Tesla Smart Air Purifier S300W",
+            "confidence": 0.96,
+            "evidenceRefs": [
+              "plan-e9-alza-tesla-001-html"
+            ]
+          }
+        ],
+        "qualityScore": 0.873875,
+        "createdAt": "2026-03-08T18:45:00.000Z"
+      },
+      "shadowValidation": {
+        "id": "validator-pack-alza-cz-tesla-electronics-diff-e9-alza-pack-alza-cz-tesla-electronics",
+        "packId": "pack-alza-cz-tesla-electronics",
+        "packState": "shadow",
+        "snapshotDiffId": "diff-e9-alza-pack-alza-cz-tesla-electronics",
+        "createdAt": "2026-03-08T18:45:00.000Z",
+        "deltas": {
+          "recallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "stages": [
+          {
+            "stage": "schema",
+            "status": "pass",
+            "rationale": "Schema checks require recall >= -0.05 and false-positive delta <= 0.05."
+          },
+          {
+            "stage": "replay",
+            "status": "pass",
+            "rationale": "Replay checks require deterministic replay plus workflow resume support."
+          },
+          {
+            "stage": "canary",
+            "status": "pass",
+            "rationale": "Canary checks require drift <= 0.1, latency <= 250ms, memory <= 32, and redaction-safe output."
+          },
+          {
+            "stage": "chaos",
+            "status": "pass",
+            "rationale": "Chaos checks require soak stability and passing chaos probes."
+          }
+        ],
+        "qualityVerdict": {
+          "id": "quality-pack-alza-cz-tesla-electronics-diff-e9-alza-pack-alza-cz-tesla-electronics",
+          "packId": "pack-alza-cz-tesla-electronics",
+          "snapshotDiffId": "diff-e9-alza-pack-alza-cz-tesla-electronics",
+          "action": "active",
+          "createdAt": "2026-03-08T18:45:00.000Z",
+          "gates": [
+            {
+              "name": "requiredFieldCoverage",
+              "status": "pass"
+            },
+            {
+              "name": "falsePositiveRate",
+              "status": "pass"
+            },
+            {
+              "name": "incumbentComparison",
+              "status": "pass"
+            },
+            {
+              "name": "replayDeterminism",
+              "status": "pass"
+            },
+            {
+              "name": "workflowResume",
+              "status": "pass"
+            },
+            {
+              "name": "soakStability",
+              "status": "pass"
+            },
+            {
+              "name": "securityRedaction",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "governanceResult": {
+        "catalog": [
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-alza-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.alza.cz",
+                "state": "shadow",
+                "accessPolicyId": "policy-alza-http",
+                "version": "2026.03.06"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "alza/title/primary",
+                      "selector": "[data-testid='product-title']"
+                    },
+                    {
+                      "path": "alza/title/fallback",
+                      "selector": "h1[itemprop='name']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "alza/price/primary",
+                      "selector": "[data-testid='price-with-vat']"
+                    },
+                    {
+                      "path": "alza/price/fallback",
+                      "selector": ".price-box__price"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "alza/availability/primary",
+                      "selector": "[data-testid='delivery-info']"
+                    },
+                    {
+                      "path": "alza/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "alza/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "alza/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "alza"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs",
+            "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+            "lastGovernedBy": "curator-reference-packs"
+          },
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-alza-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.alza.cz",
+                "state": "shadow",
+                "accessPolicyId": "policy-alza-http",
+                "version": "2026.03.07"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "alza/title/primary",
+                      "selector": "[data-testid='product-title']"
+                    },
+                    {
+                      "path": "alza/title/fallback",
+                      "selector": "h1[itemprop='name']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "alza/price/primary",
+                      "selector": "[data-testid='price-with-vat']"
+                    },
+                    {
+                      "path": "alza/price/fallback",
+                      "selector": ".price-box__price"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "alza/availability/primary",
+                      "selector": "[data-testid='delivery-info']"
+                    },
+                    {
+                      "path": "alza/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "alza/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "alza/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "alza"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs"
+          },
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-alza-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.alza.cz",
+                "state": "active",
+                "accessPolicyId": "policy-alza-http",
+                "version": "2026.03.08"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "alza/title/primary",
+                      "selector": "[data-testid='product-title']"
+                    },
+                    {
+                      "path": "alza/title/fallback",
+                      "selector": "h1[itemprop='name']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "alza/price/primary",
+                      "selector": "[data-testid='price-with-vat']"
+                    },
+                    {
+                      "path": "alza/price/fallback",
+                      "selector": ".price-box__price"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "alza/availability/primary",
+                      "selector": "[data-testid='delivery-info']"
+                    },
+                    {
+                      "path": "alza/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "alza/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "alza/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "alza"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs",
+            "sourceDecisionId": "promotion-pack-alza-cz-tesla-electronics-active-diff-e9-alza-pack-alza-cz-tesla-electronics",
+            "derivedFromVersion": "2026.03.07",
+            "replacedActiveVersion": "2026.03.06",
+            "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+            "lastGovernedBy": "curator-reference-packs"
+          }
+        ],
+        "activeArtifact": {
+          "definition": {
+            "pack": {
+              "id": "pack-alza-cz-tesla-electronics",
+              "tenantId": "tenant-reference-packs",
+              "domainPattern": "*.alza.cz",
+              "state": "active",
+              "accessPolicyId": "policy-alza-http",
+              "version": "2026.03.08"
+            },
+            "selectors": [
+              {
+                "field": "title",
+                "candidates": [
+                  {
+                    "path": "alza/title/primary",
+                    "selector": "[data-testid='product-title']"
+                  },
+                  {
+                    "path": "alza/title/fallback",
+                    "selector": "h1[itemprop='name']"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "price",
+                "candidates": [
+                  {
+                    "path": "alza/price/primary",
+                    "selector": "[data-testid='price-with-vat']"
+                  },
+                  {
+                    "path": "alza/price/fallback",
+                    "selector": ".price-box__price"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "availability",
+                "candidates": [
+                  {
+                    "path": "alza/availability/primary",
+                    "selector": "[data-testid='delivery-info']"
+                  },
+                  {
+                    "path": "alza/availability/fallback",
+                    "selector": ".availability-label"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "productIdentifier",
+                "candidates": [
+                  {
+                    "path": "alza/product-identifier/primary",
+                    "selector": "[data-testid='product-code']"
+                  },
+                  {
+                    "path": "alza/product-identifier/fallback",
+                    "selector": "[data-sku]"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              }
+            ],
+            "assertions": {
+              "requiredFields": [
+                {
+                  "field": "title",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "price",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "availability",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "productIdentifier",
+                  "minimumConfidence": 0.85
+                }
+              ],
+              "businessInvariants": [
+                {
+                  "kind": "numericRange",
+                  "field": "price",
+                  "minimum": 500,
+                  "maximum": 40000
+                },
+                {
+                  "kind": "stringOneOf",
+                  "field": "availability",
+                  "allowedValues": [
+                    "inStock",
+                    "limitedAvailability",
+                    "outOfStock"
+                  ]
+                }
+              ]
+            },
+            "policy": {
+              "targetKinds": [
+                "productPage"
+              ],
+              "mode": "http",
+              "render": "never"
+            },
+            "metadata": {
+              "tenantId": "tenant-reference-packs",
+              "owners": [
+                "team-reference-packs"
+              ],
+              "labels": [
+                "tesla",
+                "alza"
+              ]
+            }
+          },
+          "recordedAt": "2026-03-08T18:45:00.000Z",
+          "recordedBy": "curator-reference-packs",
+          "sourceDecisionId": "promotion-pack-alza-cz-tesla-electronics-active-diff-e9-alza-pack-alza-cz-tesla-electronics",
+          "derivedFromVersion": "2026.03.07",
+          "replacedActiveVersion": "2026.03.06",
+          "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+          "lastGovernedBy": "curator-reference-packs"
+        },
+        "auditTrail": [
+          {
+            "id": "pack-governance-promotion-pack-alza-cz-tesla-electronics-active-diff-e9-alza-pack-alza-cz-tesla-electronics-demote-previous-active-2026.03.06-2026.03.06-2026-03-08T18:45:00.000Z",
+            "decisionId": "promotion-pack-alza-cz-tesla-electronics-active-diff-e9-alza-pack-alza-cz-tesla-electronics",
+            "packId": "pack-alza-cz-tesla-electronics",
+            "auditKind": "demote-previous-active",
+            "triggerVerdictId": "quality-pack-alza-cz-tesla-electronics-diff-e9-alza-pack-alza-cz-tesla-electronics",
+            "sourceVersion": "2026.03.06",
+            "sourceState": "active",
+            "targetVersion": "2026.03.06",
+            "targetState": "shadow",
+            "changedBy": "curator-reference-packs",
+            "rationale": "alza Tesla reference pack passed shadow validation and is eligible for active rollout.",
+            "occurredAt": "2026-03-08T18:45:00.000Z"
+          },
+          {
+            "id": "pack-governance-promotion-pack-alza-cz-tesla-electronics-active-diff-e9-alza-pack-alza-cz-tesla-electronics-activate-version-2026.03.07-2026.03.08-2026-03-08T18:45:00.000Z",
+            "decisionId": "promotion-pack-alza-cz-tesla-electronics-active-diff-e9-alza-pack-alza-cz-tesla-electronics",
+            "packId": "pack-alza-cz-tesla-electronics",
+            "auditKind": "activate-version",
+            "triggerVerdictId": "quality-pack-alza-cz-tesla-electronics-diff-e9-alza-pack-alza-cz-tesla-electronics",
+            "sourceVersion": "2026.03.07",
+            "sourceState": "shadow",
+            "targetVersion": "2026.03.08",
+            "targetState": "active",
+            "changedBy": "curator-reference-packs",
+            "rationale": "alza Tesla reference pack passed shadow validation and is eligible for active rollout.",
+            "occurredAt": "2026-03-08T18:45:00.000Z"
+          }
+        ]
+      },
+      "activeValidation": {
+        "id": "validator-pack-alza-cz-tesla-electronics-diff-e9-alza-pack-alza-cz-tesla-electronics",
+        "packId": "pack-alza-cz-tesla-electronics",
+        "packState": "active",
+        "snapshotDiffId": "diff-e9-alza-pack-alza-cz-tesla-electronics",
+        "createdAt": "2026-03-08T18:45:00.000Z",
+        "deltas": {
+          "recallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "stages": [
+          {
+            "stage": "schema",
+            "status": "pass",
+            "rationale": "Schema checks require recall >= -0.05 and false-positive delta <= 0.05."
+          },
+          {
+            "stage": "replay",
+            "status": "pass",
+            "rationale": "Replay checks require deterministic replay plus workflow resume support."
+          },
+          {
+            "stage": "canary",
+            "status": "pass",
+            "rationale": "Canary checks require drift <= 0.1, latency <= 250ms, memory <= 32, and redaction-safe output."
+          },
+          {
+            "stage": "chaos",
+            "status": "pass",
+            "rationale": "Chaos checks require soak stability and passing chaos probes."
+          }
+        ],
+        "qualityVerdict": {
+          "id": "quality-pack-alza-cz-tesla-electronics-diff-e9-alza-pack-alza-cz-tesla-electronics",
+          "packId": "pack-alza-cz-tesla-electronics",
+          "snapshotDiffId": "diff-e9-alza-pack-alza-cz-tesla-electronics",
+          "action": "active",
+          "createdAt": "2026-03-08T18:45:00.000Z",
+          "gates": [
+            {
+              "name": "requiredFieldCoverage",
+              "status": "pass"
+            },
+            {
+              "name": "falsePositiveRate",
+              "status": "pass"
+            },
+            {
+              "name": "incumbentComparison",
+              "status": "pass"
+            },
+            {
+              "name": "replayDeterminism",
+              "status": "pass"
+            },
+            {
+              "name": "workflowResume",
+              "status": "pass"
+            },
+            {
+              "name": "soakStability",
+              "status": "pass"
+            },
+            {
+              "name": "securityRedaction",
+              "status": "pass"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "domain": "datart",
+      "packId": "pack-datart-cz-tesla-electronics",
+      "extractedSnapshot": {
+        "id": "plan-e9-datart-tesla-001-snapshot",
+        "targetId": "target-e9-datart-tesla-001",
+        "observations": [
+          {
+            "field": "availability",
+            "normalizedValue": "limitedAvailability",
+            "confidence": 0.94,
+            "evidenceRefs": [
+              "plan-e9-datart-tesla-001-html"
+            ]
+          },
+          {
+            "field": "price",
+            "normalizedValue": {
+              "amount": 3699,
+              "currency": "CZK"
+            },
+            "confidence": 0.96,
+            "evidenceRefs": [
+              "plan-e9-datart-tesla-001-html"
+            ]
+          },
+          {
+            "field": "productIdentifier",
+            "normalizedValue": {
+              "kind": "sku",
+              "value": "TESLA-S200B"
+            },
+            "confidence": 0.95,
+            "evidenceRefs": [
+              "plan-e9-datart-tesla-001-html"
+            ]
+          },
+          {
+            "field": "title",
+            "normalizedValue": "Tesla Smart Air Purifier S200B",
+            "confidence": 0.96,
+            "evidenceRefs": [
+              "plan-e9-datart-tesla-001-html"
+            ]
+          }
+        ],
+        "qualityScore": 0.873875,
+        "createdAt": "2026-03-08T18:45:00.000Z"
+      },
+      "shadowValidation": {
+        "id": "validator-pack-datart-cz-tesla-electronics-diff-e9-datart-pack-datart-cz-tesla-electronics",
+        "packId": "pack-datart-cz-tesla-electronics",
+        "packState": "shadow",
+        "snapshotDiffId": "diff-e9-datart-pack-datart-cz-tesla-electronics",
+        "createdAt": "2026-03-08T18:45:00.000Z",
+        "deltas": {
+          "recallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "stages": [
+          {
+            "stage": "schema",
+            "status": "pass",
+            "rationale": "Schema checks require recall >= -0.05 and false-positive delta <= 0.05."
+          },
+          {
+            "stage": "replay",
+            "status": "pass",
+            "rationale": "Replay checks require deterministic replay plus workflow resume support."
+          },
+          {
+            "stage": "canary",
+            "status": "pass",
+            "rationale": "Canary checks require drift <= 0.1, latency <= 250ms, memory <= 32, and redaction-safe output."
+          },
+          {
+            "stage": "chaos",
+            "status": "pass",
+            "rationale": "Chaos checks require soak stability and passing chaos probes."
+          }
+        ],
+        "qualityVerdict": {
+          "id": "quality-pack-datart-cz-tesla-electronics-diff-e9-datart-pack-datart-cz-tesla-electronics",
+          "packId": "pack-datart-cz-tesla-electronics",
+          "snapshotDiffId": "diff-e9-datart-pack-datart-cz-tesla-electronics",
+          "action": "active",
+          "createdAt": "2026-03-08T18:45:00.000Z",
+          "gates": [
+            {
+              "name": "requiredFieldCoverage",
+              "status": "pass"
+            },
+            {
+              "name": "falsePositiveRate",
+              "status": "pass"
+            },
+            {
+              "name": "incumbentComparison",
+              "status": "pass"
+            },
+            {
+              "name": "replayDeterminism",
+              "status": "pass"
+            },
+            {
+              "name": "workflowResume",
+              "status": "pass"
+            },
+            {
+              "name": "soakStability",
+              "status": "pass"
+            },
+            {
+              "name": "securityRedaction",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "governanceResult": {
+        "catalog": [
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-datart-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.datart.cz",
+                "state": "shadow",
+                "accessPolicyId": "policy-datart-http",
+                "version": "2026.03.06"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "datart/title/primary",
+                      "selector": ".pdp-product-detail__title"
+                    },
+                    {
+                      "path": "datart/title/fallback",
+                      "selector": "h1[data-testid='product-name']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "datart/price/primary",
+                      "selector": "[data-testid='price-main']"
+                    },
+                    {
+                      "path": "datart/price/fallback",
+                      "selector": ".price-vatin__amount"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "datart/availability/primary",
+                      "selector": "[data-testid='availability-status']"
+                    },
+                    {
+                      "path": "datart/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "datart/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "datart/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "datart"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs",
+            "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+            "lastGovernedBy": "curator-reference-packs"
+          },
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-datart-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.datart.cz",
+                "state": "shadow",
+                "accessPolicyId": "policy-datart-http",
+                "version": "2026.03.07"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "datart/title/primary",
+                      "selector": ".pdp-product-detail__title"
+                    },
+                    {
+                      "path": "datart/title/fallback",
+                      "selector": "h1[data-testid='product-name']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "datart/price/primary",
+                      "selector": "[data-testid='price-main']"
+                    },
+                    {
+                      "path": "datart/price/fallback",
+                      "selector": ".price-vatin__amount"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "datart/availability/primary",
+                      "selector": "[data-testid='availability-status']"
+                    },
+                    {
+                      "path": "datart/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "datart/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "datart/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "datart"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs"
+          },
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-datart-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.datart.cz",
+                "state": "active",
+                "accessPolicyId": "policy-datart-http",
+                "version": "2026.03.08"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "datart/title/primary",
+                      "selector": ".pdp-product-detail__title"
+                    },
+                    {
+                      "path": "datart/title/fallback",
+                      "selector": "h1[data-testid='product-name']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "datart/price/primary",
+                      "selector": "[data-testid='price-main']"
+                    },
+                    {
+                      "path": "datart/price/fallback",
+                      "selector": ".price-vatin__amount"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "datart/availability/primary",
+                      "selector": "[data-testid='availability-status']"
+                    },
+                    {
+                      "path": "datart/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "datart/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "datart/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "datart"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs",
+            "sourceDecisionId": "promotion-pack-datart-cz-tesla-electronics-active-diff-e9-datart-pack-datart-cz-tesla-electronics",
+            "derivedFromVersion": "2026.03.07",
+            "replacedActiveVersion": "2026.03.06",
+            "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+            "lastGovernedBy": "curator-reference-packs"
+          }
+        ],
+        "activeArtifact": {
+          "definition": {
+            "pack": {
+              "id": "pack-datart-cz-tesla-electronics",
+              "tenantId": "tenant-reference-packs",
+              "domainPattern": "*.datart.cz",
+              "state": "active",
+              "accessPolicyId": "policy-datart-http",
+              "version": "2026.03.08"
+            },
+            "selectors": [
+              {
+                "field": "title",
+                "candidates": [
+                  {
+                    "path": "datart/title/primary",
+                    "selector": ".pdp-product-detail__title"
+                  },
+                  {
+                    "path": "datart/title/fallback",
+                    "selector": "h1[data-testid='product-name']"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "price",
+                "candidates": [
+                  {
+                    "path": "datart/price/primary",
+                    "selector": "[data-testid='price-main']"
+                  },
+                  {
+                    "path": "datart/price/fallback",
+                    "selector": ".price-vatin__amount"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "availability",
+                "candidates": [
+                  {
+                    "path": "datart/availability/primary",
+                    "selector": "[data-testid='availability-status']"
+                  },
+                  {
+                    "path": "datart/availability/fallback",
+                    "selector": ".availability-label"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "productIdentifier",
+                "candidates": [
+                  {
+                    "path": "datart/product-identifier/primary",
+                    "selector": "[data-testid='product-code']"
+                  },
+                  {
+                    "path": "datart/product-identifier/fallback",
+                    "selector": "[data-sku]"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              }
+            ],
+            "assertions": {
+              "requiredFields": [
+                {
+                  "field": "title",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "price",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "availability",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "productIdentifier",
+                  "minimumConfidence": 0.85
+                }
+              ],
+              "businessInvariants": [
+                {
+                  "kind": "numericRange",
+                  "field": "price",
+                  "minimum": 500,
+                  "maximum": 40000
+                },
+                {
+                  "kind": "stringOneOf",
+                  "field": "availability",
+                  "allowedValues": [
+                    "inStock",
+                    "limitedAvailability",
+                    "outOfStock"
+                  ]
+                }
+              ]
+            },
+            "policy": {
+              "targetKinds": [
+                "productPage"
+              ],
+              "mode": "http",
+              "render": "never"
+            },
+            "metadata": {
+              "tenantId": "tenant-reference-packs",
+              "owners": [
+                "team-reference-packs"
+              ],
+              "labels": [
+                "tesla",
+                "datart"
+              ]
+            }
+          },
+          "recordedAt": "2026-03-08T18:45:00.000Z",
+          "recordedBy": "curator-reference-packs",
+          "sourceDecisionId": "promotion-pack-datart-cz-tesla-electronics-active-diff-e9-datart-pack-datart-cz-tesla-electronics",
+          "derivedFromVersion": "2026.03.07",
+          "replacedActiveVersion": "2026.03.06",
+          "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+          "lastGovernedBy": "curator-reference-packs"
+        },
+        "auditTrail": [
+          {
+            "id": "pack-governance-promotion-pack-datart-cz-tesla-electronics-active-diff-e9-datart-pack-datart-cz-tesla-electronics-demote-previous-active-2026.03.06-2026.03.06-2026-03-08T18:45:00.000Z",
+            "decisionId": "promotion-pack-datart-cz-tesla-electronics-active-diff-e9-datart-pack-datart-cz-tesla-electronics",
+            "packId": "pack-datart-cz-tesla-electronics",
+            "auditKind": "demote-previous-active",
+            "triggerVerdictId": "quality-pack-datart-cz-tesla-electronics-diff-e9-datart-pack-datart-cz-tesla-electronics",
+            "sourceVersion": "2026.03.06",
+            "sourceState": "active",
+            "targetVersion": "2026.03.06",
+            "targetState": "shadow",
+            "changedBy": "curator-reference-packs",
+            "rationale": "datart Tesla reference pack passed shadow validation and is eligible for active rollout.",
+            "occurredAt": "2026-03-08T18:45:00.000Z"
+          },
+          {
+            "id": "pack-governance-promotion-pack-datart-cz-tesla-electronics-active-diff-e9-datart-pack-datart-cz-tesla-electronics-activate-version-2026.03.07-2026.03.08-2026-03-08T18:45:00.000Z",
+            "decisionId": "promotion-pack-datart-cz-tesla-electronics-active-diff-e9-datart-pack-datart-cz-tesla-electronics",
+            "packId": "pack-datart-cz-tesla-electronics",
+            "auditKind": "activate-version",
+            "triggerVerdictId": "quality-pack-datart-cz-tesla-electronics-diff-e9-datart-pack-datart-cz-tesla-electronics",
+            "sourceVersion": "2026.03.07",
+            "sourceState": "shadow",
+            "targetVersion": "2026.03.08",
+            "targetState": "active",
+            "changedBy": "curator-reference-packs",
+            "rationale": "datart Tesla reference pack passed shadow validation and is eligible for active rollout.",
+            "occurredAt": "2026-03-08T18:45:00.000Z"
+          }
+        ]
+      },
+      "activeValidation": {
+        "id": "validator-pack-datart-cz-tesla-electronics-diff-e9-datart-pack-datart-cz-tesla-electronics",
+        "packId": "pack-datart-cz-tesla-electronics",
+        "packState": "active",
+        "snapshotDiffId": "diff-e9-datart-pack-datart-cz-tesla-electronics",
+        "createdAt": "2026-03-08T18:45:00.000Z",
+        "deltas": {
+          "recallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "stages": [
+          {
+            "stage": "schema",
+            "status": "pass",
+            "rationale": "Schema checks require recall >= -0.05 and false-positive delta <= 0.05."
+          },
+          {
+            "stage": "replay",
+            "status": "pass",
+            "rationale": "Replay checks require deterministic replay plus workflow resume support."
+          },
+          {
+            "stage": "canary",
+            "status": "pass",
+            "rationale": "Canary checks require drift <= 0.1, latency <= 250ms, memory <= 32, and redaction-safe output."
+          },
+          {
+            "stage": "chaos",
+            "status": "pass",
+            "rationale": "Chaos checks require soak stability and passing chaos probes."
+          }
+        ],
+        "qualityVerdict": {
+          "id": "quality-pack-datart-cz-tesla-electronics-diff-e9-datart-pack-datart-cz-tesla-electronics",
+          "packId": "pack-datart-cz-tesla-electronics",
+          "snapshotDiffId": "diff-e9-datart-pack-datart-cz-tesla-electronics",
+          "action": "active",
+          "createdAt": "2026-03-08T18:45:00.000Z",
+          "gates": [
+            {
+              "name": "requiredFieldCoverage",
+              "status": "pass"
+            },
+            {
+              "name": "falsePositiveRate",
+              "status": "pass"
+            },
+            {
+              "name": "incumbentComparison",
+              "status": "pass"
+            },
+            {
+              "name": "replayDeterminism",
+              "status": "pass"
+            },
+            {
+              "name": "workflowResume",
+              "status": "pass"
+            },
+            {
+              "name": "soakStability",
+              "status": "pass"
+            },
+            {
+              "name": "securityRedaction",
+              "status": "pass"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "domain": "tsbohemia",
+      "packId": "pack-tsbohemia-cz-tesla-electronics",
+      "extractedSnapshot": {
+        "id": "plan-e9-tsbohemia-tesla-001-snapshot",
+        "targetId": "target-e9-tsbohemia-tesla-001",
+        "observations": [
+          {
+            "field": "availability",
+            "normalizedValue": "inStock",
+            "confidence": 0.94,
+            "evidenceRefs": [
+              "plan-e9-tsbohemia-tesla-001-html"
+            ]
+          },
+          {
+            "field": "price",
+            "normalizedValue": {
+              "amount": 8490,
+              "currency": "CZK"
+            },
+            "confidence": 0.96,
+            "evidenceRefs": [
+              "plan-e9-tsbohemia-tesla-001-html"
+            ]
+          },
+          {
+            "field": "productIdentifier",
+            "normalizedValue": {
+              "kind": "sku",
+              "value": "TESLA-TE300"
+            },
+            "confidence": 0.95,
+            "evidenceRefs": [
+              "plan-e9-tsbohemia-tesla-001-html"
+            ]
+          },
+          {
+            "field": "title",
+            "normalizedValue": "Tesla TE-300",
+            "confidence": 0.96,
+            "evidenceRefs": [
+              "plan-e9-tsbohemia-tesla-001-html"
+            ]
+          }
+        ],
+        "qualityScore": 0.873875,
+        "createdAt": "2026-03-08T18:45:00.000Z"
+      },
+      "shadowValidation": {
+        "id": "validator-pack-tsbohemia-cz-tesla-electronics-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+        "packId": "pack-tsbohemia-cz-tesla-electronics",
+        "packState": "shadow",
+        "snapshotDiffId": "diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+        "createdAt": "2026-03-08T18:45:00.000Z",
+        "deltas": {
+          "recallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "stages": [
+          {
+            "stage": "schema",
+            "status": "pass",
+            "rationale": "Schema checks require recall >= -0.05 and false-positive delta <= 0.05."
+          },
+          {
+            "stage": "replay",
+            "status": "pass",
+            "rationale": "Replay checks require deterministic replay plus workflow resume support."
+          },
+          {
+            "stage": "canary",
+            "status": "pass",
+            "rationale": "Canary checks require drift <= 0.1, latency <= 250ms, memory <= 32, and redaction-safe output."
+          },
+          {
+            "stage": "chaos",
+            "status": "pass",
+            "rationale": "Chaos checks require soak stability and passing chaos probes."
+          }
+        ],
+        "qualityVerdict": {
+          "id": "quality-pack-tsbohemia-cz-tesla-electronics-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+          "packId": "pack-tsbohemia-cz-tesla-electronics",
+          "snapshotDiffId": "diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+          "action": "active",
+          "createdAt": "2026-03-08T18:45:00.000Z",
+          "gates": [
+            {
+              "name": "requiredFieldCoverage",
+              "status": "pass"
+            },
+            {
+              "name": "falsePositiveRate",
+              "status": "pass"
+            },
+            {
+              "name": "incumbentComparison",
+              "status": "pass"
+            },
+            {
+              "name": "replayDeterminism",
+              "status": "pass"
+            },
+            {
+              "name": "workflowResume",
+              "status": "pass"
+            },
+            {
+              "name": "soakStability",
+              "status": "pass"
+            },
+            {
+              "name": "securityRedaction",
+              "status": "pass"
+            }
+          ]
+        }
+      },
+      "governanceResult": {
+        "catalog": [
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-tsbohemia-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.tsbohemia.cz",
+                "state": "shadow",
+                "accessPolicyId": "policy-tsbohemia-http",
+                "version": "2026.03.06"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/title/primary",
+                      "selector": "h1[itemprop='name']"
+                    },
+                    {
+                      "path": "tsbohemia/title/fallback",
+                      "selector": "[data-testid='product-title']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/price/primary",
+                      "selector": "[data-testid='price-with-vat']"
+                    },
+                    {
+                      "path": "tsbohemia/price/fallback",
+                      "selector": ".price-vat"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/availability/primary",
+                      "selector": "[data-testid='availability-state']"
+                    },
+                    {
+                      "path": "tsbohemia/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "tsbohemia/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "tsbohemia"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs",
+            "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+            "lastGovernedBy": "curator-reference-packs"
+          },
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-tsbohemia-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.tsbohemia.cz",
+                "state": "shadow",
+                "accessPolicyId": "policy-tsbohemia-http",
+                "version": "2026.03.07"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/title/primary",
+                      "selector": "h1[itemprop='name']"
+                    },
+                    {
+                      "path": "tsbohemia/title/fallback",
+                      "selector": "[data-testid='product-title']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/price/primary",
+                      "selector": "[data-testid='price-with-vat']"
+                    },
+                    {
+                      "path": "tsbohemia/price/fallback",
+                      "selector": ".price-vat"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/availability/primary",
+                      "selector": "[data-testid='availability-state']"
+                    },
+                    {
+                      "path": "tsbohemia/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "tsbohemia/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "tsbohemia"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs"
+          },
+          {
+            "definition": {
+              "pack": {
+                "id": "pack-tsbohemia-cz-tesla-electronics",
+                "tenantId": "tenant-reference-packs",
+                "domainPattern": "*.tsbohemia.cz",
+                "state": "active",
+                "accessPolicyId": "policy-tsbohemia-http",
+                "version": "2026.03.08"
+              },
+              "selectors": [
+                {
+                  "field": "title",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/title/primary",
+                      "selector": "h1[itemprop='name']"
+                    },
+                    {
+                      "path": "tsbohemia/title/fallback",
+                      "selector": "[data-testid='product-title']"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "price",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/price/primary",
+                      "selector": "[data-testid='price-with-vat']"
+                    },
+                    {
+                      "path": "tsbohemia/price/fallback",
+                      "selector": ".price-vat"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "availability",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/availability/primary",
+                      "selector": "[data-testid='availability-state']"
+                    },
+                    {
+                      "path": "tsbohemia/availability/fallback",
+                      "selector": ".availability-label"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                },
+                {
+                  "field": "productIdentifier",
+                  "candidates": [
+                    {
+                      "path": "tsbohemia/product-identifier/primary",
+                      "selector": "[data-testid='product-code']"
+                    },
+                    {
+                      "path": "tsbohemia/product-identifier/fallback",
+                      "selector": "[data-sku]"
+                    }
+                  ],
+                  "fallbackPolicy": {
+                    "maxFallbackCount": 1,
+                    "fallbackConfidenceImpact": 0.12,
+                    "maxConfidenceImpact": 0.24
+                  }
+                }
+              ],
+              "assertions": {
+                "requiredFields": [
+                  {
+                    "field": "title",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "price",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "availability",
+                    "minimumConfidence": 0.85
+                  },
+                  {
+                    "field": "productIdentifier",
+                    "minimumConfidence": 0.85
+                  }
+                ],
+                "businessInvariants": [
+                  {
+                    "kind": "numericRange",
+                    "field": "price",
+                    "minimum": 500,
+                    "maximum": 40000
+                  },
+                  {
+                    "kind": "stringOneOf",
+                    "field": "availability",
+                    "allowedValues": [
+                      "inStock",
+                      "limitedAvailability",
+                      "outOfStock"
+                    ]
+                  }
+                ]
+              },
+              "policy": {
+                "targetKinds": [
+                  "productPage"
+                ],
+                "mode": "http",
+                "render": "never"
+              },
+              "metadata": {
+                "tenantId": "tenant-reference-packs",
+                "owners": [
+                  "team-reference-packs"
+                ],
+                "labels": [
+                  "tesla",
+                  "tsbohemia"
+                ]
+              }
+            },
+            "recordedAt": "2026-03-08T18:45:00.000Z",
+            "recordedBy": "curator-reference-packs",
+            "sourceDecisionId": "promotion-pack-tsbohemia-cz-tesla-electronics-active-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+            "derivedFromVersion": "2026.03.07",
+            "replacedActiveVersion": "2026.03.06",
+            "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+            "lastGovernedBy": "curator-reference-packs"
+          }
+        ],
+        "activeArtifact": {
+          "definition": {
+            "pack": {
+              "id": "pack-tsbohemia-cz-tesla-electronics",
+              "tenantId": "tenant-reference-packs",
+              "domainPattern": "*.tsbohemia.cz",
+              "state": "active",
+              "accessPolicyId": "policy-tsbohemia-http",
+              "version": "2026.03.08"
+            },
+            "selectors": [
+              {
+                "field": "title",
+                "candidates": [
+                  {
+                    "path": "tsbohemia/title/primary",
+                    "selector": "h1[itemprop='name']"
+                  },
+                  {
+                    "path": "tsbohemia/title/fallback",
+                    "selector": "[data-testid='product-title']"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "price",
+                "candidates": [
+                  {
+                    "path": "tsbohemia/price/primary",
+                    "selector": "[data-testid='price-with-vat']"
+                  },
+                  {
+                    "path": "tsbohemia/price/fallback",
+                    "selector": ".price-vat"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "availability",
+                "candidates": [
+                  {
+                    "path": "tsbohemia/availability/primary",
+                    "selector": "[data-testid='availability-state']"
+                  },
+                  {
+                    "path": "tsbohemia/availability/fallback",
+                    "selector": ".availability-label"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              },
+              {
+                "field": "productIdentifier",
+                "candidates": [
+                  {
+                    "path": "tsbohemia/product-identifier/primary",
+                    "selector": "[data-testid='product-code']"
+                  },
+                  {
+                    "path": "tsbohemia/product-identifier/fallback",
+                    "selector": "[data-sku]"
+                  }
+                ],
+                "fallbackPolicy": {
+                  "maxFallbackCount": 1,
+                  "fallbackConfidenceImpact": 0.12,
+                  "maxConfidenceImpact": 0.24
+                }
+              }
+            ],
+            "assertions": {
+              "requiredFields": [
+                {
+                  "field": "title",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "price",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "availability",
+                  "minimumConfidence": 0.85
+                },
+                {
+                  "field": "productIdentifier",
+                  "minimumConfidence": 0.85
+                }
+              ],
+              "businessInvariants": [
+                {
+                  "kind": "numericRange",
+                  "field": "price",
+                  "minimum": 500,
+                  "maximum": 40000
+                },
+                {
+                  "kind": "stringOneOf",
+                  "field": "availability",
+                  "allowedValues": [
+                    "inStock",
+                    "limitedAvailability",
+                    "outOfStock"
+                  ]
+                }
+              ]
+            },
+            "policy": {
+              "targetKinds": [
+                "productPage"
+              ],
+              "mode": "http",
+              "render": "never"
+            },
+            "metadata": {
+              "tenantId": "tenant-reference-packs",
+              "owners": [
+                "team-reference-packs"
+              ],
+              "labels": [
+                "tesla",
+                "tsbohemia"
+              ]
+            }
+          },
+          "recordedAt": "2026-03-08T18:45:00.000Z",
+          "recordedBy": "curator-reference-packs",
+          "sourceDecisionId": "promotion-pack-tsbohemia-cz-tesla-electronics-active-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+          "derivedFromVersion": "2026.03.07",
+          "replacedActiveVersion": "2026.03.06",
+          "lastGovernedAt": "2026-03-08T18:45:00.000Z",
+          "lastGovernedBy": "curator-reference-packs"
+        },
+        "auditTrail": [
+          {
+            "id": "pack-governance-promotion-pack-tsbohemia-cz-tesla-electronics-active-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics-demote-previous-active-2026.03.06-2026.03.06-2026-03-08T18:45:00.000Z",
+            "decisionId": "promotion-pack-tsbohemia-cz-tesla-electronics-active-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+            "packId": "pack-tsbohemia-cz-tesla-electronics",
+            "auditKind": "demote-previous-active",
+            "triggerVerdictId": "quality-pack-tsbohemia-cz-tesla-electronics-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+            "sourceVersion": "2026.03.06",
+            "sourceState": "active",
+            "targetVersion": "2026.03.06",
+            "targetState": "shadow",
+            "changedBy": "curator-reference-packs",
+            "rationale": "tsbohemia Tesla reference pack passed shadow validation and is eligible for active rollout.",
+            "occurredAt": "2026-03-08T18:45:00.000Z"
+          },
+          {
+            "id": "pack-governance-promotion-pack-tsbohemia-cz-tesla-electronics-active-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics-activate-version-2026.03.07-2026.03.08-2026-03-08T18:45:00.000Z",
+            "decisionId": "promotion-pack-tsbohemia-cz-tesla-electronics-active-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+            "packId": "pack-tsbohemia-cz-tesla-electronics",
+            "auditKind": "activate-version",
+            "triggerVerdictId": "quality-pack-tsbohemia-cz-tesla-electronics-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+            "sourceVersion": "2026.03.07",
+            "sourceState": "shadow",
+            "targetVersion": "2026.03.08",
+            "targetState": "active",
+            "changedBy": "curator-reference-packs",
+            "rationale": "tsbohemia Tesla reference pack passed shadow validation and is eligible for active rollout.",
+            "occurredAt": "2026-03-08T18:45:00.000Z"
+          }
+        ]
+      },
+      "activeValidation": {
+        "id": "validator-pack-tsbohemia-cz-tesla-electronics-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+        "packId": "pack-tsbohemia-cz-tesla-electronics",
+        "packState": "active",
+        "snapshotDiffId": "diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+        "createdAt": "2026-03-08T18:45:00.000Z",
+        "deltas": {
+          "recallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "stages": [
+          {
+            "stage": "schema",
+            "status": "pass",
+            "rationale": "Schema checks require recall >= -0.05 and false-positive delta <= 0.05."
+          },
+          {
+            "stage": "replay",
+            "status": "pass",
+            "rationale": "Replay checks require deterministic replay plus workflow resume support."
+          },
+          {
+            "stage": "canary",
+            "status": "pass",
+            "rationale": "Canary checks require drift <= 0.1, latency <= 250ms, memory <= 32, and redaction-safe output."
+          },
+          {
+            "stage": "chaos",
+            "status": "pass",
+            "rationale": "Chaos checks require soak stability and passing chaos probes."
+          }
+        ],
+        "qualityVerdict": {
+          "id": "quality-pack-tsbohemia-cz-tesla-electronics-diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+          "packId": "pack-tsbohemia-cz-tesla-electronics",
+          "snapshotDiffId": "diff-e9-tsbohemia-pack-tsbohemia-cz-tesla-electronics",
+          "action": "active",
+          "createdAt": "2026-03-08T18:45:00.000Z",
+          "gates": [
+            {
+              "name": "requiredFieldCoverage",
+              "status": "pass"
+            },
+            {
+              "name": "falsePositiveRate",
+              "status": "pass"
+            },
+            {
+              "name": "incumbentComparison",
+              "status": "pass"
+            },
+            {
+              "name": "replayDeterminism",
+              "status": "pass"
+            },
+            {
+              "name": "workflowResume",
+              "status": "pass"
+            },
+            {
+              "name": "soakStability",
+              "status": "pass"
+            },
+            {
+              "name": "securityRedaction",
+              "status": "pass"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "status": "pass"
+}
