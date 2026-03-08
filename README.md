@@ -138,6 +138,7 @@ Operator runbooks:
 - [E5 workflow inspection read models](docs/runbooks/e5-workflow-inspection-read-models.md)
 - [E5 workflow budget integration](docs/runbooks/e5-workflow-budget-integration.md)
 - [E5 workflow simulation](docs/runbooks/e5-workflow-simulation.md)
+- [E5 operations and rollback drill](docs/runbooks/e5-operations-rollback-drill.md)
 - `docs/artifacts/e0-post-validation-triage.md`
 
 E5 crawl-plan operators can validate the compiler with
@@ -163,6 +164,11 @@ E5 workflow inspection operators can run
 `bun run check:e1-capability-slice`, or `bun run example:e1-capability-slice`
 to inspect the current typed read model behavior.
 
+E5 capability-slice operators can run `bun run check:e5-capability-slice` or
+`bun run example:e5-capability-slice` to validate the current end-to-end
+durable orchestration path with typed restart, inspection, budget, and
+duplicate-work evidence.
+
 E5 checkpoint-restore operators can run
 `bun run check:e5-checkpoint-persistence-restore`,
 `bun run check:e5-crash-resume-harness`, or
@@ -178,8 +184,10 @@ to validate the current work-claim and duplicate-runner suppression surface.
 E5 workflow-budget operators can run
 `bun run check:e5-workflow-budget-integration`,
 `bun test tests/libs/foundation-core-workflow-budget-runtime.test.ts`, or
-`bun run check:e5-workflow-simulation` to validate the current scheduler,
-permit enforcement, and scale-harness behavior.
+`bun run check:e5-workflow-simulation` to inspect the current operator-visible
+scale-harness status. The latest committed scorecard artifact is
+[`docs/artifacts/e5-workflow-simulation-scorecard.json`](docs/artifacts/e5-workflow-simulation-scorecard.json),
+and that performance lane should be read independently from the rollback drill.
 
 E5 workflow simulation operators can run
 `bun run benchmark:e5-workflow-simulation`,
@@ -194,6 +202,11 @@ E5 crash-resume operators can run
 `bun test tests/scripts/e5-crash-resume-harness.test.ts`. The default
 scorecard artifact is
 [`docs/artifacts/e5-crash-resume-harness-scorecard.json`](docs/artifacts/e5-crash-resume-harness-scorecard.json).
+
+E5 rollback operators can follow
+[`docs/runbooks/e5-operations-rollback-drill.md`](docs/runbooks/e5-operations-rollback-drill.md)
+and record the latest executed recovery evidence in
+[`docs/artifacts/e5-rollback-drill.md`](docs/artifacts/e5-rollback-drill.md).
 
 ## CLI
 

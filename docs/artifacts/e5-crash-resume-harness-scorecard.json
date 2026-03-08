@@ -1,6 +1,6 @@
 {
   "benchmark": "e5-crash-resume-harness",
-  "generatedAt": "2026-03-08T07:53:07.390Z",
+  "generatedAt": "2026-03-08T08:47:21.436Z",
   "sample": {
     "profile": {
       "targetCount": 4,

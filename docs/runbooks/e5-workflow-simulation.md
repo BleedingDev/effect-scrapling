@@ -293,6 +293,19 @@ Interpretation for current behavior:
 - stability mismatches mean checkpoint count or stage ordering changed across
   repeated samples and should be treated as a workflow-regression signal
 
+When any budget breach occurs, create a blocking remediation bead before
+changing thresholds or widening runtime allowances. Use a command in this
+shape:
+
+```bash
+CI=1 bd create \
+  --title "[E5] Remediate: workflow simulation budget breach" \
+  --description $'Capture the breached metric names, measured values, artifact path, reproduction command, and suspected cause from the failing E5 simulation gate.' \
+  --type task \
+  --priority 1 \
+  --labels epic-e5,lane-performance,phase-5
+```
+
 Do not hand-edit the failing artifact. Keep the scorecard as the diagnostic
 record for the candidate you were validating.
 

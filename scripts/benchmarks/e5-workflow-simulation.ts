@@ -42,7 +42,6 @@ import {
   makeInMemoryWorkflowBudgetScheduler,
 } from "../../libs/foundation/core/src/workflow-budget-runtime.ts";
 import {
-  WorkflowWorkClaimDecisionSchema,
   WorkflowWorkClaimRecordSchema,
   WorkflowWorkClaimStore,
   makeInMemoryWorkflowWorkClaimStore,
@@ -173,7 +172,7 @@ export const BenchmarkArtifactSchema = Schema.Struct({
 });
 
 export type BenchmarkArtifact = Schema.Schema.Type<typeof BenchmarkArtifactSchema>;
-type SimulationProfile = Schema.Schema.Type<typeof SimulationProfileSchema>;
+export type SimulationProfile = Schema.Schema.Type<typeof SimulationProfileSchema>;
 type SimulationMeasurement = Schema.Schema.Type<typeof SimulationMeasurementSchema>;
 type BudgetEventSummary = Schema.Schema.Type<typeof BudgetEventSummarySchema>;
 type WorkClaimSummary = Schema.Schema.Type<typeof WorkClaimSummarySchema>;
