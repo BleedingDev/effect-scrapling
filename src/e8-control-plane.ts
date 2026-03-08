@@ -33,9 +33,9 @@ import {
 } from "@effect-scrapling/foundation-core/validator-ladder-runtime";
 import { BaselineCorpusArtifactSchema } from "@effect-scrapling/foundation-core/baseline-corpus-runtime";
 import { IncumbentComparisonArtifactSchema } from "@effect-scrapling/foundation-core/incumbent-comparison-runtime";
-import { compareSnapshots } from "../libs/foundation/core/src/snapshot-diff-engine.ts";
 import { evaluateQualityMetrics } from "@effect-scrapling/foundation-core/quality-metrics-runtime";
 import { decidePackPromotion } from "@effect-scrapling/foundation-core/reflection-engine-runtime";
+import { compareSnapshots } from "@effect-scrapling/foundation-core/snapshot-diff-engine";
 import { formatUnknownError } from "./sdk/error-guards.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
 import {

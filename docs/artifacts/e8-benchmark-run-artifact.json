@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "command": "benchmark run",
+  "data": {
+    "bundleId": "bundle-e8-benchmark-surface",
+    "generatedAt": "2026-03-09T08:30:00.000Z",
+    "artifactCount": 9,
+    "manifest": [
+      {
+        "key": "baselineCorpus",
+        "artifactId": "corpus-retail-smoke",
+        "artifactPath": "docs/artifacts/e7-baseline-corpus-artifact.json",
+        "sourceCommand": "benchmark:e7-baseline-corpus"
+      },
+      {
+        "key": "incumbentComparison",
+        "artifactId": "comparison-retail-smoke",
+        "artifactPath": "docs/artifacts/e7-incumbent-comparison-artifact.json",
+        "sourceCommand": "benchmark:e7-incumbent-comparison"
+      },
+      {
+        "key": "performanceBudget",
+        "artifactId": "e7-performance-budget",
+        "artifactPath": "docs/artifacts/e7-performance-budget-scorecard.json",
+        "sourceCommand": "benchmark:e7-performance-budget"
+      },
+      {
+        "key": "qualityMetrics",
+        "artifactId": "metrics-e7-quality",
+        "artifactPath": "docs/artifacts/e7-quality-metrics-artifact.json",
+        "sourceCommand": "benchmark:e7-quality-metrics"
+      },
+      {
+        "key": "liveCanary",
+        "artifactId": "suite-e7-live-canary",
+        "artifactPath": "docs/artifacts/e7-live-canary-artifact.json",
+        "sourceCommand": "benchmark:e7-live-canary"
+      },
+      {
+        "key": "chaosProviderSuite",
+        "artifactId": "suite-e7-chaos-provider",
+        "artifactPath": "docs/artifacts/e7-chaos-provider-suite-artifact.json",
+        "sourceCommand": "benchmark:e7-chaos-provider-suite"
+      },
+      {
+        "key": "promotionGate",
+        "artifactId": "promotion-e7-policy",
+        "artifactPath": "docs/artifacts/e7-promotion-gate-policy-artifact.json",
+        "sourceCommand": "benchmark:e7-promotion-gate-policy"
+      },
+      {
+        "key": "qualityReport",
+        "artifactId": "report-e7-quality",
+        "artifactPath": "docs/artifacts/e7-quality-report-artifact.json",
+        "sourceCommand": "benchmark:e7-quality-report"
+      },
+      {
+        "key": "soakEndurance",
+        "artifactId": "suite-e7-soak-endurance",
+        "artifactPath": "docs/artifacts/e7-soak-endurance-artifact.json",
+        "sourceCommand": "benchmark:e7-soak-endurance-suite"
+      }
+    ]
+  },
+  "warnings": []
+}

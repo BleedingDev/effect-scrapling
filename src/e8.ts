@@ -1,4 +1,13 @@
 export {
+  E8ArtifactExportEnvelopeSchema,
+  E8ArtifactExportSchema,
+  E8BenchmarkBundleSchema,
+  E8BenchmarkRunEnvelopeSchema,
+  E8BenchmarkRunMetadataSchema,
+  runArtifactExportOperation,
+  runBenchmarkOperation,
+} from "./e8-benchmark-surface.ts";
+export {
   BrowserPoolLimitsSchema,
   WorkspaceCommandNameSchema,
   WorkspaceConfigShowDataSchema,

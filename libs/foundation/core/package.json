@@ -1,6 +1,6 @@
 {
   "name": "@effect-scrapling/foundation-core",
-  "private": true,
+  "private": false,
   "type": "module",
   "version": "0.0.1",
   "dependencies": {
@@ -35,6 +35,7 @@
     "./selector-trust-decay": "./src/selector-trust-decay.ts",
     "./service-topology": "./src/service-topology.ts",
     "./site-pack": "./src/site-pack.ts",
+    "./snapshot-diff-engine": "./src/snapshot-diff-engine.ts",
     "./tagged-errors": "./src/tagged-errors.ts",
     "./validator-ladder-runtime": "./src/validator-ladder-runtime.ts",
     "./performance-gate-runtime": "./src/performance-gate-runtime.ts",

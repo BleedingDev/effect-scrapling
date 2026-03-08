@@ -1,0 +1,2497 @@
+{
+  "benchmark": "e8-artifact-export",
+  "exportId": "export-e8-benchmark-surface",
+  "generatedAt": "2026-03-09T08:30:00.000Z",
+  "metadata": {
+    "bundleId": "bundle-e8-benchmark-surface",
+    "artifactCount": 9,
+    "manifest": [
+      {
+        "key": "baselineCorpus",
+        "artifactId": "corpus-retail-smoke",
+        "artifactPath": "docs/artifacts/e7-baseline-corpus-artifact.json",
+        "sourceCommand": "benchmark:e7-baseline-corpus"
+      },
+      {
+        "key": "incumbentComparison",
+        "artifactId": "comparison-retail-smoke",
+        "artifactPath": "docs/artifacts/e7-incumbent-comparison-artifact.json",
+        "sourceCommand": "benchmark:e7-incumbent-comparison"
+      },
+      {
+        "key": "performanceBudget",
+        "artifactId": "e7-performance-budget",
+        "artifactPath": "docs/artifacts/e7-performance-budget-scorecard.json",
+        "sourceCommand": "benchmark:e7-performance-budget"
+      },
+      {
+        "key": "qualityMetrics",
+        "artifactId": "metrics-e7-quality",
+        "artifactPath": "docs/artifacts/e7-quality-metrics-artifact.json",
+        "sourceCommand": "benchmark:e7-quality-metrics"
+      },
+      {
+        "key": "liveCanary",
+        "artifactId": "suite-e7-live-canary",
+        "artifactPath": "docs/artifacts/e7-live-canary-artifact.json",
+        "sourceCommand": "benchmark:e7-live-canary"
+      },
+      {
+        "key": "chaosProviderSuite",
+        "artifactId": "suite-e7-chaos-provider",
+        "artifactPath": "docs/artifacts/e7-chaos-provider-suite-artifact.json",
+        "sourceCommand": "benchmark:e7-chaos-provider-suite"
+      },
+      {
+        "key": "promotionGate",
+        "artifactId": "promotion-e7-policy",
+        "artifactPath": "docs/artifacts/e7-promotion-gate-policy-artifact.json",
+        "sourceCommand": "benchmark:e7-promotion-gate-policy"
+      },
+      {
+        "key": "qualityReport",
+        "artifactId": "report-e7-quality",
+        "artifactPath": "docs/artifacts/e7-quality-report-artifact.json",
+        "sourceCommand": "benchmark:e7-quality-report"
+      },
+      {
+        "key": "soakEndurance",
+        "artifactId": "suite-e7-soak-endurance",
+        "artifactPath": "docs/artifacts/e7-soak-endurance-artifact.json",
+        "sourceCommand": "benchmark:e7-soak-endurance-suite"
+      }
+    ],
+    "sanitizedPathCount": 0,
+    "sanitizedPaths": []
+  },
+  "bundle": {
+    "baselineCorpus": {
+      "benchmark": "e7-baseline-corpus",
+      "corpusId": "corpus-retail-smoke",
+      "generatedAt": "2026-03-08T14:25:00.000Z",
+      "caseCount": 2,
+      "packCount": 2,
+      "results": [
+        {
+          "caseId": "case-catalog-example-com",
+          "packId": "pack-catalog-example-com",
+          "targetId": "target-catalog-example-com",
+          "runId": "run-catalog-example-com",
+          "orchestration": {
+            "planId": "run-catalog-example-com",
+            "recipePackId": "pack-catalog-example-com",
+            "documentArtifactId": "run-catalog-example-com-html",
+            "documentSummary": {
+              "documentId": "run-catalog-example-com-html",
+              "rootPath": "document",
+              "nodeCount": 6,
+              "maxDepth": 3,
+              "tagNames": [
+                "body",
+                "document",
+                "h1",
+                "head",
+                "html",
+                "span"
+              ]
+            },
+            "selectorResolutions": [
+              {
+                "selectorPath": "title/primary",
+                "selector": "h1",
+                "values": [
+                  "Catalog Widget"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "title/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              },
+              {
+                "selectorPath": "price/primary",
+                "selector": "[data-price]",
+                "values": [
+                  "USD 1299.00"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "price/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              }
+            ],
+            "fieldBindings": [
+              {
+                "field": "title",
+                "selectorResolutions": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "values": [
+                      "Catalog Widget"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "title/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "field": "price",
+                "selectorResolutions": [
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "values": [
+                      "USD 1299.00"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "price/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "snapshotAssembly": {
+              "snapshot": {
+                "id": "run-catalog-example-com-snapshot",
+                "targetId": "target-catalog-example-com",
+                "observations": [
+                  {
+                    "field": "price",
+                    "normalizedValue": {
+                      "amount": 1299,
+                      "currency": "USD"
+                    },
+                    "confidence": 0.96,
+                    "evidenceRefs": [
+                      "run-catalog-example-com-html"
+                    ]
+                  },
+                  {
+                    "field": "title",
+                    "normalizedValue": "Catalog Widget",
+                    "confidence": 0.98,
+                    "evidenceRefs": [
+                      "run-catalog-example-com-html"
+                    ]
+                  }
+                ],
+                "qualityScore": 0.8835,
+                "createdAt": "2026-03-08T14:25:00.000Z"
+              },
+              "qualityScoreInputs": {
+                "sourceObservationCount": 2,
+                "assembledObservationCount": 2,
+                "duplicateObservationCount": 0,
+                "uniqueFieldCount": 2,
+                "conflictingFieldCount": 0,
+                "uniqueEvidenceRefCount": 1,
+                "multiEvidenceObservationCount": 0,
+                "averageEvidenceRefsPerObservation": 1,
+                "averageConfidence": 0.97,
+                "minimumConfidence": 0.96,
+                "evidenceStrengthScore": 0.5,
+                "conflictFreeScore": 1,
+                "uniquenessScore": 1
+              },
+              "qualityScoreBreakdown": {
+                "confidenceContribution": 0.5335,
+                "evidenceStrengthContribution": 0.1,
+                "conflictFreeContribution": 0.15,
+                "uniquenessContribution": 0.1
+              }
+            },
+            "assertionReport": {
+              "snapshotId": "run-catalog-example-com-snapshot",
+              "evaluatedRuleCount": 2,
+              "assertedFields": [
+                "title",
+                "price"
+              ]
+            },
+            "evidenceManifest": {
+              "id": "run-catalog-example-com-snapshot-evidence-manifest",
+              "snapshotId": "run-catalog-example-com-snapshot",
+              "targetId": "target-catalog-example-com",
+              "documentId": "run-catalog-example-com-html",
+              "createdAt": "2026-03-08T14:25:00.000Z",
+              "observations": [
+                {
+                  "observationIndex": 0,
+                  "field": "price",
+                  "observation": {
+                    "field": "price",
+                    "normalizedValue": {
+                      "amount": 1299,
+                      "currency": "USD"
+                    },
+                    "confidence": 0.96,
+                    "evidenceRefs": [
+                      "run-catalog-example-com-html"
+                    ]
+                  },
+                  "artifacts": [
+                    {
+                      "id": "run-catalog-example-com-html",
+                      "runId": "run-catalog-example-com",
+                      "artifactId": "run-catalog-example-com-html",
+                      "kind": "html",
+                      "visibility": "raw",
+                      "locator": {
+                        "namespace": "captures/target-catalog-example-com",
+                        "key": "run-catalog-example-com/body.html"
+                      },
+                      "sha256": "f528eb27c5e98686f4369be157cbbb57c55e531c6a831137d3c68f05891cde00",
+                      "sizeBytes": 98,
+                      "mediaType": "text/html; charset=utf-8",
+                      "storedAt": "2026-03-08T14:20:00.000Z"
+                    }
+                  ],
+                  "selectorTraces": [
+                    {
+                      "documentId": "run-catalog-example-com-html",
+                      "rootPath": "document",
+                      "resolution": {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "values": [
+                          "USD 1299.00"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "price/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "price/primary",
+                            "selector": "[data-price]",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "observationIndex": 1,
+                  "field": "title",
+                  "observation": {
+                    "field": "title",
+                    "normalizedValue": "Catalog Widget",
+                    "confidence": 0.98,
+                    "evidenceRefs": [
+                      "run-catalog-example-com-html"
+                    ]
+                  },
+                  "artifacts": [
+                    {
+                      "id": "run-catalog-example-com-html",
+                      "runId": "run-catalog-example-com",
+                      "artifactId": "run-catalog-example-com-html",
+                      "kind": "html",
+                      "visibility": "raw",
+                      "locator": {
+                        "namespace": "captures/target-catalog-example-com",
+                        "key": "run-catalog-example-com/body.html"
+                      },
+                      "sha256": "f528eb27c5e98686f4369be157cbbb57c55e531c6a831137d3c68f05891cde00",
+                      "sizeBytes": 98,
+                      "mediaType": "text/html; charset=utf-8",
+                      "storedAt": "2026-03-08T14:20:00.000Z"
+                    }
+                  ],
+                  "selectorTraces": [
+                    {
+                      "documentId": "run-catalog-example-com-html",
+                      "rootPath": "document",
+                      "resolution": {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "values": [
+                          "Catalog Widget"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "title/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "title/primary",
+                            "selector": "h1",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "canonicalSnapshot": {
+            "snapshotId": "run-catalog-example-com-snapshot",
+            "targetId": "target-catalog-example-com",
+            "qualityScore": 0.8835,
+            "confidenceScore": 0.97,
+            "fields": [
+              {
+                "field": "price",
+                "observation": {
+                  "field": "price",
+                  "normalizedValue": {
+                    "amount": 1299,
+                    "currency": "USD"
+                  },
+                  "confidence": 0.96,
+                  "evidenceRefs": [
+                    "run-catalog-example-com-html"
+                  ]
+                },
+                "valueFingerprint": "{\"amount\":1299,\"currency\":\"USD\"}"
+              },
+              {
+                "field": "title",
+                "observation": {
+                  "field": "title",
+                  "normalizedValue": "Catalog Widget",
+                  "confidence": 0.98,
+                  "evidenceRefs": [
+                    "run-catalog-example-com-html"
+                  ]
+                },
+                "valueFingerprint": "\"Catalog Widget\""
+              }
+            ]
+          }
+        },
+        {
+          "caseId": "case-offers-example-com",
+          "packId": "pack-offers-example-com",
+          "targetId": "target-offers-example-com",
+          "runId": "run-offers-example-com",
+          "orchestration": {
+            "planId": "run-offers-example-com",
+            "recipePackId": "pack-offers-example-com",
+            "documentArtifactId": "run-offers-example-com-html",
+            "documentSummary": {
+              "documentId": "run-offers-example-com-html",
+              "rootPath": "document",
+              "nodeCount": 6,
+              "maxDepth": 3,
+              "tagNames": [
+                "body",
+                "document",
+                "h1",
+                "head",
+                "html",
+                "span"
+              ]
+            },
+            "selectorResolutions": [
+              {
+                "selectorPath": "title/primary",
+                "selector": "h1",
+                "values": [
+                  "Offers Widget"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "title/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              },
+              {
+                "selectorPath": "price/primary",
+                "selector": "[data-price]",
+                "values": [
+                  "USD 899.00"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "price/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              }
+            ],
+            "fieldBindings": [
+              {
+                "field": "title",
+                "selectorResolutions": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "values": [
+                      "Offers Widget"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "title/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "field": "price",
+                "selectorResolutions": [
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "values": [
+                      "USD 899.00"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "price/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "snapshotAssembly": {
+              "snapshot": {
+                "id": "run-offers-example-com-snapshot",
+                "targetId": "target-offers-example-com",
+                "observations": [
+                  {
+                    "field": "price",
+                    "normalizedValue": {
+                      "amount": 899,
+                      "currency": "USD"
+                    },
+                    "confidence": 0.96,
+                    "evidenceRefs": [
+                      "run-offers-example-com-html"
+                    ]
+                  },
+                  {
+                    "field": "title",
+                    "normalizedValue": "Offers Widget",
+                    "confidence": 0.98,
+                    "evidenceRefs": [
+                      "run-offers-example-com-html"
+                    ]
+                  }
+                ],
+                "qualityScore": 0.8835,
+                "createdAt": "2026-03-08T14:25:00.000Z"
+              },
+              "qualityScoreInputs": {
+                "sourceObservationCount": 2,
+                "assembledObservationCount": 2,
+                "duplicateObservationCount": 0,
+                "uniqueFieldCount": 2,
+                "conflictingFieldCount": 0,
+                "uniqueEvidenceRefCount": 1,
+                "multiEvidenceObservationCount": 0,
+                "averageEvidenceRefsPerObservation": 1,
+                "averageConfidence": 0.97,
+                "minimumConfidence": 0.96,
+                "evidenceStrengthScore": 0.5,
+                "conflictFreeScore": 1,
+                "uniquenessScore": 1
+              },
+              "qualityScoreBreakdown": {
+                "confidenceContribution": 0.5335,
+                "evidenceStrengthContribution": 0.1,
+                "conflictFreeContribution": 0.15,
+                "uniquenessContribution": 0.1
+              }
+            },
+            "assertionReport": {
+              "snapshotId": "run-offers-example-com-snapshot",
+              "evaluatedRuleCount": 2,
+              "assertedFields": [
+                "title",
+                "price"
+              ]
+            },
+            "evidenceManifest": {
+              "id": "run-offers-example-com-snapshot-evidence-manifest",
+              "snapshotId": "run-offers-example-com-snapshot",
+              "targetId": "target-offers-example-com",
+              "documentId": "run-offers-example-com-html",
+              "createdAt": "2026-03-08T14:25:00.000Z",
+              "observations": [
+                {
+                  "observationIndex": 0,
+                  "field": "price",
+                  "observation": {
+                    "field": "price",
+                    "normalizedValue": {
+                      "amount": 899,
+                      "currency": "USD"
+                    },
+                    "confidence": 0.96,
+                    "evidenceRefs": [
+                      "run-offers-example-com-html"
+                    ]
+                  },
+                  "artifacts": [
+                    {
+                      "id": "run-offers-example-com-html",
+                      "runId": "run-offers-example-com",
+                      "artifactId": "run-offers-example-com-html",
+                      "kind": "html",
+                      "visibility": "raw",
+                      "locator": {
+                        "namespace": "captures/target-offers-example-com",
+                        "key": "run-offers-example-com/body.html"
+                      },
+                      "sha256": "e47e97079e3a0ade680eeb6c44cfaa7ec4704aaf909b6353d20bdcc427b15338",
+                      "sizeBytes": 95,
+                      "mediaType": "text/html; charset=utf-8",
+                      "storedAt": "2026-03-08T14:20:00.000Z"
+                    }
+                  ],
+                  "selectorTraces": [
+                    {
+                      "documentId": "run-offers-example-com-html",
+                      "rootPath": "document",
+                      "resolution": {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "values": [
+                          "USD 899.00"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "price/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "price/primary",
+                            "selector": "[data-price]",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "observationIndex": 1,
+                  "field": "title",
+                  "observation": {
+                    "field": "title",
+                    "normalizedValue": "Offers Widget",
+                    "confidence": 0.98,
+                    "evidenceRefs": [
+                      "run-offers-example-com-html"
+                    ]
+                  },
+                  "artifacts": [
+                    {
+                      "id": "run-offers-example-com-html",
+                      "runId": "run-offers-example-com",
+                      "artifactId": "run-offers-example-com-html",
+                      "kind": "html",
+                      "visibility": "raw",
+                      "locator": {
+                        "namespace": "captures/target-offers-example-com",
+                        "key": "run-offers-example-com/body.html"
+                      },
+                      "sha256": "e47e97079e3a0ade680eeb6c44cfaa7ec4704aaf909b6353d20bdcc427b15338",
+                      "sizeBytes": 95,
+                      "mediaType": "text/html; charset=utf-8",
+                      "storedAt": "2026-03-08T14:20:00.000Z"
+                    }
+                  ],
+                  "selectorTraces": [
+                    {
+                      "documentId": "run-offers-example-com-html",
+                      "rootPath": "document",
+                      "resolution": {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "values": [
+                          "Offers Widget"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "title/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "title/primary",
+                            "selector": "h1",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "canonicalSnapshot": {
+            "snapshotId": "run-offers-example-com-snapshot",
+            "targetId": "target-offers-example-com",
+            "qualityScore": 0.8835,
+            "confidenceScore": 0.97,
+            "fields": [
+              {
+                "field": "price",
+                "observation": {
+                  "field": "price",
+                  "normalizedValue": {
+                    "amount": 899,
+                    "currency": "USD"
+                  },
+                  "confidence": 0.96,
+                  "evidenceRefs": [
+                    "run-offers-example-com-html"
+                  ]
+                },
+                "valueFingerprint": "{\"amount\":899,\"currency\":\"USD\"}"
+              },
+              {
+                "field": "title",
+                "observation": {
+                  "field": "title",
+                  "normalizedValue": "Offers Widget",
+                  "confidence": 0.98,
+                  "evidenceRefs": [
+                    "run-offers-example-com-html"
+                  ]
+                },
+                "valueFingerprint": "\"Offers Widget\""
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "incumbentComparison": {
+      "benchmark": "e7-incumbent-comparison",
+      "comparisonId": "comparison-retail-smoke",
+      "generatedAt": "2026-03-08T15:00:00.000Z",
+      "incumbentCorpusId": "corpus-retail-smoke",
+      "candidateCorpusId": "corpus-retail-smoke",
+      "caseCount": 2,
+      "packCount": 2,
+      "results": [
+        {
+          "caseId": "case-catalog-example-com",
+          "packId": "pack-catalog-example-com",
+          "targetId": "target-catalog-example-com",
+          "incumbentRunId": "run-catalog-example-com",
+          "candidateRunId": "run-catalog-example-com",
+          "verdict": "match",
+          "snapshotDiff": {
+            "id": "diff-case-catalog-example-com",
+            "baselineSnapshotId": "run-catalog-example-com-snapshot",
+            "candidateSnapshotId": "run-catalog-example-com-snapshot",
+            "metrics": {
+              "fieldRecallDelta": 0,
+              "falsePositiveDelta": 0,
+              "driftDelta": 0,
+              "latencyDeltaMs": 0,
+              "memoryDelta": 0
+            },
+            "changes": [],
+            "canonicalMetrics": {
+              "baselineFieldCount": 2,
+              "candidateFieldCount": 2,
+              "unchangedFieldCount": 2,
+              "addedFieldCount": 0,
+              "removedFieldCount": 0,
+              "changedFieldCount": 0,
+              "baselineConfidenceScore": 0.97,
+              "candidateConfidenceScore": 0.97,
+              "confidenceDelta": 0
+            },
+            "createdAt": "2026-03-08T15:00:00.000Z"
+          }
+        },
+        {
+          "caseId": "case-offers-example-com",
+          "packId": "pack-offers-example-com",
+          "targetId": "target-offers-example-com",
+          "incumbentRunId": "run-offers-example-com",
+          "candidateRunId": "run-offers-example-com",
+          "verdict": "match",
+          "snapshotDiff": {
+            "id": "diff-case-offers-example-com",
+            "baselineSnapshotId": "run-offers-example-com-snapshot",
+            "candidateSnapshotId": "run-offers-example-com-snapshot",
+            "metrics": {
+              "fieldRecallDelta": 0,
+              "falsePositiveDelta": 0,
+              "driftDelta": 0,
+              "latencyDeltaMs": 0,
+              "memoryDelta": 0
+            },
+            "changes": [],
+            "canonicalMetrics": {
+              "baselineFieldCount": 2,
+              "candidateFieldCount": 2,
+              "unchangedFieldCount": 2,
+              "addedFieldCount": 0,
+              "removedFieldCount": 0,
+              "changedFieldCount": 0,
+              "baselineConfidenceScore": 0.97,
+              "candidateConfidenceScore": 0.97,
+              "confidenceDelta": 0
+            },
+            "createdAt": "2026-03-08T15:00:00.000Z"
+          }
+        }
+      ],
+      "packSummaries": [
+        {
+          "packId": "pack-catalog-example-com",
+          "verdict": "match",
+          "caseIds": [
+            "case-catalog-example-com"
+          ],
+          "deltaSummary": {
+            "caseCount": 1,
+            "matchedCaseCount": 1,
+            "changedCaseCount": 0,
+            "totalAddedFieldCount": 0,
+            "totalRemovedFieldCount": 0,
+            "totalChangedFieldCount": 0,
+            "meanFieldRecallDelta": 0,
+            "meanFalsePositiveDelta": 0,
+            "meanDriftDelta": 0,
+            "meanConfidenceDelta": 0,
+            "meanLatencyDeltaMs": 0,
+            "meanMemoryDelta": 0
+          }
+        },
+        {
+          "packId": "pack-offers-example-com",
+          "verdict": "match",
+          "caseIds": [
+            "case-offers-example-com"
+          ],
+          "deltaSummary": {
+            "caseCount": 1,
+            "matchedCaseCount": 1,
+            "changedCaseCount": 0,
+            "totalAddedFieldCount": 0,
+            "totalRemovedFieldCount": 0,
+            "totalChangedFieldCount": 0,
+            "meanFieldRecallDelta": 0,
+            "meanFalsePositiveDelta": 0,
+            "meanDriftDelta": 0,
+            "meanConfidenceDelta": 0,
+            "meanLatencyDeltaMs": 0,
+            "meanMemoryDelta": 0
+          }
+        }
+      ]
+    },
+    "performanceBudget": {
+      "benchmark": "e7-performance-budget",
+      "benchmarkId": "e7-performance-budget",
+      "generatedAt": "2026-03-08T16:00:00.000Z",
+      "environment": {
+        "bun": "1.3.10",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "sampleSize": 2,
+      "warmupIterations": 0,
+      "profile": {
+        "caseCount": 2,
+        "packCount": 2
+      },
+      "budgets": {
+        "baselineCorpusP95Ms": 500,
+        "incumbentComparisonP95Ms": 1200,
+        "heapDeltaKiB": 16384
+      },
+      "measurements": {
+        "baselineCorpus": {
+          "samples": 2,
+          "minMs": 39.486,
+          "meanMs": 39.954,
+          "p95Ms": 40.423,
+          "maxMs": 40.423
+        },
+        "incumbentComparison": {
+          "samples": 2,
+          "minMs": 118.085,
+          "meanMs": 118.652,
+          "p95Ms": 119.219,
+          "maxMs": 119.219
+        },
+        "heapDeltaKiB": 1236.003
+      },
+      "comparison": {
+        "baselinePath": null,
+        "comparable": false,
+        "incompatibleReason": null,
+        "deltas": {
+          "baselineCorpusP95Ms": null,
+          "incumbentComparisonP95Ms": null,
+          "heapDeltaKiB": null
+        }
+      },
+      "violations": [],
+      "status": "pass"
+    },
+    "qualityMetrics": {
+      "benchmark": "e7-quality-metrics",
+      "metricsId": "metrics-e7-quality",
+      "generatedAt": "2026-03-08T21:00:00.000Z",
+      "corpusId": "corpus-retail-smoke",
+      "comparisonId": "comparison-retail-smoke",
+      "caseCount": 2,
+      "packCount": 2,
+      "overall": {
+        "caseCount": 2,
+        "baselineFieldCount": 4,
+        "candidateFieldCount": 4,
+        "recalledFieldCount": 4,
+        "missingFieldCount": 0,
+        "unexpectedFieldCount": 0,
+        "changedFieldCount": 0,
+        "fieldRecallRate": 1,
+        "falsePositiveRate": 0
+      },
+      "packSummaries": [
+        {
+          "packId": "pack-catalog-example-com",
+          "caseIds": [
+            "case-catalog-example-com"
+          ],
+          "summary": {
+            "caseCount": 1,
+            "baselineFieldCount": 2,
+            "candidateFieldCount": 2,
+            "recalledFieldCount": 2,
+            "missingFieldCount": 0,
+            "unexpectedFieldCount": 0,
+            "changedFieldCount": 0,
+            "fieldRecallRate": 1,
+            "falsePositiveRate": 0
+          }
+        },
+        {
+          "packId": "pack-offers-example-com",
+          "caseIds": [
+            "case-offers-example-com"
+          ],
+          "summary": {
+            "caseCount": 1,
+            "baselineFieldCount": 2,
+            "candidateFieldCount": 2,
+            "recalledFieldCount": 2,
+            "missingFieldCount": 0,
+            "unexpectedFieldCount": 0,
+            "changedFieldCount": 0,
+            "fieldRecallRate": 1,
+            "falsePositiveRate": 0
+          }
+        }
+      ]
+    },
+    "liveCanary": {
+      "benchmark": "e7-live-canary",
+      "suiteId": "suite-e7-live-canary",
+      "generatedAt": "2026-03-08T21:15:00.000Z",
+      "status": "pass",
+      "summary": {
+        "scenarioCount": 2,
+        "passedScenarioCount": 2,
+        "failedScenarioIds": [],
+        "verdict": "promote"
+      },
+      "results": [
+        {
+          "scenarioId": "canary-product-browser",
+          "authorizationId": "auth-canary-product-browser",
+          "provider": "browser",
+          "action": "active",
+          "failedStages": [],
+          "status": "pass",
+          "plannerRationale": [
+            {
+              "key": "mode",
+              "message": "Access mode resolved to hybrid."
+            },
+            {
+              "key": "rendering",
+              "message": "Rendering policy resolved to onDemand."
+            },
+            {
+              "key": "budget",
+              "message": "Concurrency budget resolved to 4/16."
+            },
+            {
+              "key": "capture-path",
+              "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 1 recent access failure(s), latest timeout."
+            }
+          ]
+        },
+        {
+          "scenarioId": "canary-product-http",
+          "authorizationId": "auth-canary-product-http",
+          "provider": "http",
+          "action": "active",
+          "failedStages": [],
+          "status": "pass",
+          "plannerRationale": [
+            {
+              "key": "mode",
+              "message": "Access mode resolved to hybrid."
+            },
+            {
+              "key": "rendering",
+              "message": "Rendering policy resolved to onDemand."
+            },
+            {
+              "key": "budget",
+              "message": "Concurrency budget resolved to 4/16."
+            },
+            {
+              "key": "capture-path",
+              "message": "Capture step selected http provider. Hybrid mode kept the HTTP-first path for productPage targets without browser escalation signals."
+            }
+          ]
+        }
+      ]
+    },
+    "chaosProviderSuite": {
+      "benchmark": "e7-chaos-provider-suite",
+      "suiteId": "suite-e7-chaos-provider",
+      "generatedAt": "2026-03-08T18:00:00.000Z",
+      "scenarioCount": 3,
+      "failedScenarioIds": [],
+      "results": [
+        {
+          "scenarioId": "scenario-network-timeout",
+          "expectedProvider": "browser",
+          "actualProvider": "browser",
+          "expectedAction": "guarded",
+          "actualAction": "guarded",
+          "expectedFailedStages": [
+            "canary"
+          ],
+          "actualFailedStages": [
+            "canary"
+          ],
+          "status": "pass",
+          "plannerRationale": [
+            {
+              "key": "mode",
+              "message": "Access mode resolved to hybrid."
+            },
+            {
+              "key": "rendering",
+              "message": "Rendering policy resolved to onDemand."
+            },
+            {
+              "key": "budget",
+              "message": "Concurrency budget resolved to 8/64."
+            },
+            {
+              "key": "capture-path",
+              "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 1 recent access failure(s), latest timeout."
+            }
+          ]
+        },
+        {
+          "scenarioId": "scenario-provider-outage",
+          "expectedProvider": "browser",
+          "actualProvider": "browser",
+          "expectedAction": "quarantined",
+          "actualAction": "quarantined",
+          "expectedFailedStages": [
+            "chaos"
+          ],
+          "actualFailedStages": [
+            "chaos"
+          ],
+          "status": "pass",
+          "plannerRationale": [
+            {
+              "key": "mode",
+              "message": "Access mode resolved to hybrid."
+            },
+            {
+              "key": "rendering",
+              "message": "Rendering policy resolved to onDemand."
+            },
+            {
+              "key": "budget",
+              "message": "Concurrency budget resolved to 8/64."
+            },
+            {
+              "key": "capture-path",
+              "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+            }
+          ]
+        },
+        {
+          "scenarioId": "scenario-throttling-window",
+          "expectedProvider": "browser",
+          "actualProvider": "browser",
+          "expectedAction": "guarded",
+          "actualAction": "guarded",
+          "expectedFailedStages": [
+            "canary"
+          ],
+          "actualFailedStages": [
+            "canary"
+          ],
+          "status": "pass",
+          "plannerRationale": [
+            {
+              "key": "mode",
+              "message": "Access mode resolved to hybrid."
+            },
+            {
+              "key": "rendering",
+              "message": "Rendering policy resolved to onDemand."
+            },
+            {
+              "key": "budget",
+              "message": "Concurrency budget resolved to 8/64."
+            },
+            {
+              "key": "capture-path",
+              "message": "Capture step selected browser provider. Hybrid mode escalated to browser for high-friction searchResult targets after 2 recent access failure(s), latest unspecified-access-failure."
+            }
+          ]
+        }
+      ],
+      "status": "pass"
+    },
+    "promotionGate": {
+      "benchmark": "e7-promotion-gate-policy",
+      "evaluationId": "promotion-e7-policy",
+      "generatedAt": "2026-03-08T21:20:00.000Z",
+      "verdict": "hold",
+      "policy": {
+        "minimumHoldSeverity": "low",
+        "minimumQuarantineSeverity": "high",
+        "requireComparablePerformanceBaseline": true,
+        "maximumPromoteBaselineCorpusP95DeltaMs": 25,
+        "maximumPromoteIncumbentComparisonP95DeltaMs": 50,
+        "maximumPromoteHeapDeltaKiB": 1024,
+        "minimumQuarantineBaselineCorpusP95DeltaMs": 100,
+        "minimumQuarantineIncumbentComparisonP95DeltaMs": 200,
+        "minimumQuarantineHeapDeltaKiB": 4096
+      },
+      "quality": {
+        "analysisId": "analysis-e7-promotion-gate",
+        "packCount": 2,
+        "regressedPackCount": 0,
+        "findingCount": 0,
+        "highestSeverity": "none",
+        "verdict": "promote",
+        "holdPackIds": [],
+        "quarantinePackIds": []
+      },
+      "performance": {
+        "benchmarkId": "e7-performance-budget",
+        "budgetStatus": "pass",
+        "comparable": false,
+        "incompatibleReason": null,
+        "verdict": "hold",
+        "deltas": {
+          "baselineCorpusP95Ms": null,
+          "incumbentComparisonP95Ms": null,
+          "heapDeltaKiB": null
+        },
+        "budgetViolations": [],
+        "holdDeltaMetrics": [],
+        "quarantineDeltaMetrics": []
+      },
+      "canary": {
+        "suiteId": "suite-e7-live-canary",
+        "scenarioCount": 2,
+        "passedScenarioCount": 2,
+        "failedScenarioIds": [],
+        "verdict": "promote"
+      },
+      "rationale": [
+        {
+          "scope": "quality",
+          "code": "quality-clean",
+          "message": "Quality regression analysis stayed below the configured hold severity threshold for every pack."
+        },
+        {
+          "scope": "performance",
+          "code": "performance-hold",
+          "message": "Hold because the performance baseline is not comparable. The benchmark did not report a compatible baseline."
+        },
+        {
+          "scope": "canary",
+          "code": "canary-clean",
+          "message": "Live canary scenarios passed and did not add promotion risk."
+        }
+      ]
+    },
+    "qualityReport": {
+      "benchmark": "e7-quality-report",
+      "reportId": "report-e7-quality",
+      "generatedAt": "2026-03-08T19:15:00.000Z",
+      "corpusId": "corpus-retail-smoke",
+      "caseCount": 2,
+      "packCount": 2,
+      "summary": {
+        "decision": "hold",
+        "status": "warn",
+        "caseCount": 2,
+        "packCount": 2,
+        "warningSectionKeys": [
+          "performanceBudget",
+          "promotionGate"
+        ],
+        "failingSectionKeys": [],
+        "highlights": [
+          "Promotion gate: hold.",
+          "Drift findings: 0 with highest severity none.",
+          "Chaos suite: pass across 3 scenario(s).",
+          "Performance deltas were not comparable against the persisted baseline."
+        ]
+      },
+      "sections": [
+        {
+          "key": "baselineCorpus",
+          "title": "Baseline Corpus",
+          "status": "pass",
+          "headline": "Baseline corpus captured 2 case(s) across 2 pack(s).",
+          "evidenceIds": [
+            "corpus-retail-smoke"
+          ]
+        },
+        {
+          "key": "incumbentComparison",
+          "title": "Incumbent Comparison",
+          "status": "pass",
+          "headline": "Incumbent comparison evaluated 2 case(s) and found 0 changed case(s).",
+          "evidenceIds": [
+            "comparison-retail-smoke"
+          ]
+        },
+        {
+          "key": "driftRegression",
+          "title": "Drift Regression",
+          "status": "pass",
+          "headline": "Drift regression recorded 0 finding(s); highest severity none.",
+          "evidenceIds": [
+            "analysis-e7-quality-report",
+            "comparison-retail-smoke"
+          ]
+        },
+        {
+          "key": "performanceBudget",
+          "title": "Performance Budget",
+          "status": "warn",
+          "headline": "Performance budget pass without a comparable baseline: No baseline was supplied.",
+          "evidenceIds": [
+            "e7-performance-budget"
+          ]
+        },
+        {
+          "key": "chaosProviderSuite",
+          "title": "Chaos Provider Suite",
+          "status": "pass",
+          "headline": "Chaos provider suite pass across 3 scenario(s).",
+          "evidenceIds": [
+            "suite-e7-chaos-provider"
+          ]
+        },
+        {
+          "key": "promotionGate",
+          "title": "Promotion Gate",
+          "status": "warn",
+          "headline": "Promotion gate decided hold with 2 rationale entries.",
+          "evidenceIds": [
+            "promotion-e7-quality-report",
+            "analysis-e7-quality-report",
+            "e7-performance-budget"
+          ]
+        }
+      ],
+      "evidence": {
+        "baselineCorpus": {
+          "benchmark": "e7-baseline-corpus",
+          "corpusId": "corpus-retail-smoke",
+          "generatedAt": "2026-03-08T14:25:00.000Z",
+          "caseCount": 2,
+          "packCount": 2,
+          "results": [
+            {
+              "caseId": "case-catalog-example-com",
+              "packId": "pack-catalog-example-com",
+              "targetId": "target-catalog-example-com",
+              "runId": "run-catalog-example-com",
+              "orchestration": {
+                "planId": "run-catalog-example-com",
+                "recipePackId": "pack-catalog-example-com",
+                "documentArtifactId": "run-catalog-example-com-html",
+                "documentSummary": {
+                  "documentId": "run-catalog-example-com-html",
+                  "rootPath": "document",
+                  "nodeCount": 6,
+                  "maxDepth": 3,
+                  "tagNames": [
+                    "body",
+                    "document",
+                    "h1",
+                    "head",
+                    "html",
+                    "span"
+                  ]
+                },
+                "selectorResolutions": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "values": [
+                      "Catalog Widget"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "title/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  },
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "values": [
+                      "USD 1299.00"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "price/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                ],
+                "fieldBindings": [
+                  {
+                    "field": "title",
+                    "selectorResolutions": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "values": [
+                          "Catalog Widget"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "title/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "title/primary",
+                            "selector": "h1",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "field": "price",
+                    "selectorResolutions": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "values": [
+                          "USD 1299.00"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "price/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "price/primary",
+                            "selector": "[data-price]",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "snapshotAssembly": {
+                  "snapshot": {
+                    "id": "run-catalog-example-com-snapshot",
+                    "targetId": "target-catalog-example-com",
+                    "observations": [
+                      {
+                        "field": "price",
+                        "normalizedValue": {
+                          "amount": 1299,
+                          "currency": "USD"
+                        },
+                        "confidence": 0.96,
+                        "evidenceRefs": [
+                          "run-catalog-example-com-html"
+                        ]
+                      },
+                      {
+                        "field": "title",
+                        "normalizedValue": "Catalog Widget",
+                        "confidence": 0.98,
+                        "evidenceRefs": [
+                          "run-catalog-example-com-html"
+                        ]
+                      }
+                    ],
+                    "qualityScore": 0.8835,
+                    "createdAt": "2026-03-08T14:25:00.000Z"
+                  },
+                  "qualityScoreInputs": {
+                    "sourceObservationCount": 2,
+                    "assembledObservationCount": 2,
+                    "duplicateObservationCount": 0,
+                    "uniqueFieldCount": 2,
+                    "conflictingFieldCount": 0,
+                    "uniqueEvidenceRefCount": 1,
+                    "multiEvidenceObservationCount": 0,
+                    "averageEvidenceRefsPerObservation": 1,
+                    "averageConfidence": 0.97,
+                    "minimumConfidence": 0.96,
+                    "evidenceStrengthScore": 0.5,
+                    "conflictFreeScore": 1,
+                    "uniquenessScore": 1
+                  },
+                  "qualityScoreBreakdown": {
+                    "confidenceContribution": 0.5335,
+                    "evidenceStrengthContribution": 0.1,
+                    "conflictFreeContribution": 0.15,
+                    "uniquenessContribution": 0.1
+                  }
+                },
+                "assertionReport": {
+                  "snapshotId": "run-catalog-example-com-snapshot",
+                  "evaluatedRuleCount": 2,
+                  "assertedFields": [
+                    "title",
+                    "price"
+                  ]
+                },
+                "evidenceManifest": {
+                  "id": "run-catalog-example-com-snapshot-evidence-manifest",
+                  "snapshotId": "run-catalog-example-com-snapshot",
+                  "targetId": "target-catalog-example-com",
+                  "documentId": "run-catalog-example-com-html",
+                  "createdAt": "2026-03-08T14:25:00.000Z",
+                  "observations": [
+                    {
+                      "observationIndex": 0,
+                      "field": "price",
+                      "observation": {
+                        "field": "price",
+                        "normalizedValue": {
+                          "amount": 1299,
+                          "currency": "USD"
+                        },
+                        "confidence": 0.96,
+                        "evidenceRefs": [
+                          "run-catalog-example-com-html"
+                        ]
+                      },
+                      "artifacts": [
+                        {
+                          "id": "run-catalog-example-com-html",
+                          "runId": "run-catalog-example-com",
+                          "artifactId": "run-catalog-example-com-html",
+                          "kind": "html",
+                          "visibility": "raw",
+                          "locator": {
+                            "namespace": "captures/target-catalog-example-com",
+                            "key": "run-catalog-example-com/body.html"
+                          },
+                          "sha256": "f528eb27c5e98686f4369be157cbbb57c55e531c6a831137d3c68f05891cde00",
+                          "sizeBytes": 98,
+                          "mediaType": "text/html; charset=utf-8",
+                          "storedAt": "2026-03-08T14:20:00.000Z"
+                        }
+                      ],
+                      "selectorTraces": [
+                        {
+                          "documentId": "run-catalog-example-com-html",
+                          "rootPath": "document",
+                          "resolution": {
+                            "selectorPath": "price/primary",
+                            "selector": "[data-price]",
+                            "values": [
+                              "USD 1299.00"
+                            ],
+                            "matchedCount": 1,
+                            "candidateOrder": [
+                              "price/primary"
+                            ],
+                            "relocated": false,
+                            "fallbackCount": 0,
+                            "confidence": 1,
+                            "confidenceImpact": 0,
+                            "relocationTrace": [
+                              {
+                                "selectorPath": "price/primary",
+                                "selector": "[data-price]",
+                                "fallbackDepth": 0,
+                                "matchedCount": 1,
+                                "confidenceImpact": 0,
+                                "selected": true
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "observationIndex": 1,
+                      "field": "title",
+                      "observation": {
+                        "field": "title",
+                        "normalizedValue": "Catalog Widget",
+                        "confidence": 0.98,
+                        "evidenceRefs": [
+                          "run-catalog-example-com-html"
+                        ]
+                      },
+                      "artifacts": [
+                        {
+                          "id": "run-catalog-example-com-html",
+                          "runId": "run-catalog-example-com",
+                          "artifactId": "run-catalog-example-com-html",
+                          "kind": "html",
+                          "visibility": "raw",
+                          "locator": {
+                            "namespace": "captures/target-catalog-example-com",
+                            "key": "run-catalog-example-com/body.html"
+                          },
+                          "sha256": "f528eb27c5e98686f4369be157cbbb57c55e531c6a831137d3c68f05891cde00",
+                          "sizeBytes": 98,
+                          "mediaType": "text/html; charset=utf-8",
+                          "storedAt": "2026-03-08T14:20:00.000Z"
+                        }
+                      ],
+                      "selectorTraces": [
+                        {
+                          "documentId": "run-catalog-example-com-html",
+                          "rootPath": "document",
+                          "resolution": {
+                            "selectorPath": "title/primary",
+                            "selector": "h1",
+                            "values": [
+                              "Catalog Widget"
+                            ],
+                            "matchedCount": 1,
+                            "candidateOrder": [
+                              "title/primary"
+                            ],
+                            "relocated": false,
+                            "fallbackCount": 0,
+                            "confidence": 1,
+                            "confidenceImpact": 0,
+                            "relocationTrace": [
+                              {
+                                "selectorPath": "title/primary",
+                                "selector": "h1",
+                                "fallbackDepth": 0,
+                                "matchedCount": 1,
+                                "confidenceImpact": 0,
+                                "selected": true
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "canonicalSnapshot": {
+                "snapshotId": "run-catalog-example-com-snapshot",
+                "targetId": "target-catalog-example-com",
+                "qualityScore": 0.8835,
+                "confidenceScore": 0.97,
+                "fields": [
+                  {
+                    "field": "price",
+                    "observation": {
+                      "field": "price",
+                      "normalizedValue": {
+                        "amount": 1299,
+                        "currency": "USD"
+                      },
+                      "confidence": 0.96,
+                      "evidenceRefs": [
+                        "run-catalog-example-com-html"
+                      ]
+                    },
+                    "valueFingerprint": "{\"amount\":1299,\"currency\":\"USD\"}"
+                  },
+                  {
+                    "field": "title",
+                    "observation": {
+                      "field": "title",
+                      "normalizedValue": "Catalog Widget",
+                      "confidence": 0.98,
+                      "evidenceRefs": [
+                        "run-catalog-example-com-html"
+                      ]
+                    },
+                    "valueFingerprint": "\"Catalog Widget\""
+                  }
+                ]
+              }
+            },
+            {
+              "caseId": "case-offers-example-com",
+              "packId": "pack-offers-example-com",
+              "targetId": "target-offers-example-com",
+              "runId": "run-offers-example-com",
+              "orchestration": {
+                "planId": "run-offers-example-com",
+                "recipePackId": "pack-offers-example-com",
+                "documentArtifactId": "run-offers-example-com-html",
+                "documentSummary": {
+                  "documentId": "run-offers-example-com-html",
+                  "rootPath": "document",
+                  "nodeCount": 6,
+                  "maxDepth": 3,
+                  "tagNames": [
+                    "body",
+                    "document",
+                    "h1",
+                    "head",
+                    "html",
+                    "span"
+                  ]
+                },
+                "selectorResolutions": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "values": [
+                      "Offers Widget"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "title/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  },
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "values": [
+                      "USD 899.00"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "price/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                ],
+                "fieldBindings": [
+                  {
+                    "field": "title",
+                    "selectorResolutions": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "values": [
+                          "Offers Widget"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "title/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "title/primary",
+                            "selector": "h1",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "field": "price",
+                    "selectorResolutions": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "values": [
+                          "USD 899.00"
+                        ],
+                        "matchedCount": 1,
+                        "candidateOrder": [
+                          "price/primary"
+                        ],
+                        "relocated": false,
+                        "fallbackCount": 0,
+                        "confidence": 1,
+                        "confidenceImpact": 0,
+                        "relocationTrace": [
+                          {
+                            "selectorPath": "price/primary",
+                            "selector": "[data-price]",
+                            "fallbackDepth": 0,
+                            "matchedCount": 1,
+                            "confidenceImpact": 0,
+                            "selected": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "snapshotAssembly": {
+                  "snapshot": {
+                    "id": "run-offers-example-com-snapshot",
+                    "targetId": "target-offers-example-com",
+                    "observations": [
+                      {
+                        "field": "price",
+                        "normalizedValue": {
+                          "amount": 899,
+                          "currency": "USD"
+                        },
+                        "confidence": 0.96,
+                        "evidenceRefs": [
+                          "run-offers-example-com-html"
+                        ]
+                      },
+                      {
+                        "field": "title",
+                        "normalizedValue": "Offers Widget",
+                        "confidence": 0.98,
+                        "evidenceRefs": [
+                          "run-offers-example-com-html"
+                        ]
+                      }
+                    ],
+                    "qualityScore": 0.8835,
+                    "createdAt": "2026-03-08T14:25:00.000Z"
+                  },
+                  "qualityScoreInputs": {
+                    "sourceObservationCount": 2,
+                    "assembledObservationCount": 2,
+                    "duplicateObservationCount": 0,
+                    "uniqueFieldCount": 2,
+                    "conflictingFieldCount": 0,
+                    "uniqueEvidenceRefCount": 1,
+                    "multiEvidenceObservationCount": 0,
+                    "averageEvidenceRefsPerObservation": 1,
+                    "averageConfidence": 0.97,
+                    "minimumConfidence": 0.96,
+                    "evidenceStrengthScore": 0.5,
+                    "conflictFreeScore": 1,
+                    "uniquenessScore": 1
+                  },
+                  "qualityScoreBreakdown": {
+                    "confidenceContribution": 0.5335,
+                    "evidenceStrengthContribution": 0.1,
+                    "conflictFreeContribution": 0.15,
+                    "uniquenessContribution": 0.1
+                  }
+                },
+                "assertionReport": {
+                  "snapshotId": "run-offers-example-com-snapshot",
+                  "evaluatedRuleCount": 2,
+                  "assertedFields": [
+                    "title",
+                    "price"
+                  ]
+                },
+                "evidenceManifest": {
+                  "id": "run-offers-example-com-snapshot-evidence-manifest",
+                  "snapshotId": "run-offers-example-com-snapshot",
+                  "targetId": "target-offers-example-com",
+                  "documentId": "run-offers-example-com-html",
+                  "createdAt": "2026-03-08T14:25:00.000Z",
+                  "observations": [
+                    {
+                      "observationIndex": 0,
+                      "field": "price",
+                      "observation": {
+                        "field": "price",
+                        "normalizedValue": {
+                          "amount": 899,
+                          "currency": "USD"
+                        },
+                        "confidence": 0.96,
+                        "evidenceRefs": [
+                          "run-offers-example-com-html"
+                        ]
+                      },
+                      "artifacts": [
+                        {
+                          "id": "run-offers-example-com-html",
+                          "runId": "run-offers-example-com",
+                          "artifactId": "run-offers-example-com-html",
+                          "kind": "html",
+                          "visibility": "raw",
+                          "locator": {
+                            "namespace": "captures/target-offers-example-com",
+                            "key": "run-offers-example-com/body.html"
+                          },
+                          "sha256": "e47e97079e3a0ade680eeb6c44cfaa7ec4704aaf909b6353d20bdcc427b15338",
+                          "sizeBytes": 95,
+                          "mediaType": "text/html; charset=utf-8",
+                          "storedAt": "2026-03-08T14:20:00.000Z"
+                        }
+                      ],
+                      "selectorTraces": [
+                        {
+                          "documentId": "run-offers-example-com-html",
+                          "rootPath": "document",
+                          "resolution": {
+                            "selectorPath": "price/primary",
+                            "selector": "[data-price]",
+                            "values": [
+                              "USD 899.00"
+                            ],
+                            "matchedCount": 1,
+                            "candidateOrder": [
+                              "price/primary"
+                            ],
+                            "relocated": false,
+                            "fallbackCount": 0,
+                            "confidence": 1,
+                            "confidenceImpact": 0,
+                            "relocationTrace": [
+                              {
+                                "selectorPath": "price/primary",
+                                "selector": "[data-price]",
+                                "fallbackDepth": 0,
+                                "matchedCount": 1,
+                                "confidenceImpact": 0,
+                                "selected": true
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "observationIndex": 1,
+                      "field": "title",
+                      "observation": {
+                        "field": "title",
+                        "normalizedValue": "Offers Widget",
+                        "confidence": 0.98,
+                        "evidenceRefs": [
+                          "run-offers-example-com-html"
+                        ]
+                      },
+                      "artifacts": [
+                        {
+                          "id": "run-offers-example-com-html",
+                          "runId": "run-offers-example-com",
+                          "artifactId": "run-offers-example-com-html",
+                          "kind": "html",
+                          "visibility": "raw",
+                          "locator": {
+                            "namespace": "captures/target-offers-example-com",
+                            "key": "run-offers-example-com/body.html"
+                          },
+                          "sha256": "e47e97079e3a0ade680eeb6c44cfaa7ec4704aaf909b6353d20bdcc427b15338",
+                          "sizeBytes": 95,
+                          "mediaType": "text/html; charset=utf-8",
+                          "storedAt": "2026-03-08T14:20:00.000Z"
+                        }
+                      ],
+                      "selectorTraces": [
+                        {
+                          "documentId": "run-offers-example-com-html",
+                          "rootPath": "document",
+                          "resolution": {
+                            "selectorPath": "title/primary",
+                            "selector": "h1",
+                            "values": [
+                              "Offers Widget"
+                            ],
+                            "matchedCount": 1,
+                            "candidateOrder": [
+                              "title/primary"
+                            ],
+                            "relocated": false,
+                            "fallbackCount": 0,
+                            "confidence": 1,
+                            "confidenceImpact": 0,
+                            "relocationTrace": [
+                              {
+                                "selectorPath": "title/primary",
+                                "selector": "h1",
+                                "fallbackDepth": 0,
+                                "matchedCount": 1,
+                                "confidenceImpact": 0,
+                                "selected": true
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "canonicalSnapshot": {
+                "snapshotId": "run-offers-example-com-snapshot",
+                "targetId": "target-offers-example-com",
+                "qualityScore": 0.8835,
+                "confidenceScore": 0.97,
+                "fields": [
+                  {
+                    "field": "price",
+                    "observation": {
+                      "field": "price",
+                      "normalizedValue": {
+                        "amount": 899,
+                        "currency": "USD"
+                      },
+                      "confidence": 0.96,
+                      "evidenceRefs": [
+                        "run-offers-example-com-html"
+                      ]
+                    },
+                    "valueFingerprint": "{\"amount\":899,\"currency\":\"USD\"}"
+                  },
+                  {
+                    "field": "title",
+                    "observation": {
+                      "field": "title",
+                      "normalizedValue": "Offers Widget",
+                      "confidence": 0.98,
+                      "evidenceRefs": [
+                        "run-offers-example-com-html"
+                      ]
+                    },
+                    "valueFingerprint": "\"Offers Widget\""
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "incumbentComparison": {
+          "benchmark": "e7-incumbent-comparison",
+          "comparisonId": "comparison-retail-smoke",
+          "generatedAt": "2026-03-08T15:00:00.000Z",
+          "incumbentCorpusId": "corpus-retail-smoke",
+          "candidateCorpusId": "corpus-retail-smoke",
+          "caseCount": 2,
+          "packCount": 2,
+          "results": [
+            {
+              "caseId": "case-catalog-example-com",
+              "packId": "pack-catalog-example-com",
+              "targetId": "target-catalog-example-com",
+              "incumbentRunId": "run-catalog-example-com",
+              "candidateRunId": "run-catalog-example-com",
+              "verdict": "match",
+              "snapshotDiff": {
+                "id": "diff-case-catalog-example-com",
+                "baselineSnapshotId": "run-catalog-example-com-snapshot",
+                "candidateSnapshotId": "run-catalog-example-com-snapshot",
+                "metrics": {
+                  "fieldRecallDelta": 0,
+                  "falsePositiveDelta": 0,
+                  "driftDelta": 0,
+                  "latencyDeltaMs": 0,
+                  "memoryDelta": 0
+                },
+                "changes": [],
+                "canonicalMetrics": {
+                  "baselineFieldCount": 2,
+                  "candidateFieldCount": 2,
+                  "unchangedFieldCount": 2,
+                  "addedFieldCount": 0,
+                  "removedFieldCount": 0,
+                  "changedFieldCount": 0,
+                  "baselineConfidenceScore": 0.97,
+                  "candidateConfidenceScore": 0.97,
+                  "confidenceDelta": 0
+                },
+                "createdAt": "2026-03-08T15:00:00.000Z"
+              }
+            },
+            {
+              "caseId": "case-offers-example-com",
+              "packId": "pack-offers-example-com",
+              "targetId": "target-offers-example-com",
+              "incumbentRunId": "run-offers-example-com",
+              "candidateRunId": "run-offers-example-com",
+              "verdict": "match",
+              "snapshotDiff": {
+                "id": "diff-case-offers-example-com",
+                "baselineSnapshotId": "run-offers-example-com-snapshot",
+                "candidateSnapshotId": "run-offers-example-com-snapshot",
+                "metrics": {
+                  "fieldRecallDelta": 0,
+                  "falsePositiveDelta": 0,
+                  "driftDelta": 0,
+                  "latencyDeltaMs": 0,
+                  "memoryDelta": 0
+                },
+                "changes": [],
+                "canonicalMetrics": {
+                  "baselineFieldCount": 2,
+                  "candidateFieldCount": 2,
+                  "unchangedFieldCount": 2,
+                  "addedFieldCount": 0,
+                  "removedFieldCount": 0,
+                  "changedFieldCount": 0,
+                  "baselineConfidenceScore": 0.97,
+                  "candidateConfidenceScore": 0.97,
+                  "confidenceDelta": 0
+                },
+                "createdAt": "2026-03-08T15:00:00.000Z"
+              }
+            }
+          ],
+          "packSummaries": [
+            {
+              "packId": "pack-catalog-example-com",
+              "verdict": "match",
+              "caseIds": [
+                "case-catalog-example-com"
+              ],
+              "deltaSummary": {
+                "caseCount": 1,
+                "matchedCaseCount": 1,
+                "changedCaseCount": 0,
+                "totalAddedFieldCount": 0,
+                "totalRemovedFieldCount": 0,
+                "totalChangedFieldCount": 0,
+                "meanFieldRecallDelta": 0,
+                "meanFalsePositiveDelta": 0,
+                "meanDriftDelta": 0,
+                "meanConfidenceDelta": 0,
+                "meanLatencyDeltaMs": 0,
+                "meanMemoryDelta": 0
+              }
+            },
+            {
+              "packId": "pack-offers-example-com",
+              "verdict": "match",
+              "caseIds": [
+                "case-offers-example-com"
+              ],
+              "deltaSummary": {
+                "caseCount": 1,
+                "matchedCaseCount": 1,
+                "changedCaseCount": 0,
+                "totalAddedFieldCount": 0,
+                "totalRemovedFieldCount": 0,
+                "totalChangedFieldCount": 0,
+                "meanFieldRecallDelta": 0,
+                "meanFalsePositiveDelta": 0,
+                "meanDriftDelta": 0,
+                "meanConfidenceDelta": 0,
+                "meanLatencyDeltaMs": 0,
+                "meanMemoryDelta": 0
+              }
+            }
+          ]
+        },
+        "driftRegression": {
+          "benchmark": "e7-drift-regression-analysis",
+          "analysisId": "analysis-e7-quality-report",
+          "generatedAt": "2026-03-08T19:05:00.000Z",
+          "comparisonId": "comparison-retail-smoke",
+          "caseCount": 2,
+          "packCount": 2,
+          "findings": [],
+          "packSummaries": [
+            {
+              "packId": "pack-catalog-example-com",
+              "severity": "none",
+              "caseCount": 1,
+              "regressedCaseCount": 0,
+              "findingCount": 0,
+              "highestDriftMagnitude": 0,
+              "highestConfidenceDrop": 0,
+              "signatures": []
+            },
+            {
+              "packId": "pack-offers-example-com",
+              "severity": "none",
+              "caseCount": 1,
+              "regressedCaseCount": 0,
+              "findingCount": 0,
+              "highestDriftMagnitude": 0,
+              "highestConfidenceDrop": 0,
+              "signatures": []
+            }
+          ]
+        },
+        "performanceBudget": {
+          "benchmark": "e7-performance-budget",
+          "benchmarkId": "e7-performance-budget",
+          "generatedAt": "2026-03-08T16:00:00.000Z",
+          "environment": {
+            "bun": "1.3.10",
+            "platform": "darwin",
+            "arch": "arm64"
+          },
+          "sampleSize": 2,
+          "warmupIterations": 0,
+          "profile": {
+            "caseCount": 2,
+            "packCount": 2
+          },
+          "budgets": {
+            "baselineCorpusP95Ms": 500,
+            "incumbentComparisonP95Ms": 1200,
+            "heapDeltaKiB": 16384
+          },
+          "measurements": {
+            "baselineCorpus": {
+              "samples": 2,
+              "minMs": 40.012,
+              "meanMs": 40.187,
+              "p95Ms": 40.362,
+              "maxMs": 40.362
+            },
+            "incumbentComparison": {
+              "samples": 2,
+              "minMs": 123.584,
+              "meanMs": 124.204,
+              "p95Ms": 124.823,
+              "maxMs": 124.823
+            },
+            "heapDeltaKiB": 1207.642
+          },
+          "comparison": {
+            "baselinePath": null,
+            "comparable": false,
+            "incompatibleReason": null,
+            "deltas": {
+              "baselineCorpusP95Ms": null,
+              "incumbentComparisonP95Ms": null,
+              "heapDeltaKiB": null
+            }
+          },
+          "violations": [],
+          "status": "pass"
+        },
+        "chaosProviderSuite": {
+          "benchmark": "e7-chaos-provider-suite",
+          "suiteId": "suite-e7-chaos-provider",
+          "generatedAt": "2026-03-08T18:00:00.000Z",
+          "scenarioCount": 3,
+          "failedScenarioIds": [],
+          "results": [
+            {
+              "scenarioId": "scenario-network-timeout",
+              "expectedProvider": "browser",
+              "actualProvider": "browser",
+              "expectedAction": "guarded",
+              "actualAction": "guarded",
+              "expectedFailedStages": [
+                "canary"
+              ],
+              "actualFailedStages": [
+                "canary"
+              ],
+              "status": "pass",
+              "plannerRationale": [
+                {
+                  "key": "mode",
+                  "message": "Access mode resolved to hybrid."
+                },
+                {
+                  "key": "rendering",
+                  "message": "Rendering policy resolved to onDemand."
+                },
+                {
+                  "key": "budget",
+                  "message": "Concurrency budget resolved to 8/64."
+                },
+                {
+                  "key": "capture-path",
+                  "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 1 recent access failure(s), latest timeout."
+                }
+              ]
+            },
+            {
+              "scenarioId": "scenario-provider-outage",
+              "expectedProvider": "browser",
+              "actualProvider": "browser",
+              "expectedAction": "quarantined",
+              "actualAction": "quarantined",
+              "expectedFailedStages": [
+                "chaos"
+              ],
+              "actualFailedStages": [
+                "chaos"
+              ],
+              "status": "pass",
+              "plannerRationale": [
+                {
+                  "key": "mode",
+                  "message": "Access mode resolved to hybrid."
+                },
+                {
+                  "key": "rendering",
+                  "message": "Rendering policy resolved to onDemand."
+                },
+                {
+                  "key": "budget",
+                  "message": "Concurrency budget resolved to 8/64."
+                },
+                {
+                  "key": "capture-path",
+                  "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+                }
+              ]
+            },
+            {
+              "scenarioId": "scenario-throttling-window",
+              "expectedProvider": "browser",
+              "actualProvider": "browser",
+              "expectedAction": "guarded",
+              "actualAction": "guarded",
+              "expectedFailedStages": [
+                "canary"
+              ],
+              "actualFailedStages": [
+                "canary"
+              ],
+              "status": "pass",
+              "plannerRationale": [
+                {
+                  "key": "mode",
+                  "message": "Access mode resolved to hybrid."
+                },
+                {
+                  "key": "rendering",
+                  "message": "Rendering policy resolved to onDemand."
+                },
+                {
+                  "key": "budget",
+                  "message": "Concurrency budget resolved to 8/64."
+                },
+                {
+                  "key": "capture-path",
+                  "message": "Capture step selected browser provider. Hybrid mode escalated to browser for high-friction searchResult targets after 2 recent access failure(s), latest unspecified-access-failure."
+                }
+              ]
+            }
+          ],
+          "status": "pass"
+        },
+        "promotionGate": {
+          "benchmark": "e7-promotion-gate-policy",
+          "evaluationId": "promotion-e7-quality-report",
+          "generatedAt": "2026-03-08T19:10:00.000Z",
+          "verdict": "hold",
+          "policy": {
+            "minimumHoldSeverity": "low",
+            "minimumQuarantineSeverity": "high",
+            "requireComparablePerformanceBaseline": true,
+            "maximumPromoteBaselineCorpusP95DeltaMs": 25,
+            "maximumPromoteIncumbentComparisonP95DeltaMs": 50,
+            "maximumPromoteHeapDeltaKiB": 1024,
+            "minimumQuarantineBaselineCorpusP95DeltaMs": 100,
+            "minimumQuarantineIncumbentComparisonP95DeltaMs": 200,
+            "minimumQuarantineHeapDeltaKiB": 4096
+          },
+          "quality": {
+            "analysisId": "analysis-e7-quality-report",
+            "packCount": 2,
+            "regressedPackCount": 0,
+            "findingCount": 0,
+            "highestSeverity": "none",
+            "verdict": "promote",
+            "holdPackIds": [],
+            "quarantinePackIds": []
+          },
+          "performance": {
+            "benchmarkId": "e7-performance-budget",
+            "budgetStatus": "pass",
+            "comparable": false,
+            "incompatibleReason": null,
+            "verdict": "hold",
+            "deltas": {
+              "baselineCorpusP95Ms": null,
+              "incumbentComparisonP95Ms": null,
+              "heapDeltaKiB": null
+            },
+            "budgetViolations": [],
+            "holdDeltaMetrics": [],
+            "quarantineDeltaMetrics": []
+          },
+          "rationale": [
+            {
+              "scope": "quality",
+              "code": "quality-clean",
+              "message": "Quality regression analysis stayed below the configured hold severity threshold for every pack."
+            },
+            {
+              "scope": "performance",
+              "code": "performance-hold",
+              "message": "Hold because the performance baseline is not comparable. The benchmark did not report a compatible baseline."
+            }
+          ]
+        }
+      }
+    },
+    "soakEndurance": {
+      "benchmark": "e7-soak-endurance-suite",
+      "suiteId": "suite-e7-soak-endurance",
+      "generatedAt": "2026-03-08T19:45:00.000Z",
+      "policy": {
+        "maxBaselineCorpusGrowthMs": 100,
+        "maxIncumbentComparisonGrowthMs": 200,
+        "maxHeapGrowthKiB": 4096,
+        "maxConsecutiveHeapGrowth": 4
+      },
+      "sampleCount": 2,
+      "status": "pass",
+      "violations": [],
+      "stability": {
+        "baselineCorpusGrowthMs": 0,
+        "incumbentComparisonGrowthMs": 0,
+        "heapGrowthKiB": 0,
+        "maxConsecutiveHeapGrowth": 0,
+        "baselineFingerprintStable": true,
+        "comparisonFingerprintStable": true,
+        "unboundedGrowthDetected": false
+      },
+      "samples": [
+        {
+          "iteration": 1,
+          "baselineCorpusMs": 66.87,
+          "incumbentComparisonMs": 222.788,
+          "heapDeltaKiB": 683.657,
+          "baselineFingerprint": "corpus-retail-smoke|2|2|case-catalog-example-com:pack-catalog-example-com:target-catalog-example-com:run-catalog-example-com-snapshot:0.97:price:{\"amount\":1299,\"currency\":\"USD\"},title:\"Catalog Widget\"|case-offers-example-com:pack-offers-example-com:target-offers-example-com:run-offers-example-com-snapshot:0.97:price:{\"amount\":899,\"currency\":\"USD\"},title:\"Offers Widget\"",
+          "comparisonFingerprint": "comparison-retail-smoke|2|2|case-catalog-example-com:match:diff-case-catalog-example-com:0|case-offers-example-com:match:diff-case-offers-example-com:0"
+        },
+        {
+          "iteration": 2,
+          "baselineCorpusMs": 44.254,
+          "incumbentComparisonMs": 126.482,
+          "heapDeltaKiB": 650.763,
+          "baselineFingerprint": "corpus-retail-smoke|2|2|case-catalog-example-com:pack-catalog-example-com:target-catalog-example-com:run-catalog-example-com-snapshot:0.97:price:{\"amount\":1299,\"currency\":\"USD\"},title:\"Catalog Widget\"|case-offers-example-com:pack-offers-example-com:target-offers-example-com:run-offers-example-com-snapshot:0.97:price:{\"amount\":899,\"currency\":\"USD\"},title:\"Offers Widget\"",
+          "comparisonFingerprint": "comparison-retail-smoke|2|2|case-catalog-example-com:match:diff-case-catalog-example-com:0|case-offers-example-com:match:diff-case-offers-example-com:0"
+        }
+      ]
+    }
+  }
+}

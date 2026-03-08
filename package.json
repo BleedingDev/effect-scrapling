@@ -1,6 +1,6 @@
 {
   "name": "effect-scrapling",
-  "private": true,
+  "private": false,
   "type": "module",
   "version": "0.0.1",
   "workspaces": [
@@ -11,9 +11,10 @@
   "description": "EffectTS + Bun scraping SDK, API, and CLI",
   "files": [
     "dist",
-    "src/e5.ts",
-    "src/e8.ts",
-    "src/e7.ts",
+    "docs/artifacts",
+    "docs/runbooks",
+    "src",
+    "scripts/benchmarks",
     "src/sdk",
     "package.json",
     "README.md"
@@ -47,11 +48,18 @@
     "example:e6-capability-slice": "bun run examples/e6-capability-slice.ts",
     "example:e7-capability-slice": "bun run examples/e7-capability-slice.ts",
     "example:e7-sdk-consumer": "bun run examples/e7-sdk-consumer.ts",
+    "example:e8-sdk-consumer": "bun run examples/e8-sdk-consumer.ts",
     "example:e6-sdk-consumer": "bun run examples/e6-sdk-consumer.ts",
     "example:e5-sdk-consumer": "bun run examples/e5-sdk-consumer.ts",
     "example:e4-sdk-consumer": "bun run examples/e4-sdk-consumer.ts",
     "example:e1-foundation-core-consumer": "bun run examples/e1-foundation-core-consumer.ts",
     "check:e8-workspace-operations": "bun test tests/sdk/e8-workspace-operations.test.ts tests/sdk/e8-control-plane.test.ts tests/sdk/e8-target-verify.test.ts tests/sdk/e8-pack-verify.test.ts tests/sdk/e8-preview-verify.test.ts tests/sdk/e8-workflow-verify.test.ts tests/sdk/e8-quality-verify.test.ts tests/apps/cli-app.test.ts tests/apps/api-app.test.ts",
+    "benchmark:e8-benchmark-run": "bun run scripts/benchmarks/e8-benchmark-export.ts run --artifact docs/artifacts/e8-benchmark-run-artifact.json",
+    "benchmark:e8-artifact-export": "bun run scripts/benchmarks/e8-benchmark-export.ts export --artifact docs/artifacts/e8-artifact-export-artifact.json",
+    "check:e8-benchmark-export": "bun test tests/sdk/e8-benchmark-export.test.ts tests/scripts/e8-benchmark-export.test.ts && bun run benchmark:e8-benchmark-run && bun run benchmark:e8-artifact-export",
+    "benchmark:e8-parity-dry-run": "bun run scripts/benchmarks/e8-parity-dry-run.ts --artifact docs/artifacts/e8-parity-dry-run-artifact.json",
+    "check:e8-parity-dry-run": "bun test tests/scripts/e8-parity-dry-run.test.ts && bun run benchmark:e8-parity-dry-run",
+    "check:e8-sdk-consumer": "bun test tests/sdk/e8-consumer-example.test.ts && bun run example:e8-sdk-consumer",
     "check:e1-capability-slice": "bun test tests/guardrails/e1-capability-slice.verify.test.ts && bun run example:e1-capability-slice",
     "check:e2-capability-slice": "bun test tests/examples/e2-capability-slice.test.ts && bun run example:e2-capability-slice",
     "check:e2-sdk-consumer": "bun test tests/sdk/e2-consumer-example.test.ts && bun run example:e2-sdk-consumer",
@@ -141,7 +149,7 @@
     "build:sfe:api": "bun build --compile src/api.ts --outfile dist/effect-scrapling-api"
   },
   "dependencies": {
-    "@effect-scrapling/foundation-core": "workspace:*",
+    "@effect-scrapling/foundation-core": "0.0.1",
     "cheerio": "^1.2.0",
     "effect": "^4.0.0-beta.27",
     "playwright": "^1.52.0"

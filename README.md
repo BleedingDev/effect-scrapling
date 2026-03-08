@@ -164,6 +164,9 @@ Operator runbooks:
 - [E7 quality report exports](docs/runbooks/e7-quality-report.md)
 - [E7 security review](docs/runbooks/e7-security-review.md)
 - [E7 soak and endurance suite](docs/runbooks/e7-soak-endurance-suite.md)
+- [E8 benchmark and artifact export](docs/runbooks/e8-benchmark-artifact-export.md)
+- [E8 parity dry-run replay](docs/runbooks/e8-parity-dry-run-replay.md)
+- [E8 public SDK package](docs/runbooks/e8-public-sdk-package.md)
 - [E6 post-validation triage](docs/artifacts/e6-post-validation-triage.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`
@@ -409,6 +412,7 @@ bun run example:sdk-consumer
 bun run example:e2-sdk-consumer
 bun run example:e4-sdk-consumer
 bun run example:e5-sdk-consumer
+bun run example:e8-sdk-consumer
 ```
 
 The example at `examples/sdk-consumer.ts` is the supported consumer-facing SDK
@@ -446,12 +450,21 @@ public `effect-scrapling/e5` package boundary and demonstrates:
 - prerequisite and pitfall reporting for downstream E5 integrators
 - one intentional `PolicyViolation` path from a synthetic extractor failure
 
+The control-plane E8 example at `examples/e8-sdk-consumer.ts` stays on the
+public `effect-scrapling/e8` package boundary and demonstrates:
+
+- workspace doctor and config-show through the public E8 surface
+- benchmark metadata generation through the same package subpath
+- sanitized artifact export through the same package subpath
+- prerequisite and pitfall reporting for downstream E8 consumers
+
 Replay it with:
 
 ```bash
 bun run check:e2-sdk-consumer
 bun run check:e4-sdk-consumer
 bun run check:e5-sdk-consumer
+bun run check:e8-sdk-consumer
 ```
 
 To run the in-repo example:
@@ -470,6 +483,13 @@ To run the in-repo example:
   at `effect-scrapling/e5`; replay `bun run check:e5-sdk-consumer` for the
   deterministic in-memory workflow path and `bun run check:e5-security-review`
   for the security control proofs
+- `bun run example:e8-sdk-consumer` uses the public control-plane entrypoint at
+  `effect-scrapling/e8`; replay `bun run check:e8-sdk-consumer`,
+  `bun run check:e8-benchmark-export`, and `bun run check:e8-parity-dry-run`
+  for the deterministic E8 consumer and parity surfaces. Local packed-install
+  smoke tests install the `effect-scrapling` and
+  `@effect-scrapling/foundation-core` tarballs together to simulate the
+  published package family without relying on a live registry publish
 
 Public SDK contract notes:
 
