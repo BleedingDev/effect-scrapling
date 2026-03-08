@@ -174,6 +174,18 @@ export {
   type RunConfigSource,
   type RunExecutionConfigEncoded,
 } from "./config-storage.ts";
+export {
+  CompiledCrawlPlan,
+  CompiledCrawlPlansSchema,
+  CrawlPlanCompilationRequestSchema,
+  CrawlPlanCompiler,
+  CrawlPlanCompilerInputSchema,
+  compileCrawlPlan,
+  compileCrawlPlans,
+  type CompiledCrawlPlanEncoded,
+  type CrawlPlanCompilerInput,
+} from "./crawl-plan-runtime.ts";
+export { DurableWorkflowRuntimeLive } from "./durable-workflow-runtime.ts";
 export { SqliteRunCheckpointStoreLive } from "./sqlite-run-checkpoint-store.ts";
 export { SqliteWorkflowWorkClaimStoreLive } from "./sqlite-workflow-work-claim-store.ts";
 export {

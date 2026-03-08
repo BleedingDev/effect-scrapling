@@ -31,6 +31,8 @@ Current contract guarantees:
 - every compiled plan includes an initial durable checkpoint
 - exact-domain and wildcard domain pack patterns are both supported
 - resolved config must preserve `targetId`, `packId`, and `accessPolicyId`
+- resolved entry URLs must remain canonical absolute HTTP(S) URLs without
+  embedded credentials or fragment components
 - resolved entry URLs must stay inside both the target domain and the pack
   domain pattern
 
@@ -56,6 +58,8 @@ The focused suite currently proves:
 - helper and service surfaces agree on emitted plans
 - exact-domain pack support
 - malformed-input rejection
+- credential-bearing and fragment-bearing `entryUrl` override rejection through
+  the real `compileCrawlPlans(...)` surface
 - ownership drift rejection
 - domain escape and access-policy compatibility rejection
 
@@ -83,6 +87,13 @@ The resolved run config must preserve the entry target, pack, and access-policy
 identity. Do not patch around this in downstream consumers; fix the input or
 config override.
 
+### Compilation fails because an override entry URL carries credentials or a fragment
+
+That is expected. `entryUrl` overrides still decode through the shared
+`CanonicalHttpUrlSchema`, so embedded credentials and fragment components are
+rejected before planning starts. Remove the unsafe override instead of trying to
+special-case it in downstream callers.
+
 ### Compilation fails because the entry URL escapes the target or pack domain
 
 The resolved entry URL must remain inside both the target domain and the pack
@@ -107,6 +118,16 @@ Resolved overrides still have to decode through the shared `AccessPolicySchema`.
 If a candidate override breaks mode, render, timeout, or concurrency invariants,
 fix the override instead of weakening compiler validation.
 
+## Residual Risk
+
+Residual risk inferred from the current implementation:
+
+- crawl-plan compilation validates canonical URL shape and target/pack ownership
+  boundaries, but it does not perform DNS or network-layer allow/deny checks
+  itself
+- downstream access layers remain responsible for SSRF, egress, and origin
+  controls after the compiler emits a valid plan
+
 ## Rollout And Rollback
 
 Use this sequence before promoting a compiler change:
@@ -121,6 +142,9 @@ Rollback guidance:
 - if emitted plans stop being reproducible from reordered inputs, roll back
   immediately because downstream durable workflow behavior stops being
   deterministic
+- if credential-bearing or fragment-bearing `entryUrl` overrides start decoding
+  successfully, roll back immediately because the compiler boundary is no longer
+  sanitizing operator-supplied entry URLs
 - if config overrides start mutating identity fields or escaping domains, roll
   back rather than weakening shared-contract validation
 - if resolved overrides stop satisfying the access-policy contract, roll back

@@ -2,7 +2,24 @@
   "name": "@effect-scrapling/foundation-core",
   "private": true,
   "type": "module",
+  "version": "0.0.1",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "domhandler": "^5.0.3",
+    "effect": "^4.0.0-beta.27"
+  },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./access-policy": "./src/access-policy.ts",
+    "./config-storage": "./src/config-storage.ts",
+    "./crawl-plan-runtime": "./src/crawl-plan-runtime.ts",
+    "./diff-verdict": "./src/diff-verdict.ts",
+    "./durable-workflow-runtime": "./src/durable-workflow-runtime.ts",
+    "./observation-snapshot": "./src/observation-snapshot.ts",
+    "./run-state": "./src/run-state.ts",
+    "./service-topology": "./src/service-topology.ts",
+    "./site-pack": "./src/site-pack.ts",
+    "./tagged-errors": "./src/tagged-errors.ts",
+    "./workflow-work-claim-store": "./src/workflow-work-claim-store.ts"
   }
 }

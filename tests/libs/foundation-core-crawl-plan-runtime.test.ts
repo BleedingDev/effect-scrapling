@@ -233,6 +233,38 @@ describe("foundation-core crawl plan runtime", () => {
     }),
   );
 
+  it.effect("rejects unsafe entryUrl overrides that carry credentials or fragments", () =>
+    Effect.gen(function* () {
+      const encodedInput = encodeCompilerInput(makeCompileInput());
+      const failures = yield* Effect.forEach(
+        [
+          "https://operator:secret@example.com/search?q=effect-runtime",
+          "https://example.com/search?q=effect-runtime#session-token",
+        ] as const,
+        (entryUrl) =>
+          compileCrawlPlans({
+            ...encodedInput,
+            entries: [
+              {
+                ...encodedInput.entries[0],
+                runConfig: {
+                  entryUrl,
+                },
+              },
+            ],
+          }).pipe(
+            Effect.flip,
+            Effect.map(({ message }) => message),
+          ),
+      );
+
+      expect(failures).toEqual([
+        "Failed to decode crawl-plan compiler input through shared contracts.",
+        "Failed to decode crawl-plan compiler input through shared contracts.",
+      ]);
+    }),
+  );
+
   it.effect("rejects configs that drift target ownership identifiers", () =>
     Effect.gen(function* () {
       const error = yield* compileCrawlPlans({

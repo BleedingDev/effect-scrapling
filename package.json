@@ -3,14 +3,21 @@
   "private": true,
   "type": "module",
   "version": "0.0.1",
+  "workspaces": [
+    "libs/foundation/core",
+    "tools/ci",
+    "vendor/effect-native-bun-test"
+  ],
   "description": "EffectTS + Bun scraping SDK, API, and CLI",
   "files": [
     "dist",
+    "src/e5.ts",
     "src/sdk",
     "package.json",
     "README.md"
   ],
   "exports": {
+    "./e5": "./src/e5.ts",
     "./sdk": "./src/sdk/index.ts"
   },
   "engines": {
@@ -33,6 +40,7 @@
     "example:e3-capability-slice": "bun run examples/e3-capability-slice.ts",
     "example:e4-capability-slice": "bun run examples/e4-capability-slice.ts",
     "example:e5-capability-slice": "bun run examples/e5-capability-slice.ts",
+    "example:e5-sdk-consumer": "bun run examples/e5-sdk-consumer.ts",
     "example:e4-sdk-consumer": "bun run examples/e4-sdk-consumer.ts",
     "example:e1-foundation-core-consumer": "bun run examples/e1-foundation-core-consumer.ts",
     "check:e1-capability-slice": "bun test tests/guardrails/e1-capability-slice.verify.test.ts && bun run example:e1-capability-slice",
@@ -41,10 +49,12 @@
     "check:e3-capability-slice": "bun test tests/examples/e3-capability-slice.test.ts && bun run example:e3-capability-slice",
     "check:e4-capability-slice": "bun test tests/examples/e4-capability-slice.test.ts && bun run example:e4-capability-slice",
     "check:e5-capability-slice": "bun test tests/examples/e5-capability-slice.test.ts && bun run example:e5-capability-slice",
+    "check:e5-sdk-consumer": "bun test tests/sdk/e5-consumer-example.test.ts && bun run example:e5-sdk-consumer",
     "check:e4-sdk-consumer": "bun test tests/sdk/e4-consumer-example.test.ts && EFFECT_SCRAPLING_E4_EXAMPLE_SYNTHETIC_BROWSER=1 bun run example:e4-sdk-consumer",
     "check:e1-security-review": "bun test tests/guardrails/e1-security-review.verify.test.ts",
     "check:e2-security-review": "bun test tests/guardrails/e2-security-review.verify.test.ts",
     "check:e4-security-review": "bun test tests/guardrails/e4-security-review.verify.test.ts",
+    "check:e5-security-review": "bun test tests/libs/foundation-core-crawl-plan-runtime.test.ts tests/libs/foundation-core-durable-workflow-runtime.test.ts",
     "benchmark:e1-performance-budget": "bun run scripts/benchmarks/e1-performance-budget.ts --baseline docs/artifacts/e1-performance-budget-baseline.json",
     "check:e1-performance-budget": "bun run benchmark:e1-performance-budget",
     "benchmark:e2-performance-budget": "bun run scripts/benchmarks/e2-performance-budget.ts --baseline docs/artifacts/e2-performance-budget-baseline.json --artifact docs/artifacts/e2-performance-budget-scorecard.json",
@@ -95,14 +105,14 @@
     "build:sfe:api": "bun build --compile src/api.ts --outfile dist/effect-scrapling-api"
   },
   "dependencies": {
+    "@effect-scrapling/foundation-core": "workspace:*",
     "cheerio": "^1.2.0",
     "effect": "^4.0.0-beta.27",
     "playwright": "^1.52.0"
   },
   "devDependencies": {
-    "@effect-native/bun-test": "file:vendor/effect-native-bun-test",
-    "@effect-scrapling/foundation-core": "file:libs/foundation/core",
-    "@effect-scrapling/ci-tooling": "file:tools/ci",
+    "@effect-native/bun-test": "workspace:*",
+    "@effect-scrapling/ci-tooling": "workspace:*",
     "@effect/language-service": "^0.75.1",
     "@nx/eslint-plugin": "22.5.4",
     "@swc-node/register": "~1.11.1",

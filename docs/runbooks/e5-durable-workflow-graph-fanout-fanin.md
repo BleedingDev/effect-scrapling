@@ -38,6 +38,8 @@ workflow boundaries exercised by the runtime tests:
 Current contract guarantees:
 
 - durable checkpoint queues must remain aligned with the canonical graph order
+- operator controls and replay restore do not infer graph progress when the
+  latest checkpoint token is missing or tampered
 - resumed runs reject corrupted or reordered pending-step graphs
 - replayed runs keep the same graph semantics and reject corrupted persisted
   state instead of inferring fallback graph progress
@@ -65,7 +67,8 @@ The focused suite currently proves:
 - replay and resume over the same graph structure
 - stable checkpoint and inspection payloads
 - rejection of reordered graph queues
-- rejection of malformed run ids and corrupted resume tokens
+- rejection of malformed run ids and missing or corrupted latest resume tokens
+  across `cancelRun(...)`, `replayRun(...)`, and `resumeRun(...)`
 
 ## Troubleshooting
 
@@ -81,6 +84,13 @@ The persisted checkpoint can no longer decode through the shared resume-token
 schema. Preserve the failing checkpoint state and roll back the candidate
 runtime change.
 
+### Cancel, replay, or resume fails because the latest token is missing
+
+That is expected. The live runtime refuses to reconstruct graph state when the
+latest persisted checkpoint omits `resumeToken`. Preserve the failing record for
+analysis and recover from a known-good checkpoint lineage or trusted backup
+instead of hand-editing the graph state.
+
 ### Inspect fails because the latest token is corrupted
 
 Inspection uses the same persisted resume-token contract as replay and restore.
@@ -92,6 +102,16 @@ checkpoint unchanged and roll back the candidate runtime change.
 Run the focused durable workflow runtime suite again. The shipped tests assert
 the exact terminal `reflect` stage with empty pending work and full completion
 ratio.
+
+## Residual Risk
+
+Residual risk inferred from the current implementation:
+
+- graph recovery trusts checkpoint-store integrity once a checkpoint and
+  `resumeToken` decode successfully through shared schemas
+- `resumeToken` is schema-validated JSON, not a cryptographically signed
+  artifact, so storage write access remains the trust boundary outside the
+  in-process graph checks
 
 ## Rollout And Rollback
 
@@ -107,5 +127,8 @@ Rollback guidance:
 
 - if checkpoint queues can be reordered without failure, roll back immediately
   because deterministic graph execution is broken
+- if `cancelRun`, `replayRun`, or `resumeRun` stop failing closed on missing or
+  tampered latest resume tokens, roll back immediately because the runtime is no
+  longer protecting graph recovery from corrupted durable state
 - if terminal inspection no longer reflects the completed graph accurately, roll
   back the runtime change before updating downstream consumers

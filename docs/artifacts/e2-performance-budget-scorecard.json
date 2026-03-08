@@ -1,6 +1,6 @@
 {
   "benchmark": "e2-performance-budget",
-  "generatedAt": "2026-03-07T05:44:40.589Z",
+  "generatedAt": "2026-03-08T09:59:04.938Z",
   "environment": {
     "bun": "1.3.10",
     "platform": "darwin",
@@ -16,26 +16,26 @@
   "measurements": {
     "capabilitySlice": {
       "samples": 12,
-      "minMs": 28.23,
-      "meanMs": 29.493,
-      "p95Ms": 30.722,
-      "maxMs": 30.722
+      "minMs": 30.989,
+      "meanMs": 33.286,
+      "p95Ms": 35.559,
+      "maxMs": 35.559
     },
     "goldenReplay": {
       "samples": 12,
-      "minMs": 11.164,
-      "meanMs": 12.578,
-      "p95Ms": 14.485,
-      "maxMs": 14.485
+      "minMs": 11.726,
+      "meanMs": 13.455,
+      "p95Ms": 15.176,
+      "maxMs": 15.176
     },
-    "heapDeltaKiB": 6132.912
+    "heapDeltaKiB": 5643.8
   },
   "comparison": {
     "baselinePath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e2-performance-budget-baseline.json",
     "deltas": {
-      "capabilitySliceP95Ms": -2.418,
-      "goldenReplayP95Ms": -0.665,
-      "heapDeltaKiB": -9049.336
+      "capabilitySliceP95Ms": 2.419,
+      "goldenReplayP95Ms": 0.026,
+      "heapDeltaKiB": -9538.448
     }
   },
   "violations": [],

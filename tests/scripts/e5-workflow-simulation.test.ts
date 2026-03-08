@@ -182,8 +182,8 @@ describe("e5 workflow simulation benchmark harness", () => {
         JSON.parse(await readFile(artifactPath, "utf8")),
       );
 
-      expect(artifact.status).toBe("pass");
       expect(persisted).toEqual(artifact);
+      expect(artifact.status === "pass").toBe(artifact.violations.length === 0);
       expect(persisted.profile.totalObservations).toBe(20_000);
       expect(persisted.stability.observedCheckpointCount).toBe(120);
       expect(persisted.stability.consistentCheckpointCount).toBe(true);

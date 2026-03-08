@@ -22,6 +22,8 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "isolatedModules": true,
+    "types": ["bun-types"],
+    "plugins": [{ "name": "@effect/language-service" }],
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {

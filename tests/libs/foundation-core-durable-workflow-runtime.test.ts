@@ -515,6 +515,31 @@ function corruptLatestSqliteCheckpoint(databaseFilename: string, runId: string) 
   });
 }
 
+function mutateLatestInMemoryCheckpoint(
+  checkpointStoreRef: Ref.Ref<ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>>,
+  runId: string,
+  mutateCheckpoint: (checkpoint: Schema.Codec.Encoded<typeof RunCheckpointSchema>) => unknown,
+) {
+  return Ref.update(checkpointStoreRef, (records) => {
+    const latestSequence = records
+      .filter((record) => record.runId === runId)
+      .reduce(
+        (currentLatestSequence, record) =>
+          Math.max(currentLatestSequence, record.checkpoint.sequence),
+        0,
+      );
+
+    return records.map((record) =>
+      record.runId === runId && record.checkpoint.sequence === latestSequence
+        ? Schema.decodeUnknownSync(CheckpointRecordSchema)({
+            ...Schema.encodeSync(CheckpointRecordSchema)(record),
+            checkpoint: mutateCheckpoint(Schema.encodeSync(RunCheckpointSchema)(record.checkpoint)),
+          })
+        : record,
+    );
+  });
+}
+
 describe("foundation-core durable workflow runtime", () => {
   it.effect(
     "starts and operates through explicit resume and replay commands with stable identifiers",
@@ -902,7 +927,7 @@ describe("foundation-core durable workflow runtime", () => {
   );
 
   it.effect(
-    "rejects explicit resume and replay operations when the latest checkpoint token is corrupted",
+    "rejects cancel, replay, and resume operations when the latest checkpoint token is corrupted",
     () =>
       Effect.gen(function* () {
         const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
@@ -916,31 +941,73 @@ describe("foundation-core durable workflow runtime", () => {
           const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
           const started = Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded);
 
-          yield* Ref.update(harness.checkpointStoreRef, (records) =>
-            records.map((record) =>
-              record.runId === started.runId
-                ? Schema.decodeUnknownSync(CheckpointRecordSchema)({
-                    ...Schema.encodeSync(CheckpointRecordSchema)(record),
-                    checkpoint: {
-                      ...Schema.encodeSync(RunCheckpointSchema)(record.checkpoint),
-                      resumeToken: "{not-json",
-                    },
-                  })
-                : record,
-            ),
+          yield* mutateLatestInMemoryCheckpoint(
+            harness.checkpointStoreRef,
+            started.runId,
+            (checkpoint) => ({
+              ...checkpoint,
+              resumeToken: "{not-json",
+            }),
           );
 
           return {
+            cancelled: yield* Effect.flip(workflowRunner.cancelRun(started.runId)),
             replayed: yield* Effect.flip(workflowRunner.replayRun(started.runId)),
             resumed: yield* Effect.flip(workflowRunner.resumeRun(started.runId)),
           };
         }).pipe(Effect.provide(harness.layer));
 
+        expect(failures.cancelled.message).toContain(
+          "Failed to decode durable workflow resume token",
+        );
         expect(failures.replayed.message).toContain(
           "Failed to decode durable workflow resume token",
         );
         expect(failures.resumed.message).toContain(
           "Failed to decode durable workflow resume token",
+        );
+      }),
+  );
+
+  it.effect(
+    "rejects cancel, replay, and resume operations when the latest checkpoint token is missing",
+    () =>
+      Effect.gen(function* () {
+        const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+        const compiledPlan = compiledPlans[0];
+        if (compiledPlan === undefined) {
+          throw new Error("Expected a compiled crawl plan.");
+        }
+        const harness = yield* makeTestLayer();
+        const failures = yield* Effect.gen(function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+          const started = Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded);
+
+          yield* mutateLatestInMemoryCheckpoint(
+            harness.checkpointStoreRef,
+            started.runId,
+            (checkpoint) => {
+              const { resumeToken: _resumeToken, ...checkpointWithoutResumeToken } = checkpoint;
+              return checkpointWithoutResumeToken;
+            },
+          );
+
+          return {
+            cancelled: yield* Effect.flip(workflowRunner.cancelRun(started.runId)),
+            replayed: yield* Effect.flip(workflowRunner.replayRun(started.runId)),
+            resumed: yield* Effect.flip(workflowRunner.resumeRun(started.runId)),
+          };
+        }).pipe(Effect.provide(harness.layer));
+
+        expect(failures.cancelled.message).toContain(
+          "require a resume token for operator control operations",
+        );
+        expect(failures.replayed.message).toContain(
+          "require a resume token for deterministic replay",
+        );
+        expect(failures.resumed.message).toContain(
+          "require a resume token for operator control operations",
         );
       }),
   );

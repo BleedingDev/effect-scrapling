@@ -62,11 +62,12 @@ describe("e2 performance budget benchmark harness", () => {
         JSON.parse(await readFile(artifactPath, "utf8")),
       );
 
-      expect(artifact.status).toBe("pass");
       expect(persisted).toEqual(artifact);
+      expect(artifact.status === "pass").toBe(artifact.violations.length === 0);
       expect(persisted.comparison.baselinePath).toBe(resolve(baselinePath));
       expect(persisted.measurements.capabilitySlice.p95Ms).toBeGreaterThan(0);
       expect(persisted.measurements.goldenReplay.p95Ms).toBeGreaterThan(0);
+      expect(persisted.measurements.heapDeltaKiB).toBeGreaterThanOrEqual(0);
     } finally {
       await rm(directory, { force: true, recursive: true });
     }

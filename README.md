@@ -139,6 +139,8 @@ Operator runbooks:
 - [E5 workflow budget integration](docs/runbooks/e5-workflow-budget-integration.md)
 - [E5 workflow simulation](docs/runbooks/e5-workflow-simulation.md)
 - [E5 operations and rollback drill](docs/runbooks/e5-operations-rollback-drill.md)
+- [E5 security review](docs/runbooks/e5-security-review.md)
+- [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`
 
 E5 crawl-plan operators can validate the compiler with
@@ -168,6 +170,11 @@ E5 capability-slice operators can run `bun run check:e5-capability-slice` or
 `bun run example:e5-capability-slice` to validate the current end-to-end
 durable orchestration path with typed restart, inspection, budget, and
 duplicate-work evidence.
+
+E5 security reviewers can run `bun run check:e5-security-review` to replay the
+current planner sanitization and durable resume-token tamper protections.
+Post-validation E5 triage evidence lives in
+[`docs/artifacts/e5-post-validation-triage.md`](docs/artifacts/e5-post-validation-triage.md).
 
 E5 checkpoint-restore operators can run
 `bun run check:e5-checkpoint-persistence-restore`,
@@ -207,6 +214,10 @@ E5 rollback operators can follow
 [`docs/runbooks/e5-operations-rollback-drill.md`](docs/runbooks/e5-operations-rollback-drill.md)
 and record the latest executed recovery evidence in
 [`docs/artifacts/e5-rollback-drill.md`](docs/artifacts/e5-rollback-drill.md).
+
+E5 consumer validation can run `bun run check:e5-sdk-consumer` or
+`bun run example:e5-sdk-consumer` through the public
+[`effect-scrapling/e5`](./src/e5.ts) entrypoint.
 
 ## CLI
 
@@ -311,6 +322,7 @@ bun install --frozen-lockfile
 bun run example:sdk-consumer
 bun run example:e2-sdk-consumer
 bun run example:e4-sdk-consumer
+bun run example:e5-sdk-consumer
 ```
 
 The example at `examples/sdk-consumer.ts` is the supported consumer-facing SDK
@@ -339,11 +351,21 @@ same public package boundary and demonstrates:
 - prerequisite and pitfall reporting for real browser-mode consumers
 - one intentional `InvalidInputError` path for invalid private-network targets
 
+The durable-workflow E5 example at `examples/e5-sdk-consumer.ts` stays on the
+public `effect-scrapling/e5` package boundary and demonstrates:
+
+- public crawl-plan compilation through `effect-scrapling/e5`
+- `WorkflowRunner.start`, `inspect`, `resumeRun`, and `replayRun` with
+  synthetic in-memory dependencies
+- prerequisite and pitfall reporting for downstream E5 integrators
+- one intentional `PolicyViolation` path from a synthetic extractor failure
+
 Replay it with:
 
 ```bash
 bun run check:e2-sdk-consumer
 bun run check:e4-sdk-consumer
+bun run check:e5-sdk-consumer
 ```
 
 To run the in-repo example:
@@ -358,6 +380,10 @@ To run the in-repo example:
   contracts; replay `bun run check:e4-sdk-consumer` for the deterministic
   synthetic-browser path or install Chromium with `bun run browser:install` for
   real browser-mode usage
+- `bun run example:e5-sdk-consumer` uses the public durable-workflow entrypoint
+  at `effect-scrapling/e5`; replay `bun run check:e5-sdk-consumer` for the
+  deterministic in-memory workflow path and `bun run check:e5-security-review`
+  for the security control proofs
 
 Public SDK contract notes:
 

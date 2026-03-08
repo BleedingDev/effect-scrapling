@@ -35,6 +35,9 @@ Common return contracts:
 - control operations return `Option.none()` when the run does not exist
 - successful control operations return `Option.some(WorkflowControlResult)`
 - malformed durable state fails through typed schema corruption or policy errors
+- `cancelRun(runId)`, `replayRun(runId)`, and `resumeRun(runId)` fail closed
+  when the latest checkpoint is missing `resumeToken` or its token no longer
+  decodes through shared contracts
 
 `WorkflowControlResult` carries:
 
@@ -62,6 +65,8 @@ Common return contracts:
   failure envelope
 - `replayRun(runId)` starts a fresh run lineage from the latest persisted
   checkpoint and returns a new `resolvedRunId`
+- `cancelRun(runId)`, `replayRun(runId)`, and `resumeRun(runId)` do not repair
+  or synthesize missing/tampered resume-token state
 
 ## Practical Execution
 
@@ -87,6 +92,15 @@ bun run nx:lint
 bun run nx:typecheck
 bun run nx:build
 ```
+
+The focused suite currently proves:
+
+- the real `WorkflowRunner` control surface returns auditable control results
+  for cancel, defer, replay, resume, and retry
+- `cancelRun(...)`, `replayRun(...)`, and `resumeRun(...)` reject missing or
+  tampered latest `resumeToken` state instead of inferring fallback execution
+- cancelled and failed checkpoints remain terminal or retry-gated under control
+  replay
 
 ## Troubleshooting
 
@@ -125,6 +139,30 @@ an earlier known-good run instead.
 That is the contract. Replay starts a new lineage. Use `resumeRun` when you
 need to continue the original run id.
 
+### `cancelRun`, `replayRun`, or `resumeRun` fails because the latest checkpoint is missing `resumeToken`
+
+Treat that as durable-state corruption, not as an operator error. The runtime
+requires persisted resume context for control actions and will not synthesize it
+from partial checkpoint state. Preserve the record unchanged and recover from a
+trusted backup or replay lineage instead of manually patching the checkpoint.
+
+### `cancelRun`, `replayRun`, or `resumeRun` fails with resume-token corruption
+
+The latest checkpoint token no longer decodes through
+`WorkflowResumeContextSchema`. Keep the corrupted checkpoint payload unchanged
+for analysis and roll back the candidate runtime or storage change that
+introduced the corruption.
+
+## Residual Risk
+
+Residual risk inferred from the current implementation:
+
+- operator controls trust the checkpoint store once the latest checkpoint and
+  `resumeToken` decode successfully through shared schemas
+- the runtime does not cryptographically sign persisted resume tokens, so direct
+  storage write access can still forge a self-consistent checkpoint lineage
+  outside the in-process control checks
+
 ## Rollout And Rollback
 
 Promote changes to the control surface with this sequence:
@@ -141,6 +179,9 @@ Rollback guidance:
   workflow-runtime change instead of weakening the schemas
 - if cancelled checkpoints stop rejecting `resumeRun` or `retryRun`, roll back
   immediately because terminal operator intent is no longer enforced
+- if `cancelRun`, `replayRun`, or `resumeRun` stop failing closed on missing or
+  tampered latest resume tokens, roll back immediately because the control
+  surface is no longer safe against corrupted durable state
 - if `resumeRun` starts continuing failed checkpoints, roll back immediately
   because that breaks the explicit retry contract
 - if `deferRun` starts appending duplicate checkpoints, roll back because the
