@@ -164,6 +164,7 @@ Operator runbooks:
 - [E7 quality report exports](docs/runbooks/e7-quality-report.md)
 - [E7 security review](docs/runbooks/e7-security-review.md)
 - [E7 soak and endurance suite](docs/runbooks/e7-soak-endurance-suite.md)
+- [E7 operations and rollback drill](docs/runbooks/e7-operations-rollback-drill.md)
 - [E8 benchmark and artifact export](docs/runbooks/e8-benchmark-artifact-export.md)
 - [E8 parity dry-run replay](docs/runbooks/e8-parity-dry-run-replay.md)
 - [E8 public SDK package](docs/runbooks/e8-public-sdk-package.md)
@@ -176,6 +177,8 @@ Operator runbooks:
 - [E8 security review](docs/runbooks/e8-security-review.md)
 - [E8 performance budget](docs/runbooks/e8-performance-budget.md)
 - [E8 operations and rollback drill](docs/runbooks/e8-operations-rollback-drill.md)
+- [E8 post-validation triage](docs/artifacts/e8-post-validation-triage.md)
+- [E7 post-validation triage](docs/artifacts/e7-post-validation-triage.md)
 - [E6 post-validation triage](docs/artifacts/e6-post-validation-triage.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`
@@ -644,3 +647,8 @@ E8 rollback operators can replay
 [`docs/runbooks/e8-operations-rollback-drill.md`](docs/runbooks/e8-operations-rollback-drill.md)
 and record the resulting evidence in
 [`docs/artifacts/e8-rollback-drill.md`](docs/artifacts/e8-rollback-drill.md).
+
+E7 rollback operators can replay
+[`docs/runbooks/e7-operations-rollback-drill.md`](docs/runbooks/e7-operations-rollback-drill.md)
+and record the resulting evidence in
+[`docs/artifacts/e7-rollback-drill.md`](docs/artifacts/e7-rollback-drill.md).
