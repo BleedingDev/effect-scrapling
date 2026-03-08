@@ -622,6 +622,79 @@ describe("foundation-core durable workflow runtime", () => {
     }),
   );
 
+  it.effect("rejects resume when a durable workflow checkpoint drifts from graph ordering", () =>
+    Effect.gen(function* () {
+      const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+      const compiledPlan = compiledPlans[0];
+      if (compiledPlan === undefined) {
+        throw new Error("Expected a compiled crawl plan.");
+      }
+      const harness = yield* makeTestLayer();
+      const failure = yield* Effect.gen(function* () {
+        const workflowRunner = yield* WorkflowRunner;
+        const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+
+        return yield* Effect.flip(
+          workflowRunner.resume({
+            ...startedEncoded,
+            stage: "diff",
+            nextStepId: "step-diff",
+            pendingStepIds: ["step-diff", "step-snapshot", "step-quality", "step-reflect"],
+          }),
+        );
+      }).pipe(Effect.provide(harness.layer));
+
+      expect(failure.message).toContain("no longer matches the encoded plan ordering");
+    }),
+  );
+
+  it.effect(
+    "rejects inspect and replay when a durable workflow checkpoint drifts from graph ordering",
+    () =>
+      Effect.gen(function* () {
+        const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+        const compiledPlan = compiledPlans[0];
+        if (compiledPlan === undefined) {
+          throw new Error("Expected a compiled crawl plan.");
+        }
+        const harness = yield* makeTestLayer();
+        const failures = yield* Effect.gen(function* () {
+          const workflowRunner = yield* WorkflowRunner;
+          const startedEncoded = yield* workflowRunner.start(compiledPlan.plan);
+          const started = Schema.decodeUnknownSync(RunCheckpointSchema)(startedEncoded);
+
+          yield* Ref.update(harness.checkpointStoreRef, (records) =>
+            records.map((record) =>
+              record.runId === started.runId
+                ? Schema.decodeUnknownSync(CheckpointRecordSchema)({
+                    ...Schema.encodeSync(CheckpointRecordSchema)(record),
+                    checkpoint: {
+                      ...Schema.encodeSync(RunCheckpointSchema)(record.checkpoint),
+                      stage: "diff",
+                      nextStepId: "step-diff",
+                      pendingStepIds: [
+                        "step-diff",
+                        "step-snapshot",
+                        "step-quality",
+                        "step-reflect",
+                      ],
+                    },
+                  })
+                : record,
+            ),
+          );
+
+          return {
+            inspected: yield* Effect.flip(workflowRunner.inspect(started.runId)),
+            replayed: yield* Effect.flip(workflowRunner.replayRun(started.runId)),
+          };
+        }).pipe(Effect.provide(harness.layer));
+
+        expect(failures.inspected.message).toContain("no longer matches the encoded plan ordering");
+        expect(failures.replayed.message).toContain("no longer matches the encoded plan ordering");
+      }),
+  );
+
   it.effect("rejects explicit resume and replay operations for malformed run identifiers", () =>
     Effect.gen(function* () {
       const harness = yield* makeTestLayer();

@@ -128,10 +128,23 @@ Operator runbooks:
 - [E4 security review](docs/runbooks/e4-security-review.md)
 - [E4 performance budget](docs/runbooks/e4-performance-budget.md)
 - [E4 operations and rollback drill](docs/runbooks/e4-operations-rollback-drill.md)
+- [E5 crawl plan compilation](docs/runbooks/e5-crawl-plan-compilation.md)
+- [E5 durable workflow graph fanout fanin](docs/runbooks/e5-durable-workflow-graph-fanout-fanin.md)
 - [E5 resume and replay operations](docs/runbooks/e5-resume-replay-operations.md)
 - [E5 workflow inspection read models](docs/runbooks/e5-workflow-inspection-read-models.md)
 - [E5 workflow simulation](docs/runbooks/e5-workflow-simulation.md)
 - `docs/artifacts/e0-post-validation-triage.md`
+
+E5 crawl-plan operators can validate the compiler with
+`bun test tests/libs/foundation-core-crawl-plan-runtime.test.ts`. Today the
+surface is library-level through `compileCrawlPlans(...)`, `compileCrawlPlan(...)`,
+and `CrawlPlanCompiler`.
+
+E5 workflow-graph operators can validate durable fanout/fanin execution with
+`bun test tests/libs/foundation-core-durable-workflow-runtime.test.ts`. The
+shipped runtime models the graph as canonical workflow stages inside one run
+plan; it does not expose a separate CLI or API control surface for those stage
+transitions today.
 
 E5 resume/replay operators can validate the current control surface with
 `bun test tests/libs/foundation-core-durable-workflow-runtime.test.ts`. Today
