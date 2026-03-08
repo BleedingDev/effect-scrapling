@@ -1,0 +1,106 @@
+{
+  "benchmark": "e8-performance-budget",
+  "benchmarkId": "e8-performance-budget",
+  "generatedAt": "2026-03-09T09:00:00.000Z",
+  "environment": {
+    "bun": "1.3.10",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "sampleSize": 2,
+  "warmupIterations": 0,
+  "profile": {
+    "workspaceRunsPerSample": 8,
+    "capabilitySliceRunsPerSample": 1,
+    "benchmarkRunsPerSample": 3,
+    "artifactExportsPerSample": 3
+  },
+  "budgets": {
+    "workspaceDoctorP95Ms": 100,
+    "workspaceConfigP95Ms": 120,
+    "capabilitySliceP95Ms": 2500,
+    "benchmarkRunP95Ms": 450,
+    "artifactExportP95Ms": 600,
+    "heapDeltaKiB": 36864
+  },
+  "measurements": {
+    "workspaceDoctor": {
+      "samples": 2,
+      "minMs": 0.282,
+      "meanMs": 0.472,
+      "p95Ms": 0.661,
+      "maxMs": 0.661
+    },
+    "workspaceConfig": {
+      "samples": 2,
+      "minMs": 0.979,
+      "meanMs": 1.219,
+      "p95Ms": 1.459,
+      "maxMs": 1.459
+    },
+    "capabilitySlice": {
+      "samples": 2,
+      "minMs": 1901.377,
+      "meanMs": 1956.449,
+      "p95Ms": 2011.521,
+      "maxMs": 2011.521
+    },
+    "benchmarkRun": {
+      "samples": 2,
+      "minMs": 64.972,
+      "meanMs": 65.105,
+      "p95Ms": 65.238,
+      "maxMs": 65.238
+    },
+    "artifactExport": {
+      "samples": 2,
+      "minMs": 230.655,
+      "meanMs": 291.627,
+      "p95Ms": 352.598,
+      "maxMs": 352.598
+    },
+    "heapDeltaKiB": 20497.613
+  },
+  "stability": {
+    "workspaceDoctorFingerprint": {
+      "expected": "doctor|cheerio:ok|effect:ok|fetch:ok",
+      "observed": "doctor|cheerio:ok|effect:ok|fetch:ok",
+      "consistent": true
+    },
+    "workspaceConfigFingerprint": {
+      "expected": "{\"command\":\"config show\",\"browserPool\":{\"maxContexts\":2,\"maxPages\":2,\"maxQueue\":8},\"sourceOrder\":[\"defaults\",\"sitePack\",\"targetProfile\",\"run\"],\"checkpointInterval\":3}",
+      "observed": "{\"command\":\"config show\",\"browserPool\":{\"maxContexts\":2,\"maxPages\":2,\"maxQueue\":8},\"sourceOrder\":[\"defaults\",\"sitePack\",\"targetProfile\",\"run\"],\"checkpointInterval\":3}",
+      "consistent": true
+    },
+    "capabilitySliceFingerprint": {
+      "expected": "target-blog-001>target-shop-001|target-shop-001|pack-shop-example-com|2026.03.10|plan-target-shop-001-pack-shop-example-com|diff-target-shop-001-snapshot-baseline-001-snapshot-candidate-001|metrics-e8-capability-slice|bundle-e8-benchmark-surface|pass|0",
+      "observed": "target-blog-001>target-shop-001|target-shop-001|pack-shop-example-com|2026.03.10|plan-target-shop-001-pack-shop-example-com|diff-target-shop-001-snapshot-baseline-001-snapshot-candidate-001|metrics-e8-capability-slice|bundle-e8-benchmark-surface|pass|0",
+      "consistent": true
+    },
+    "benchmarkManifestFingerprint": {
+      "expected": "baselineCorpus:corpus-retail-smoke|incumbentComparison:comparison-retail-smoke|performanceBudget:e7-performance-budget|qualityMetrics:metrics-e7-quality|liveCanary:suite-e7-live-canary|chaosProviderSuite:suite-e7-chaos-provider|promotionGate:promotion-e7-policy|qualityReport:report-e7-quality|soakEndurance:suite-e7-soak-endurance",
+      "observed": "baselineCorpus:corpus-retail-smoke|incumbentComparison:comparison-retail-smoke|performanceBudget:e7-performance-budget|qualityMetrics:metrics-e7-quality|liveCanary:suite-e7-live-canary|chaosProviderSuite:suite-e7-chaos-provider|promotionGate:promotion-e7-policy|qualityReport:report-e7-quality|soakEndurance:suite-e7-soak-endurance",
+      "consistent": true
+    },
+    "artifactExportFingerprint": {
+      "expected": "{\"exportId\":\"export-e8-benchmark-surface\",\"bundleId\":\"bundle-e8-benchmark-surface\",\"sanitizedPathCount\":1,\"manifestKeys\":[\"baselineCorpus\",\"incumbentComparison\",\"performanceBudget\",\"qualityMetrics\",\"liveCanary\",\"chaosProviderSuite\",\"promotionGate\",\"qualityReport\",\"soakEndurance\"]}",
+      "observed": "{\"exportId\":\"export-e8-benchmark-surface\",\"bundleId\":\"bundle-e8-benchmark-surface\",\"sanitizedPathCount\":1,\"manifestKeys\":[\"baselineCorpus\",\"incumbentComparison\",\"performanceBudget\",\"qualityMetrics\",\"liveCanary\",\"chaosProviderSuite\",\"promotionGate\",\"qualityReport\",\"soakEndurance\"]}",
+      "consistent": true
+    }
+  },
+  "comparison": {
+    "baselinePath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e8-performance-budget-baseline.json",
+    "comparable": true,
+    "incompatibleReason": null,
+    "deltas": {
+      "workspaceDoctorP95Ms": -0.51,
+      "workspaceConfigP95Ms": 0.067,
+      "capabilitySliceP95Ms": -118.467,
+      "benchmarkRunP95Ms": 6.09,
+      "artifactExportP95Ms": 60.064,
+      "heapDeltaKiB": -13798.768
+    }
+  },
+  "violations": [],
+  "status": "pass"
+}

@@ -173,6 +173,9 @@ Operator runbooks:
 - [E8 preview operations](docs/runbooks/e8-preview-operations.md)
 - [E8 workflow operations](docs/runbooks/e8-workflow-operations.md)
 - [E8 quality operations](docs/runbooks/e8-quality-operations.md)
+- [E8 security review](docs/runbooks/e8-security-review.md)
+- [E8 performance budget](docs/runbooks/e8-performance-budget.md)
+- [E8 operations and rollback drill](docs/runbooks/e8-operations-rollback-drill.md)
 - [E6 post-validation triage](docs/artifacts/e6-post-validation-triage.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`
@@ -628,3 +631,16 @@ parity evidence surfaces.
 E8 public-consumer operators can run `bun run check:e8-sdk-consumer` to verify
 the public `effect-scrapling/e8` package surface remains installable and free of
 private repo-path imports.
+
+E8 security reviewers can run `bun run check:e8-security-review` to replay the
+public intake-policy, workflow-lineage, preview-link sanitization, and
+artifact-export path sanitization controls.
+
+E8 performance operators can run `bun run benchmark:e8-performance-budget` or
+`bun run check:e8-performance-budget` to refresh the committed scorecard at
+[`docs/artifacts/e8-performance-budget-scorecard.json`](docs/artifacts/e8-performance-budget-scorecard.json).
+
+E8 rollback operators can replay
+[`docs/runbooks/e8-operations-rollback-drill.md`](docs/runbooks/e8-operations-rollback-drill.md)
+and record the resulting evidence in
+[`docs/artifacts/e8-rollback-drill.md`](docs/artifacts/e8-rollback-drill.md).

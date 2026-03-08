@@ -6,6 +6,8 @@ import { Effect, Schema } from "effect";
 import {
   E8ArtifactExportEnvelopeSchema,
   E8BenchmarkRunEnvelopeSchema,
+  TargetImportEnvelopeSchema,
+  TargetListEnvelopeSchema,
   WorkspaceConfigShowEnvelopeSchema,
   WorkspaceDoctorEnvelopeSchema,
 } from "effect-scrapling/e8";
@@ -48,6 +50,12 @@ describe("E8 SDK consumer example", () => {
       const config = Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)(
         result.payload.config,
       );
+      const targetImport = Schema.decodeUnknownSync(TargetImportEnvelopeSchema)(
+        result.payload.targetImport,
+      );
+      const targetList = Schema.decodeUnknownSync(TargetListEnvelopeSchema)(
+        result.payload.targetList,
+      );
       const benchmarkRun = Schema.decodeUnknownSync(E8BenchmarkRunEnvelopeSchema)(
         result.payload.benchmarkRun,
       );
@@ -64,6 +72,13 @@ describe("E8 SDK consumer example", () => {
       );
       expect(doctor.command).toBe("doctor");
       expect(config.command).toBe("config show");
+      expect(targetImport.command).toBe("target import");
+      expect(targetImport.data.importedCount).toBe(2);
+      expect(targetList.command).toBe("target list");
+      expect(targetList.data.targets.map(({ id }) => id)).toEqual([
+        "target-sdk-consumer-listing-001",
+        "target-sdk-consumer-product-001",
+      ]);
       expect(benchmarkRun.command).toBe("benchmark run");
       expect(artifactExport.command).toBe("artifact export");
       expect(artifactExport.data.artifact.metadata.sanitizedPathCount).toBeGreaterThanOrEqual(0);
@@ -130,10 +145,27 @@ describe("E8 SDK consumer example", () => {
         join(consumerDirectory, "consumer.ts"),
         [
           'import { Effect } from "effect";',
-          'import { runWorkspaceDoctor } from "effect-scrapling/e8";',
+          'import { runTargetListOperation, runWorkspaceDoctor } from "effect-scrapling/e8";',
           "",
           "const result = await Effect.runPromise(runWorkspaceDoctor());",
-          "console.log(JSON.stringify({ ok: result.ok, command: result.command }));",
+          "const targets = await Effect.runPromise(",
+          "  runTargetListOperation({",
+          "    targets: [",
+          "      {",
+          '        id: "target-smoke-001",',
+          '        tenantId: "tenant-main",',
+          '        domain: "shop.example.com",',
+          '        kind: "productPage",',
+          '        canonicalKey: "productPage/target-smoke-001",',
+          '        seedUrls: ["https://shop.example.com/target-smoke-001"],',
+          '        accessPolicyId: "policy-default",',
+          '        packId: "pack-shop-example-com",',
+          "        priority: 10,",
+          "      },",
+          "    ],",
+          "  }),",
+          ");",
+          "console.log(JSON.stringify({ ok: result.ok, command: result.command, targetCount: targets.data.count }));",
           "",
         ].join("\n"),
         "utf8",
