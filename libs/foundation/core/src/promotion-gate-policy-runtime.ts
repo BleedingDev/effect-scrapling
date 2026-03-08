@@ -3,6 +3,7 @@ import {
   DriftRegressionArtifactSchema,
   RegressionSeverityLevelSchema,
 } from "./drift-regression-runtime.ts";
+import { LiveCanaryArtifactSchema } from "./live-canary-runtime.ts";
 import { PerformanceBudgetArtifactSchema } from "./performance-gate-runtime.ts";
 import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
 import { ParserFailure } from "./tagged-errors.ts";
@@ -11,7 +12,11 @@ const NonNegativeFiniteSchema = Schema.Finite.check(Schema.isGreaterThanOrEqualT
 const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const PromotionGateVerdictSchema = Schema.Literals(["promote", "hold", "quarantine"] as const);
-const PromotionGateRationaleScopeSchema = Schema.Literals(["quality", "performance"] as const);
+const PromotionGateRationaleScopeSchema = Schema.Literals([
+  "quality",
+  "performance",
+  "canary",
+] as const);
 const PromotionGateRationaleCodeSchema = Schema.Literals([
   "quality-clean",
   "quality-hold",
@@ -19,6 +24,9 @@ const PromotionGateRationaleCodeSchema = Schema.Literals([
   "performance-clean",
   "performance-hold",
   "performance-quarantine",
+  "canary-clean",
+  "canary-hold",
+  "canary-quarantine",
 ] as const);
 const PromotionGateSeverityThresholdSchema = Schema.Literals([
   "low",
@@ -128,6 +136,16 @@ export class PromotionGatePerformanceSummary extends Schema.Class<PromotionGateP
   quarantineDeltaMetrics: Schema.Array(Schema.String),
 }) {}
 
+export class PromotionGateCanarySummary extends Schema.Class<PromotionGateCanarySummary>(
+  "PromotionGateCanarySummary",
+)({
+  suiteId: CanonicalIdentifierSchema,
+  scenarioCount: NonNegativeIntSchema,
+  passedScenarioCount: NonNegativeIntSchema,
+  failedScenarioIds: IdentifierListSchema,
+  verdict: PromotionGateVerdictSchema,
+}) {}
+
 export class PromotionGateEvaluation extends Schema.Class<PromotionGateEvaluation>(
   "PromotionGateEvaluation",
 )({
@@ -138,6 +156,7 @@ export class PromotionGateEvaluation extends Schema.Class<PromotionGateEvaluatio
   policy: PromotionGatePolicySchema,
   quality: PromotionGateQualitySummary,
   performance: PromotionGatePerformanceSummary,
+  canary: Schema.optional(PromotionGateCanarySummary),
   rationale: PromotionGateRationalesSchema,
 }) {}
 
@@ -146,6 +165,7 @@ const PromotionGateInputSchema = Schema.Struct({
   generatedAt: IsoDateTimeSchema,
   quality: DriftRegressionArtifactSchema,
   performance: PerformanceBudgetArtifactSchema,
+  canary: Schema.optional(LiveCanaryArtifactSchema),
   policy: Schema.optional(PromotionGatePolicySchema),
 });
 
@@ -160,9 +180,7 @@ type PromotionGateSeverityThreshold = Schema.Schema.Type<
 type PromotionGateVerdictType = Schema.Schema.Type<typeof PromotionGateVerdictSchema>;
 type RegressionSeverity = Schema.Schema.Type<typeof RegressionSeverityLevelSchema>;
 
-type PromotionGateEvaluationSection<
-  TSummary extends PromotionGateQualitySummary | PromotionGatePerformanceSummary,
-> = {
+type PromotionGateEvaluationSection<TSummary> = {
   readonly summary: TSummary;
   readonly rationales: ReadonlyArray<PromotionGateRationale>;
 };
@@ -177,6 +195,7 @@ type PerformanceDeltaMetric = {
 export const PromotionGateRationaleSchema = PromotionGateRationale;
 export const PromotionGateQualitySummarySchema = PromotionGateQualitySummary;
 export const PromotionGatePerformanceSummarySchema = PromotionGatePerformanceSummary;
+export const PromotionGateCanarySummarySchema = PromotionGateCanarySummary;
 export const PromotionGateEvaluationSchema = PromotionGateEvaluation;
 
 function readCauseMessage(cause: unknown, fallback: string) {
@@ -464,6 +483,53 @@ function buildPerformanceEvaluation(
   };
 }
 
+function buildCanaryEvaluation(
+  canary: Schema.Schema.Type<typeof LiveCanaryArtifactSchema>,
+): PromotionGateEvaluationSection<PromotionGateCanarySummary> {
+  const verdict =
+    canary.summary.verdict === "promote"
+      ? "promote"
+      : canary.summary.verdict === "hold"
+        ? "hold"
+        : "quarantine";
+  const summary = Schema.decodeUnknownSync(PromotionGateCanarySummarySchema)({
+    suiteId: canary.suiteId,
+    scenarioCount: canary.summary.scenarioCount,
+    passedScenarioCount: canary.summary.passedScenarioCount,
+    failedScenarioIds: canary.summary.failedScenarioIds,
+    verdict,
+  });
+  const rationales =
+    verdict === "quarantine"
+      ? [
+          buildRationale(
+            "canary",
+            "canary-quarantine",
+            `Quarantine because live canary scenarios ${canary.summary.failedScenarioIds.join(", ")} produced quarantined or retired outcomes.`,
+          ),
+        ]
+      : verdict === "hold"
+        ? [
+            buildRationale(
+              "canary",
+              "canary-hold",
+              `Hold because live canary scenarios ${canary.summary.failedScenarioIds.join(", ")} failed without crossing the quarantine threshold.`,
+            ),
+          ]
+        : [
+            buildRationale(
+              "canary",
+              "canary-clean",
+              "Live canary scenarios passed and did not add promotion risk.",
+            ),
+          ];
+
+  return {
+    summary,
+    rationales,
+  };
+}
+
 function validateEvidenceCompatibility(input: {
   readonly quality: DriftRegressionArtifact;
   readonly performance: PerformanceBudgetArtifact;
@@ -514,10 +580,11 @@ export function evaluatePromotionGatePolicy(input: unknown) {
     const policy = resolvePolicy(decoded.policy);
     const quality = buildQualityEvaluation(decoded.quality, policy);
     const performance = buildPerformanceEvaluation(decoded.performance, policy);
+    const canary = decoded.canary === undefined ? undefined : buildCanaryEvaluation(decoded.canary);
     const verdict =
-      compareVerdicts(quality.summary.verdict, performance.summary.verdict) >= 0
-        ? quality.summary.verdict
-        : performance.summary.verdict;
+      [quality.summary.verdict, performance.summary.verdict, canary?.summary.verdict ?? "promote"]
+        .sort(compareVerdicts)
+        .at(-1) ?? "promote";
 
     return Schema.decodeUnknownSync(PromotionGateEvaluationSchema)({
       benchmark: "e7-promotion-gate-policy",
@@ -527,7 +594,8 @@ export function evaluatePromotionGatePolicy(input: unknown) {
       policy,
       quality: quality.summary,
       performance: performance.summary,
-      rationale: [...quality.rationales, ...performance.rationales],
+      ...(canary === undefined ? {} : { canary: canary.summary }),
+      rationale: [...quality.rationales, ...performance.rationales, ...(canary?.rationales ?? [])],
     });
   });
 }
@@ -542,6 +610,9 @@ export type PromotionGateQualitySummaryEncoded = Schema.Codec.Encoded<
 >;
 export type PromotionGatePerformanceSummaryEncoded = Schema.Codec.Encoded<
   typeof PromotionGatePerformanceSummarySchema
+>;
+export type PromotionGateCanarySummaryEncoded = Schema.Codec.Encoded<
+  typeof PromotionGateCanarySummarySchema
 >;
 export type PromotionGateEvaluationEncoded = Schema.Codec.Encoded<
   typeof PromotionGateEvaluationSchema

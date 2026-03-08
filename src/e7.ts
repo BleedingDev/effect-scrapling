@@ -15,13 +15,33 @@ export {
   type IncumbentComparisonArtifactEncoded,
 } from "@effect-scrapling/foundation-core/incumbent-comparison-runtime";
 export {
+  LiveCanaryArtifactSchema,
+  LiveCanaryScenarioSchema,
+  LiveCanarySummarySchema,
+  runLiveCanaryHarness,
+  type LiveCanaryArtifactEncoded,
+  type LiveCanaryScenarioEncoded,
+  type LiveCanarySummaryEncoded,
+} from "@effect-scrapling/foundation-core/live-canary-runtime";
+export {
   PerformanceBudgetArtifactSchema,
   type PerformanceBudgetArtifact,
 } from "@effect-scrapling/foundation-core/performance-gate-runtime";
 export {
   PromotionGateEvaluationSchema,
+  PromotionGateCanarySummarySchema,
   type PromotionGateEvaluationEncoded,
+  type PromotionGateCanarySummaryEncoded,
 } from "@effect-scrapling/foundation-core/promotion-gate-policy-runtime";
+export {
+  PackQualityMetricSummarySchema,
+  QualityMetricSummarySchema,
+  QualityMetricsArtifactSchema,
+  evaluateQualityMetrics,
+  type PackQualityMetricSummaryEncoded,
+  type QualityMetricSummaryEncoded,
+  type QualityMetricsArtifactEncoded,
+} from "@effect-scrapling/foundation-core/quality-metrics-runtime";
 export {
   QualityReportArtifactSchema,
   QualityReportEvidenceBundleSchema,

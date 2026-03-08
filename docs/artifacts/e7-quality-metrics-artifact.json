@@ -1,0 +1,56 @@
+{
+  "benchmark": "e7-quality-metrics",
+  "metricsId": "metrics-e7-quality",
+  "generatedAt": "2026-03-08T21:00:00.000Z",
+  "corpusId": "corpus-retail-smoke",
+  "comparisonId": "comparison-retail-smoke",
+  "caseCount": 2,
+  "packCount": 2,
+  "overall": {
+    "caseCount": 2,
+    "baselineFieldCount": 4,
+    "candidateFieldCount": 4,
+    "recalledFieldCount": 4,
+    "missingFieldCount": 0,
+    "unexpectedFieldCount": 0,
+    "changedFieldCount": 0,
+    "fieldRecallRate": 1,
+    "falsePositiveRate": 0
+  },
+  "packSummaries": [
+    {
+      "packId": "pack-catalog-example-com",
+      "caseIds": [
+        "case-catalog-example-com"
+      ],
+      "summary": {
+        "caseCount": 1,
+        "baselineFieldCount": 2,
+        "candidateFieldCount": 2,
+        "recalledFieldCount": 2,
+        "missingFieldCount": 0,
+        "unexpectedFieldCount": 0,
+        "changedFieldCount": 0,
+        "fieldRecallRate": 1,
+        "falsePositiveRate": 0
+      }
+    },
+    {
+      "packId": "pack-offers-example-com",
+      "caseIds": [
+        "case-offers-example-com"
+      ],
+      "summary": {
+        "caseCount": 1,
+        "baselineFieldCount": 2,
+        "candidateFieldCount": 2,
+        "recalledFieldCount": 2,
+        "missingFieldCount": 0,
+        "unexpectedFieldCount": 0,
+        "changedFieldCount": 0,
+        "fieldRecallRate": 1,
+        "falsePositiveRate": 0
+      }
+    }
+  ]
+}

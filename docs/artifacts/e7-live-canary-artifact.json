@@ -1,0 +1,66 @@
+{
+  "benchmark": "e7-live-canary",
+  "suiteId": "suite-e7-live-canary",
+  "generatedAt": "2026-03-08T21:15:00.000Z",
+  "status": "pass",
+  "summary": {
+    "scenarioCount": 2,
+    "passedScenarioCount": 2,
+    "failedScenarioIds": [],
+    "verdict": "promote"
+  },
+  "results": [
+    {
+      "scenarioId": "canary-product-browser",
+      "authorizationId": "auth-canary-product-browser",
+      "provider": "browser",
+      "action": "active",
+      "failedStages": [],
+      "status": "pass",
+      "plannerRationale": [
+        {
+          "key": "mode",
+          "message": "Access mode resolved to hybrid."
+        },
+        {
+          "key": "rendering",
+          "message": "Rendering policy resolved to onDemand."
+        },
+        {
+          "key": "budget",
+          "message": "Concurrency budget resolved to 4/16."
+        },
+        {
+          "key": "capture-path",
+          "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 1 recent access failure(s), latest timeout."
+        }
+      ]
+    },
+    {
+      "scenarioId": "canary-product-http",
+      "authorizationId": "auth-canary-product-http",
+      "provider": "http",
+      "action": "active",
+      "failedStages": [],
+      "status": "pass",
+      "plannerRationale": [
+        {
+          "key": "mode",
+          "message": "Access mode resolved to hybrid."
+        },
+        {
+          "key": "rendering",
+          "message": "Rendering policy resolved to onDemand."
+        },
+        {
+          "key": "budget",
+          "message": "Concurrency budget resolved to 4/16."
+        },
+        {
+          "key": "capture-path",
+          "message": "Capture step selected http provider. Hybrid mode kept the HTTP-first path for productPage targets without browser escalation signals."
+        }
+      ]
+    }
+  ]
+}

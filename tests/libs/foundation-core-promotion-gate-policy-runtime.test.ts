@@ -1,113 +1,12 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
-import { DriftRegressionArtifactSchema } from "../../libs/foundation/core/src/drift-regression-runtime.ts";
-import {
-  evaluatePerformanceBudget,
-  summarizeMeasurements,
-  type PerformanceBudgetArtifact,
-} from "../../libs/foundation/core/src/performance-gate-runtime.ts";
+import { LiveCanaryArtifactSchema } from "../../libs/foundation/core/src/live-canary-runtime.ts";
+import { summarizeMeasurements } from "../../libs/foundation/core/src/performance-gate-runtime.ts";
 import {
   evaluatePromotionGatePolicy,
   PromotionGateEvaluationSchema,
 } from "../../libs/foundation/core/src/promotion-gate-policy-runtime.ts";
-
-function makeQualityArtifact(input?: {
-  readonly severities?: ReadonlyArray<"none" | "low" | "moderate" | "high" | "critical">;
-}) {
-  const severities = input?.severities ?? ["none", "none"];
-
-  return Schema.decodeUnknownSync(DriftRegressionArtifactSchema)({
-    benchmark: "e7-drift-regression-analysis",
-    analysisId: "analysis-e7-001",
-    generatedAt: "2026-03-08T17:00:00.000Z",
-    comparisonId: "comparison-e7-001",
-    caseCount: severities.length,
-    packCount: severities.length,
-    findings: severities.flatMap((severity, index) =>
-      severity === "none"
-        ? []
-        : [
-            {
-              id: `finding-${index + 1}`,
-              caseId: `case-${index + 1}`,
-              packId: `pack-${index + 1}`,
-              targetId: `target-${index + 1}`,
-              snapshotDiffId: `diff-${index + 1}`,
-              field: "price",
-              kind: "fieldChanged",
-              signature: `price:fieldChanged:${severity}`,
-              severity,
-              driftMagnitude: severity === "critical" ? 0.3 : severity === "high" ? 0.15 : 0.06,
-              confidenceDrop: severity === "critical" ? 0.25 : severity === "high" ? 0.16 : 0.08,
-              message: `Regression severity ${severity} for pack-${index + 1}.`,
-            },
-          ],
-    ),
-    packSummaries: severities.map((severity, index) => ({
-      packId: `pack-${index + 1}`,
-      severity,
-      caseCount: 1,
-      regressedCaseCount: severity === "none" ? 0 : 1,
-      findingCount: severity === "none" ? 0 : 1,
-      highestDriftMagnitude: severity === "critical" ? 0.3 : severity === "high" ? 0.15 : 0.06,
-      highestConfidenceDrop: severity === "critical" ? 0.25 : severity === "high" ? 0.16 : 0.08,
-      signatures: severity === "none" ? [] : [`price:fieldChanged:${severity}`],
-    })),
-  });
-}
-
-function makePerformanceInput(overrides?: {
-  readonly sampleSize?: number;
-  readonly warmupIterations?: number;
-  readonly profile?: {
-    readonly caseCount: number;
-    readonly packCount: number;
-  };
-  readonly policy?: {
-    readonly baselineCorpusP95Ms: number;
-    readonly incumbentComparisonP95Ms: number;
-    readonly heapDeltaKiB: number;
-  };
-  readonly measurements?: {
-    readonly baselineCorpus: ReturnType<typeof summarizeMeasurements>;
-    readonly incumbentComparison: ReturnType<typeof summarizeMeasurements>;
-    readonly heapDeltaKiB: number;
-  };
-  readonly baselinePath?: string;
-  readonly baseline?: PerformanceBudgetArtifact;
-}) {
-  return {
-    benchmarkId: "e7-performance-budget",
-    generatedAt: "2026-03-08T16:00:00.000Z",
-    environment: {
-      bun: "1.3.10",
-      platform: "darwin",
-      arch: "arm64",
-    },
-    sampleSize: overrides?.sampleSize ?? 3,
-    warmupIterations: overrides?.warmupIterations ?? 1,
-    profile: overrides?.profile ?? {
-      caseCount: 2,
-      packCount: 2,
-    },
-    policy: overrides?.policy ?? {
-      baselineCorpusP95Ms: 500,
-      incumbentComparisonP95Ms: 1000,
-      heapDeltaKiB: 16_384,
-    },
-    measurements: overrides?.measurements ?? {
-      baselineCorpus: summarizeMeasurements([10, 15, 20]),
-      incumbentComparison: summarizeMeasurements([25, 35, 45]),
-      heapDeltaKiB: 512,
-    },
-    ...(overrides?.baselinePath === undefined ? {} : { baselinePath: overrides.baselinePath }),
-    ...(overrides?.baseline === undefined ? {} : { baseline: overrides.baseline }),
-  };
-}
-
-async function makePerformanceArtifact(overrides?: Parameters<typeof makePerformanceInput>[0]) {
-  return await Effect.runPromise(evaluatePerformanceBudget(makePerformanceInput(overrides)));
-}
+import { makePerformanceArtifact, makeQualityArtifact } from "../helpers/e7-promotion-fixtures.ts";
 
 describe("foundation-core promotion gate policy runtime", () => {
   it("promotes when quality regressions stay clear and performance is comparable within thresholds", async () => {
@@ -368,5 +267,69 @@ describe("foundation-core promotion gate policy runtime", () => {
         }),
       ),
     ).rejects.toThrow("same pack count");
+  });
+
+  it("holds when live canary evidence records failing but non-quarantine scenarios", async () => {
+    const baseline = await makePerformanceArtifact();
+    const performance = await makePerformanceArtifact({
+      baselinePath: "/tmp/e7-performance-budget-baseline.json",
+      baseline,
+    });
+    const canary = Schema.decodeUnknownSync(LiveCanaryArtifactSchema)({
+      benchmark: "e7-live-canary",
+      suiteId: "suite-e7-live-canary",
+      generatedAt: "2026-03-08T21:15:00.000Z",
+      status: "fail",
+      summary: {
+        scenarioCount: 2,
+        passedScenarioCount: 1,
+        failedScenarioIds: ["scenario-hold"],
+        verdict: "hold",
+      },
+      results: [
+        {
+          scenarioId: "scenario-hold",
+          authorizationId: "auth-scenario-hold",
+          provider: "browser",
+          action: "guarded",
+          failedStages: ["canary"],
+          status: "fail",
+          plannerRationale: [
+            { key: "mode", message: "Hybrid canary path." },
+            { key: "rendering", message: "Escalated to browser." },
+          ],
+        },
+        {
+          scenarioId: "scenario-pass",
+          authorizationId: "auth-scenario-pass",
+          provider: "http",
+          action: "active",
+          failedStages: [],
+          status: "pass",
+          plannerRationale: [
+            { key: "mode", message: "HTTP canary path." },
+            { key: "capture-path", message: "HTTP capture is sufficient." },
+          ],
+        },
+      ],
+    });
+
+    const evaluation = await Effect.runPromise(
+      evaluatePromotionGatePolicy({
+        evaluationId: "promotion-e7-canary-hold",
+        generatedAt: "2026-03-08T21:15:00.000Z",
+        quality: makeQualityArtifact(),
+        performance,
+        canary,
+      }),
+    );
+
+    expect(evaluation.verdict).toBe("hold");
+    expect(evaluation.canary?.verdict).toBe("hold");
+    expect(
+      evaluation.rationale.some(
+        ({ code, message }) => code === "canary-hold" && message.includes("scenario-hold"),
+      ),
+    ).toBe(true);
   });
 });

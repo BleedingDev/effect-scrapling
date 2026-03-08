@@ -102,6 +102,22 @@ export {
   type CoreTaggedError,
 } from "./tagged-errors.ts";
 export {
+  LiveCanaryArtifact,
+  LiveCanaryArtifactSchema,
+  LiveCanaryInput,
+  LiveCanaryInputSchema,
+  LiveCanaryScenario,
+  LiveCanaryScenarioSchema,
+  LiveCanarySummary,
+  LiveCanarySummarySchema,
+  runLiveCanaryHarness,
+} from "./live-canary-runtime.ts";
+export type {
+  LiveCanaryArtifactEncoded,
+  LiveCanaryScenarioEncoded,
+  LiveCanarySummaryEncoded,
+} from "./live-canary-runtime.ts";
+export {
   Observation,
   ObservationSchema,
   Snapshot,
@@ -163,6 +179,20 @@ export {
   SelectorResolutionSchema,
   resolveSelectorPrecedence,
 } from "./selector-engine.ts";
+export {
+  PackQualityMetricSummary,
+  PackQualityMetricSummarySchema,
+  QualityMetricSummary,
+  QualityMetricSummarySchema,
+  QualityMetricsArtifact,
+  QualityMetricsArtifactSchema,
+  evaluateQualityMetrics,
+} from "./quality-metrics-runtime.ts";
+export type {
+  PackQualityMetricSummaryEncoded,
+  QualityMetricSummaryEncoded,
+  QualityMetricsArtifactEncoded,
+} from "./quality-metrics-runtime.ts";
 export {
   ArtifactMetadataRecord,
   ArtifactMetadataRecordSchema,
