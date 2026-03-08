@@ -1,6 +1,6 @@
 {
   "benchmark": "e6-performance-budget",
-  "generatedAt": "2026-03-08T13:46:16.010Z",
+  "generatedAt": "2026-03-08T14:17:10.711Z",
   "environment": {
     "bun": "1.3.10",
     "platform": "darwin",
@@ -28,33 +28,33 @@
   "measurements": {
     "capabilitySlice": {
       "samples": 12,
-      "minMs": 7.278,
-      "meanMs": 9.455,
-      "p95Ms": 13.369,
-      "maxMs": 13.497
+      "minMs": 5.673,
+      "meanMs": 6.588,
+      "p95Ms": 8.262,
+      "maxMs": 8.362
     },
     "registryResolution": {
       "samples": 12,
-      "minMs": 4.241,
-      "meanMs": 5.351,
-      "p95Ms": 7.351,
-      "maxMs": 7.8
+      "minMs": 3.984,
+      "meanMs": 4.344,
+      "p95Ms": 5.411,
+      "maxMs": 5.556
     },
     "reflectionRecommendation": {
       "samples": 12,
-      "minMs": 18.521,
-      "meanMs": 21.456,
-      "p95Ms": 26.19,
-      "maxMs": 30.779
+      "minMs": 17.718,
+      "meanMs": 18.76,
+      "p95Ms": 20.368,
+      "maxMs": 21.349
     },
     "promotionGovernance": {
       "samples": 12,
-      "minMs": 24.841,
-      "meanMs": 27.404,
-      "p95Ms": 31.803,
-      "maxMs": 32.53
+      "minMs": 26.563,
+      "meanMs": 45.547,
+      "p95Ms": 71.57,
+      "maxMs": 73.427
     },
-    "heapDeltaKiB": 14441.959
+    "heapDeltaKiB": 4899.393
   },
   "stability": {
     "resolvedPackFingerprint": {
@@ -133,11 +133,11 @@
     "comparable": true,
     "incompatibleReason": null,
     "deltas": {
-      "capabilitySliceP95Ms": -2.96,
-      "registryResolutionP95Ms": -2.073,
-      "reflectionRecommendationP95Ms": 2.72,
-      "promotionGovernanceP95Ms": -35.119,
-      "heapDeltaKiB": 90.376
+      "capabilitySliceP95Ms": -8.067,
+      "registryResolutionP95Ms": -4.013,
+      "reflectionRecommendationP95Ms": -3.102,
+      "promotionGovernanceP95Ms": 4.648,
+      "heapDeltaKiB": -9452.19
     }
   },
   "violations": [],
