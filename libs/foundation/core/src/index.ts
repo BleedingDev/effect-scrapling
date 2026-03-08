@@ -166,12 +166,14 @@ export {
   StorageEncodingSchema,
   StorageLocator,
   StorageLocatorSchema,
+  checkpointPayloadSha256,
   resolveRunExecutionConfig,
   type ArtifactMetadataRecordEncoded,
   type CheckpointRecordEncoded,
   type RunConfigSource,
   type RunExecutionConfigEncoded,
 } from "./config-storage.ts";
+export { SqliteRunCheckpointStoreLive } from "./sqlite-run-checkpoint-store.ts";
 export {
   AccessPlannerDecision,
   AccessPlannerDecisionSchema,

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { Effect, Layer, Option, Predicate, Schema } from "effect";
 import {
   ArtifactMetadataRecordSchema,
@@ -6,6 +5,7 @@ import {
   CheckpointRecordSchema,
   RunCheckpointStore,
   StorageLocatorSchema,
+  checkpointPayloadSha256,
 } from "./config-storage.ts";
 import { QualityVerdictSchema, SnapshotDiffSchema } from "./diff-verdict.ts";
 import { SnapshotSchema } from "./observation-snapshot.ts";
@@ -112,10 +112,6 @@ function stableSerialize(value: unknown): string {
   }
 
   return JSON.stringify(value);
-}
-
-function checkpointSha256(checkpoint: Schema.Codec.Encoded<typeof RunCheckpointSchema>) {
-  return createHash("sha256").update(stableSerialize(checkpoint), "utf8").digest("hex");
 }
 
 function hasFailureMessage(cause: unknown): cause is { readonly message: string } {
@@ -651,7 +647,7 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
               key: `${state.runId}/${formatSequence(sequence)}.json`,
             }),
             checkpoint,
-            sha256: checkpointSha256(encodedCheckpoint),
+            sha256: checkpointPayloadSha256(encodedCheckpoint),
             encoding: "json",
             compression: "none",
             storedAt,

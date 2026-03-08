@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Effect, Option, Schema, ServiceMap } from "effect";
 import { AccessModeSchema, RenderingPolicySchema } from "./access-policy.ts";
 import { ArtifactKindSchema, ArtifactVisibilitySchema } from "./budget-lease-artifact.ts";
@@ -126,6 +127,31 @@ export class CheckpointRecord extends Schema.Class<CheckpointRecord>("Checkpoint
 }) {}
 
 export const CheckpointRecordSchema = CheckpointRecord;
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    if (Object.prototype.toString.call(value) === "[object Date]") {
+      return JSON.stringify(value);
+    }
+
+    return `{${Object.keys(value)
+      .sort((left, right) => left.localeCompare(right))
+      .map((key) => `${JSON.stringify(key)}:${stableSerialize(Reflect.get(value, key))}`)
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
+}
+
+export function checkpointPayloadSha256(
+  checkpoint: Schema.Codec.Encoded<typeof RunCheckpointSchema>,
+) {
+  return createHash("sha256").update(stableSerialize(checkpoint), "utf8").digest("hex");
+}
 
 export class ArtifactMetadataStore extends ServiceMap.Service<
   ArtifactMetadataStore,

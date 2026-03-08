@@ -3,7 +3,8 @@
   "compilerOptions": {
     "outDir": "../../../dist/out-tsc/libs/foundation/core",
     "rootDir": "./src",
-    "tsBuildInfoFile": "../../../dist/out-tsc/libs/foundation/core/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "../../../dist/out-tsc/libs/foundation/core/tsconfig.tsbuildinfo",
+    "types": ["bun-types"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/generated-modules/**/*.ts"]

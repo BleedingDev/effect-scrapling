@@ -1,4 +1,8 @@
+import { Database } from "bun:sqlite";
 import { describe, expect, it } from "@effect-native/bun-test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Effect, Layer, Option, Ref, Schema } from "effect";
 import {
   ArtifactMetadataRecordSchema,
@@ -35,6 +39,7 @@ import {
   WorkflowRunner,
 } from "../../libs/foundation/core/src/service-topology.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
+import { SqliteRunCheckpointStoreLive } from "../../libs/foundation/core/src/sqlite-run-checkpoint-store.ts";
 import { ParserFailure, TimeoutError } from "../../libs/foundation/core/src/tagged-errors.ts";
 
 const CREATED_AT = "2026-03-07T12:30:00.000Z";
@@ -119,7 +124,7 @@ function makeSnapshot(targetId: string, artifactId: string, snapshotId: string) 
   });
 }
 
-function makeTestLayer(options?: {
+function makeWorkflowHarnessBase(options?: {
   readonly browserTimeoutOnFirstCapture?: boolean;
   readonly extractorFailureMessage?: string;
 }) {
@@ -128,18 +133,12 @@ function makeTestLayer(options?: {
     const browserCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
     const browserAttemptRef = yield* Ref.make(0);
     const httpCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
-    const artifactStoreRef = yield* Ref.make(
-      new Map<string, Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>>(),
-    );
-    const checkpointStoreRef = yield* Ref.make(
-      [] as ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>,
-    );
     const snapshotStoreRef = yield* Ref.make(
       new Map<string, Schema.Schema.Type<typeof SnapshotSchema>>(),
     );
     const reflectionCallsRef = yield* Ref.make([] as ReadonlyArray<string>);
 
-    const baseLayer = Layer.mergeAll(
+    const supportLayer = Layer.mergeAll(
       Layer.succeed(HttpAccess)(
         HttpAccess.of({
           capture: (plan) =>
@@ -171,29 +170,6 @@ function makeTestLayer(options?: {
       Layer.succeed(CaptureStore)(
         CaptureStore.of({
           persist: (artifacts) => Effect.succeed(artifacts),
-        }),
-      ),
-      Layer.succeed(ArtifactMetadataStore)(
-        ArtifactMetadataStore.of({
-          getById: (artifactId) =>
-            Ref.get(artifactStoreRef).pipe(
-              Effect.map((records) => {
-                const record = records.get(artifactId);
-                return record === undefined ? Option.none() : Option.some(record);
-              }),
-            ),
-          listByRun: (runId) =>
-            Ref.get(artifactStoreRef).pipe(
-              Effect.map((records) =>
-                [...records.values()].filter((record) => record.runId === runId),
-              ),
-            ),
-          put: (record) =>
-            Ref.update(artifactStoreRef, (records) => {
-              const next = new Map(records);
-              next.set(record.artifactId, record);
-              return next;
-            }).pipe(Effect.as(record)),
         }),
       ),
       Layer.succeed(Extractor)(
@@ -299,6 +275,70 @@ function makeTestLayer(options?: {
             ),
         }),
       ),
+    );
+
+    return {
+      browserCallsRef,
+      httpCallsRef,
+      makeLayer: <E, R>(
+        storageLayer: Layer.Layer<ArtifactMetadataStore | RunCheckpointStore, E, R>,
+      ) => {
+        const baseLayer = Layer.mergeAll(supportLayer, storageLayer);
+        const runtimeLayer = DurableWorkflowRuntimeLive({
+          now: () => new Date(Date.parse(CREATED_AT) + nowTick++ * 1_000),
+          resolveBaselineSnapshot: ({ candidateSnapshot }) =>
+            Effect.succeed(
+              makeSnapshot(
+                candidateSnapshot.targetId,
+                candidateSnapshot.observations[0]!.evidenceRefs[0]!,
+                `baseline-${candidateSnapshot.targetId}`,
+              ),
+            ),
+        }).pipe(Layer.provide(baseLayer));
+
+        return Layer.mergeAll(baseLayer, runtimeLayer);
+      },
+      reflectionCallsRef,
+    };
+  });
+}
+
+function makeTestLayer(options?: {
+  readonly browserTimeoutOnFirstCapture?: boolean;
+  readonly extractorFailureMessage?: string;
+}) {
+  return Effect.gen(function* () {
+    const harness = yield* makeWorkflowHarnessBase(options);
+    const artifactStoreRef = yield* Ref.make(
+      new Map<string, Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>>(),
+    );
+    const checkpointStoreRef = yield* Ref.make(
+      [] as ReadonlyArray<Schema.Schema.Type<typeof CheckpointRecordSchema>>,
+    );
+    const storageLayer = Layer.mergeAll(
+      Layer.succeed(ArtifactMetadataStore)(
+        ArtifactMetadataStore.of({
+          getById: (artifactId) =>
+            Ref.get(artifactStoreRef).pipe(
+              Effect.map((records) => {
+                const record = records.get(artifactId);
+                return record === undefined ? Option.none() : Option.some(record);
+              }),
+            ),
+          listByRun: (runId) =>
+            Ref.get(artifactStoreRef).pipe(
+              Effect.map((records) =>
+                [...records.values()].filter((record) => record.runId === runId),
+              ),
+            ),
+          put: (record) =>
+            Ref.update(artifactStoreRef, (records) => {
+              const next = new Map(records);
+              next.set(record.artifactId, record);
+              return next;
+            }).pipe(Effect.as(record)),
+        }),
+      ),
       Layer.succeed(RunCheckpointStore)(
         RunCheckpointStore.of({
           getById: (checkpointId) =>
@@ -324,26 +364,121 @@ function makeTestLayer(options?: {
         }),
       ),
     );
-    const runtimeLayer = DurableWorkflowRuntimeLive({
-      now: () => new Date(Date.parse(CREATED_AT) + nowTick++ * 1_000),
-      resolveBaselineSnapshot: ({ candidateSnapshot }) =>
-        Effect.succeed(
-          makeSnapshot(
-            candidateSnapshot.targetId,
-            candidateSnapshot.observations[0]!.evidenceRefs[0]!,
-            `baseline-${candidateSnapshot.targetId}`,
-          ),
-        ),
-    }).pipe(Layer.provide(baseLayer));
 
     return {
       artifactStoreRef,
-      browserCallsRef,
+      browserCallsRef: harness.browserCallsRef,
       checkpointStoreRef,
-      httpCallsRef,
-      layer: Layer.mergeAll(baseLayer, runtimeLayer),
-      reflectionCallsRef,
+      httpCallsRef: harness.httpCallsRef,
+      layer: harness.makeLayer(storageLayer),
+      reflectionCallsRef: harness.reflectionCallsRef,
     };
+  });
+}
+
+function makeSqliteTestLayer(
+  databaseFilename: string,
+  options?: {
+    readonly browserTimeoutOnFirstCapture?: boolean;
+    readonly extractorFailureMessage?: string;
+  },
+) {
+  return Effect.gen(function* () {
+    const harness = yield* makeWorkflowHarnessBase(options);
+    const artifactStoreRef = yield* Ref.make(
+      new Map<string, Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>>(),
+    );
+    const storageLayer = Layer.mergeAll(
+      Layer.succeed(ArtifactMetadataStore)(
+        ArtifactMetadataStore.of({
+          getById: (artifactId) =>
+            Ref.get(artifactStoreRef).pipe(
+              Effect.map((records) => {
+                const record = records.get(artifactId);
+                return record === undefined ? Option.none() : Option.some(record);
+              }),
+            ),
+          listByRun: (runId) =>
+            Ref.get(artifactStoreRef).pipe(
+              Effect.map((records) =>
+                [...records.values()].filter((record) => record.runId === runId),
+              ),
+            ),
+          put: (record) =>
+            Ref.update(artifactStoreRef, (records) => {
+              const next = new Map(records);
+              next.set(record.artifactId, record);
+              return next;
+            }).pipe(Effect.as(record)),
+        }),
+      ),
+      SqliteRunCheckpointStoreLive({ filename: databaseFilename }),
+    );
+
+    return {
+      browserCallsRef: harness.browserCallsRef,
+      httpCallsRef: harness.httpCallsRef,
+      layer: harness.makeLayer(storageLayer),
+      reflectionCallsRef: harness.reflectionCallsRef,
+    };
+  });
+}
+
+function withSqliteDatabaseFile<A, E, R>(
+  use: (databaseFilename: string) => Effect.Effect<A, E, R>,
+) {
+  return Effect.scoped(
+    Effect.acquireRelease(
+      Effect.sync(() => mkdtempSync(join(tmpdir(), "foundation-core-durable-workflow-"))),
+      (directory) =>
+        Effect.sync(() => {
+          rmSync(directory, { force: true, recursive: true });
+        }),
+    ).pipe(Effect.flatMap((directory) => use(join(directory, "durable-workflow.sqlite")))),
+  );
+}
+
+function corruptLatestSqliteCheckpoint(databaseFilename: string, runId: string) {
+  return Effect.sync(() => {
+    const database = new Database(databaseFilename, {
+      create: true,
+      readwrite: true,
+      strict: true,
+    });
+    try {
+      const row = database
+        .query<{ readonly id: string; readonly payload_json: string }, [string]>(`
+          SELECT id, payload_json
+          FROM workflow_checkpoint_records
+          WHERE run_id = ?
+          ORDER BY checkpoint_sequence DESC, stored_at DESC, id DESC
+          LIMIT 1
+        `)
+        .get(runId);
+
+      if (row === null || row === undefined) {
+        throw new Error(`Expected a persisted SQLite checkpoint for run ${runId}.`);
+      }
+
+      const payload = JSON.parse(row.payload_json) as {
+        readonly checkpoint: {
+          readonly resumeToken?: string;
+        };
+      };
+      const nextPayload = {
+        ...payload,
+        checkpoint: {
+          ...payload.checkpoint,
+          resumeToken: "{not-json",
+        },
+      };
+
+      database
+        .query("UPDATE workflow_checkpoint_records SET payload_json = ? WHERE id = ?")
+        .run(JSON.stringify(nextPayload), row.id);
+    } finally {
+      database.close();
+    }
   });
 }
 
@@ -841,6 +976,122 @@ describe("foundation-core durable workflow runtime", () => {
 
       expect(failure.message).toContain("Failed to decode durable workflow resume token");
     }),
+  );
+
+  it.effect(
+    "restores from SQLite-backed checkpoints across runtime restarts and falls back to the latest valid checkpoint",
+    () =>
+      withSqliteDatabaseFile((databaseFilename) =>
+        Effect.gen(function* () {
+          const compiledPlans = yield* compileCrawlPlans(makeCompilerInput());
+          const compiledPlan = compiledPlans[0];
+          if (compiledPlan === undefined) {
+            throw new Error("Expected a compiled crawl plan.");
+          }
+
+          const startedHarness = yield* makeSqliteTestLayer(databaseFilename);
+          const started = yield* Effect.gen(function* () {
+            const workflowRunner = yield* WorkflowRunner;
+            const checkpoint = yield* workflowRunner.start(compiledPlan.plan);
+            return Schema.decodeUnknownSync(RunCheckpointSchema)(checkpoint);
+          }).pipe(Effect.provide(startedHarness.layer));
+
+          expect(started.sequence).toBe(1);
+          expect(started.stage).toBe("snapshot");
+          expect(yield* Ref.get(startedHarness.browserCallsRef)).toEqual(["target-search-001"]);
+
+          const resumedHarness = yield* makeSqliteTestLayer(databaseFilename);
+          const resumed = yield* Effect.gen(function* () {
+            const workflowRunner = yield* WorkflowRunner;
+            return yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
+              Effect.flatMap(
+                Option.match({
+                  onNone: () =>
+                    Effect.fail(
+                      new Error("Expected SQLite-backed durable workflow resumeRun to resolve"),
+                    ),
+                  onSome: Effect.succeed,
+                }),
+              ),
+            );
+          }).pipe(Effect.provide(resumedHarness.layer));
+
+          expect(Schema.encodeSync(WorkflowControlResultSchema)(resumed)).toMatchObject({
+            operation: "resume",
+            sourceCheckpointId: started.id,
+            requestedRunId: compiledPlan.plan.id,
+            resolvedRunId: compiledPlan.plan.id,
+            checkpoint: {
+              sequence: 2,
+              stage: "quality",
+            },
+          });
+          expect(yield* Ref.get(resumedHarness.browserCallsRef)).toEqual([]);
+
+          yield* corruptLatestSqliteCheckpoint(databaseFilename, compiledPlan.plan.id);
+
+          const recoveredHarness = yield* makeSqliteTestLayer(databaseFilename);
+          const recovered = yield* Effect.gen(function* () {
+            const workflowRunner = yield* WorkflowRunner;
+            return yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
+              Effect.flatMap(
+                Option.match({
+                  onNone: () =>
+                    Effect.fail(
+                      new Error(
+                        "Expected SQLite-backed durable workflow recovery resumeRun to resolve",
+                      ),
+                    ),
+                  onSome: Effect.succeed,
+                }),
+              ),
+            );
+          }).pipe(Effect.provide(recoveredHarness.layer));
+
+          expect(Schema.encodeSync(WorkflowControlResultSchema)(recovered)).toMatchObject({
+            operation: "resume",
+            sourceCheckpointId: started.id,
+            requestedRunId: compiledPlan.plan.id,
+            resolvedRunId: compiledPlan.plan.id,
+            checkpoint: {
+              sequence: 2,
+              stage: "quality",
+            },
+          });
+          expect(yield* Ref.get(recoveredHarness.browserCallsRef)).toEqual([]);
+
+          const finished = yield* Effect.gen(function* () {
+            const workflowRunner = yield* WorkflowRunner;
+            return yield* workflowRunner.resumeRun(compiledPlan.plan.id).pipe(
+              Effect.flatMap(
+                Option.match({
+                  onNone: () =>
+                    Effect.fail(
+                      new Error(
+                        "Expected SQLite-backed durable workflow final resumeRun to resolve",
+                      ),
+                    ),
+                  onSome: Effect.succeed,
+                }),
+              ),
+            );
+          }).pipe(Effect.provide(recoveredHarness.layer));
+
+          expect(Schema.encodeSync(WorkflowControlResultSchema)(finished)).toMatchObject({
+            operation: "resume",
+            sourceCheckpointId: recovered.checkpoint.id,
+            requestedRunId: compiledPlan.plan.id,
+            resolvedRunId: compiledPlan.plan.id,
+            checkpoint: {
+              sequence: 3,
+              stage: "reflect",
+              stats: {
+                outcome: "succeeded",
+              },
+            },
+          });
+        }),
+      ),
   );
 
   it.effect(
