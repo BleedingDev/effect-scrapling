@@ -130,6 +130,7 @@ Operator runbooks:
 - [E4 operations and rollback drill](docs/runbooks/e4-operations-rollback-drill.md)
 - [E5 crawl plan compilation](docs/runbooks/e5-crawl-plan-compilation.md)
 - [E5 durable workflow graph fanout fanin](docs/runbooks/e5-durable-workflow-graph-fanout-fanin.md)
+- [E5 checkpoint persistence and restore](docs/runbooks/e5-checkpoint-persistence-restore.md)
 - [E5 crash resume harness](docs/runbooks/e5-crash-resume-harness.md)
 - [E5 workflow operational controls](docs/runbooks/e5-workflow-operational-controls.md)
 - [E5 resume and replay operations](docs/runbooks/e5-resume-replay-operations.md)
@@ -159,6 +160,12 @@ E5 workflow inspection operators can run
 `bun test tests/libs/foundation-core-workflow.test.ts tests/libs/foundation-core-durable-workflow-runtime.test.ts`,
 `bun run check:e1-capability-slice`, or `bun run example:e1-capability-slice`
 to inspect the current typed read model behavior.
+
+E5 checkpoint-restore operators can run
+`bun run check:e5-checkpoint-persistence-restore`,
+`bun run check:e5-crash-resume-harness`, or
+`bun test tests/libs/foundation-core-sqlite-run-checkpoint-store.test.ts`
+to validate the current SQLite persistence and restore surface.
 
 E5 workflow simulation operators can run
 `bun run benchmark:e5-workflow-simulation`,

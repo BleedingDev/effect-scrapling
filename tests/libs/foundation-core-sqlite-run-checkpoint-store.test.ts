@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -550,6 +551,56 @@ describe("foundation-core sqlite run checkpoint store", () => {
           );
           expect(inspected.budget.remainingTimeoutMs).toBeLessThan(compiledPlan.plan.timeoutMs);
           expect(Date.parse(inspected.updatedAt) >= Date.parse(CREATED_AT)).toBe(true);
+        } finally {
+          yield* Effect.promise(() => rm(directory, { force: true, recursive: true }));
+        }
+      }),
+  );
+
+  it.effect(
+    "fails restore deterministically when every persisted SQLite checkpoint is corrupted",
+    () =>
+      Effect.gen(function* () {
+        const directory = yield* Effect.promise(() =>
+          mkdtemp(join(tmpdir(), "checkpoint-sqlite-")),
+        );
+        const filename = join(directory, "run-checkpoints.sqlite");
+        const firstRecord = makeCheckpointRecord(1);
+        const secondRecord = makeCheckpointRecord(2);
+
+        try {
+          yield* Effect.scoped(
+            Effect.gen(function* () {
+              const store = yield* RunCheckpointStore;
+              yield* store.put(firstRecord);
+              yield* store.put(secondRecord);
+            }).pipe(Effect.provide(SqliteRunCheckpointStoreLive({ filename }))),
+          );
+
+          const database = new Database(filename, { readonly: false, strict: true });
+          try {
+            database
+              .query(
+                "update workflow_checkpoint_records set checkpoint_sha256 = ? where run_id = ?",
+              )
+              .run(
+                "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                firstRecord.runId,
+              );
+          } finally {
+            database.close();
+          }
+
+          const failure = yield* Effect.scoped(
+            Effect.gen(function* () {
+              const store = yield* RunCheckpointStore;
+              return yield* Effect.flip(store.latest(firstRecord.runId));
+            }).pipe(Effect.provide(SqliteRunCheckpointStoreLive({ filename }))),
+          );
+
+          expect(failure.message).toContain(
+            "Failed to restore a valid durable workflow checkpoint",
+          );
         } finally {
           yield* Effect.promise(() => rm(directory, { force: true, recursive: true }));
         }

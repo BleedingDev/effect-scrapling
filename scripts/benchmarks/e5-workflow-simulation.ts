@@ -10,6 +10,7 @@ import {
   RunCheckpointStore,
 } from "../../libs/foundation/core/src/config-storage.ts";
 import {
+  CompiledCrawlPlan,
   CrawlPlanCompilerInputSchema,
   compileCrawlPlans,
 } from "../../libs/foundation/core/src/crawl-plan-runtime.ts";
@@ -35,6 +36,10 @@ import {
 } from "../../libs/foundation/core/src/service-topology.ts";
 import { SitePackSchema } from "../../libs/foundation/core/src/site-pack.ts";
 import { TargetProfileSchema } from "../../libs/foundation/core/src/target-profile.ts";
+import {
+  createWorkflowBudgetRegistrations,
+  makeInMemoryWorkflowBudgetScheduler,
+} from "../../libs/foundation/core/src/workflow-budget-runtime.ts";
 
 const CREATED_AT = "2026-03-07T14:00:00.000Z";
 const EXPECTED_CHECKPOINT_STAGE_FINGERPRINT = "snapshot>quality>reflect";
@@ -349,7 +354,10 @@ function makeSnapshot(
   });
 }
 
-function makeRuntimeLayer(profile: SimulationProfile) {
+function makeRuntimeLayer(
+  compiledPlans: ReadonlyArray<Schema.Schema.Type<typeof CompiledCrawlPlan>>,
+  profile: SimulationProfile,
+) {
   return Effect.gen(function* () {
     let nowTick = 0;
     const artifactStoreRef = yield* Ref.make(
@@ -360,6 +368,10 @@ function makeRuntimeLayer(profile: SimulationProfile) {
     );
     const snapshotStoreRef = yield* Ref.make(
       new Map<string, Schema.Schema.Type<typeof SnapshotSchema>>(),
+    );
+    const workflowBudgetScheduler = yield* makeInMemoryWorkflowBudgetScheduler(
+      createWorkflowBudgetRegistrations(compiledPlans),
+      () => new Date(CREATED_AT),
     );
 
     const baseLayer = Layer.mergeAll(
@@ -524,6 +536,8 @@ function makeRuntimeLayer(profile: SimulationProfile) {
         baseLayer,
         DurableWorkflowRuntimeLive({
           now: () => new Date(Date.parse(CREATED_AT) + nowTick++ * 1_000),
+          withWorkflowBudgetPermit: ({ effect, plan }) =>
+            workflowBudgetScheduler.withPermit(plan, effect),
         }).pipe(Layer.provide(baseLayer)),
       ),
       snapshotStoreRef,
@@ -559,7 +573,7 @@ function fingerprintCheckpoints(
 export function runSimulationSample(profile: SimulationProfile) {
   return Effect.gen(function* () {
     const compiledPlans = yield* compileCrawlPlans(createSimulationCompilerInput(profile));
-    const harness = yield* makeRuntimeLayer(profile);
+    const harness = yield* makeRuntimeLayer(compiledPlans, profile);
 
     const startedAt = performance.now();
     yield* Effect.gen(function* () {

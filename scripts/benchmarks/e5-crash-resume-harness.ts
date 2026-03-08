@@ -10,6 +10,7 @@ import {
   RunCheckpointStore,
 } from "../../libs/foundation/core/src/config-storage.ts";
 import {
+  CompiledCrawlPlan,
   CrawlPlanCompilerInputSchema,
   compileCrawlPlans,
 } from "../../libs/foundation/core/src/crawl-plan-runtime.ts";
@@ -41,6 +42,10 @@ import {
   SnapshotStore,
   WorkflowRunner,
 } from "../../libs/foundation/core/src/service-topology.ts";
+import {
+  createWorkflowBudgetRegistrations,
+  makeInMemoryWorkflowBudgetScheduler,
+} from "../../libs/foundation/core/src/workflow-budget-runtime.ts";
 import {
   SimulationProfileSchema,
   createSimulationCompilerInput,
@@ -247,7 +252,10 @@ function fingerprintCheckpoints(
   return checkpoints.map(({ stage }) => stage).join(">");
 }
 
-function makeCrashResumeHarness(profile: SimulationProfile) {
+function makeCrashResumeHarness(
+  compiledPlans: ReadonlyArray<Schema.Schema.Type<typeof CompiledCrawlPlan>>,
+  profile: SimulationProfile,
+) {
   return Effect.gen(function* () {
     let nowTick = 0;
     const compilerInput = createSimulationCompilerInput(profile);
@@ -266,6 +274,10 @@ function makeCrashResumeHarness(profile: SimulationProfile) {
     );
     const snapshotStoreRef = yield* Ref.make(
       new Map<string, Schema.Schema.Type<typeof SnapshotSchema>>(),
+    );
+    const workflowBudgetScheduler = yield* makeInMemoryWorkflowBudgetScheduler(
+      createWorkflowBudgetRegistrations(compiledPlans),
+      () => new Date(CREATED_AT),
     );
 
     const baseLayer = Layer.mergeAll(
@@ -425,13 +437,14 @@ function makeCrashResumeHarness(profile: SimulationProfile) {
     );
 
     return {
-      compilerInput,
       checkpointStoreRef,
       makeLayer: () =>
         Layer.mergeAll(
           baseLayer,
           DurableWorkflowRuntimeLive({
             now: () => new Date(Date.parse(CREATED_AT) + nowTick++ * 1_000),
+            withWorkflowBudgetPermit: ({ effect, plan }) =>
+              workflowBudgetScheduler.withPermit(plan, effect),
           }).pipe(Layer.provide(baseLayer)),
         ),
       snapshotStoreRef,
@@ -620,11 +633,13 @@ export function runCrashResumeSample(
   crashAfterSequences: ReadonlyArray<1 | 2> = DEFAULT_CRASH_AFTER_SEQUENCES,
 ) {
   return Effect.gen(function* () {
-    const baselineHarness = yield* makeCrashResumeHarness(profile);
-    const recoveredHarness = yield* makeCrashResumeHarness(profile);
     const compiledPlans = yield* compileCrawlPlans(
-      Schema.decodeUnknownSync(CrawlPlanCompilerInputSchema)(baselineHarness.compilerInput),
+      Schema.decodeUnknownSync(CrawlPlanCompilerInputSchema)(
+        createSimulationCompilerInput(profile),
+      ),
     );
+    const baselineHarness = yield* makeCrashResumeHarness(compiledPlans, profile);
+    const recoveredHarness = yield* makeCrashResumeHarness(compiledPlans, profile);
 
     yield* Effect.forEach(
       compiledPlans,

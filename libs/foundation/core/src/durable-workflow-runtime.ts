@@ -1,4 +1,5 @@
 import { Effect, Layer, Option, Predicate, Schema } from "effect";
+import { BudgetExceededError } from "./access-budget-runtime.ts";
 import {
   ArtifactMetadataRecordSchema,
   ArtifactMetadataStore,
@@ -93,6 +94,10 @@ export type DurableWorkflowRuntimeOptions = {
   readonly now?: () => Date;
   readonly createRunId?: (plan: RunPlan) => string;
   readonly resolveBaselineSnapshot?: DurableWorkflowBaselineResolver;
+  readonly withWorkflowBudgetPermit?: <A, E, R>(input: {
+    readonly effect: Effect.Effect<A, E, R>;
+    readonly plan: RunPlan;
+  }) => Effect.Effect<A, E | BudgetExceededError | PolicyViolation | ProviderUnavailable, R>;
 };
 
 function stableSerialize(value: unknown): string {
@@ -165,6 +170,13 @@ function toWorkflowFailure(
     return {
       error: new PolicyViolation({ message: cause.message }),
       failure: toCoreErrorEnvelope(new PolicyViolation({ message: cause.message })),
+    };
+  }
+
+  if (Predicate.isTagged("BudgetExceededError")(cause) && hasFailureMessage(cause)) {
+    return {
+      error: new ProviderUnavailable({ message: cause.message }),
+      failure: toCoreErrorEnvelope(new ProviderUnavailable({ message: cause.message })),
     };
   }
 
@@ -484,6 +496,10 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
   const createRunId = options.createRunId ?? ((plan: RunPlan) => plan.id);
   const resolveBaselineSnapshot: DurableWorkflowBaselineResolver =
     options.resolveBaselineSnapshot ?? ((input) => Effect.succeed(input.candidateSnapshot));
+  const withWorkflowBudgetPermit =
+    options.withWorkflowBudgetPermit ??
+    (<A, E, R>(input: { readonly effect: Effect.Effect<A, E, R>; readonly plan: RunPlan }) =>
+      input.effect);
 
   return Effect.gen(function* () {
     const browserAccess = yield* BrowserAccess;
@@ -669,9 +685,12 @@ export function makeDurableWorkflowRunner(options: DurableWorkflowRuntimeOptions
     ) {
       switch (step.stage) {
         case "capture": {
-          const capturedArtifacts = yield* step.requiresBrowser
-            ? browserAccess.capture(state.plan)
-            : httpAccess.capture(state.plan);
+          const capturedArtifacts = yield* withWorkflowBudgetPermit({
+            plan: state.plan,
+            effect: step.requiresBrowser
+              ? browserAccess.capture(state.plan)
+              : httpAccess.capture(state.plan),
+          });
           const persistedArtifacts = sortArtifacts(yield* captureStore.persist(capturedArtifacts));
           yield* Effect.forEach(persistedArtifacts, (artifact) =>
             artifactMetadataStore.put(artifact),
