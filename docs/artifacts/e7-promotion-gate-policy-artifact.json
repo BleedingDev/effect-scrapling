@@ -1,0 +1,66 @@
+{
+  "benchmark": "e7-promotion-gate-policy",
+  "evaluationId": "promotion-e7-policy",
+  "generatedAt": "2026-03-08T21:20:00.000Z",
+  "verdict": "hold",
+  "policy": {
+    "minimumHoldSeverity": "low",
+    "minimumQuarantineSeverity": "high",
+    "requireComparablePerformanceBaseline": true,
+    "maximumPromoteBaselineCorpusP95DeltaMs": 25,
+    "maximumPromoteIncumbentComparisonP95DeltaMs": 50,
+    "maximumPromoteHeapDeltaKiB": 1024,
+    "minimumQuarantineBaselineCorpusP95DeltaMs": 100,
+    "minimumQuarantineIncumbentComparisonP95DeltaMs": 200,
+    "minimumQuarantineHeapDeltaKiB": 4096
+  },
+  "quality": {
+    "analysisId": "analysis-e7-promotion-gate",
+    "packCount": 2,
+    "regressedPackCount": 0,
+    "findingCount": 0,
+    "highestSeverity": "none",
+    "verdict": "promote",
+    "holdPackIds": [],
+    "quarantinePackIds": []
+  },
+  "performance": {
+    "benchmarkId": "e7-performance-budget",
+    "budgetStatus": "pass",
+    "comparable": false,
+    "incompatibleReason": null,
+    "verdict": "hold",
+    "deltas": {
+      "baselineCorpusP95Ms": null,
+      "incumbentComparisonP95Ms": null,
+      "heapDeltaKiB": null
+    },
+    "budgetViolations": [],
+    "holdDeltaMetrics": [],
+    "quarantineDeltaMetrics": []
+  },
+  "canary": {
+    "suiteId": "suite-e7-live-canary",
+    "scenarioCount": 2,
+    "passedScenarioCount": 2,
+    "failedScenarioIds": [],
+    "verdict": "promote"
+  },
+  "rationale": [
+    {
+      "scope": "quality",
+      "code": "quality-clean",
+      "message": "Quality regression analysis stayed below the configured hold severity threshold for every pack."
+    },
+    {
+      "scope": "performance",
+      "code": "performance-hold",
+      "message": "Hold because the performance baseline is not comparable. The benchmark did not report a compatible baseline."
+    },
+    {
+      "scope": "canary",
+      "code": "canary-clean",
+      "message": "Live canary scenarios passed and did not add promotion risk."
+    }
+  ]
+}

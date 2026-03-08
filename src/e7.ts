@@ -30,6 +30,9 @@ export {
 export {
   PromotionGateEvaluationSchema,
   PromotionGateCanarySummarySchema,
+  PromotionGatePolicySchema,
+  PromotionGateRationaleSchema,
+  evaluatePromotionGatePolicy,
   type PromotionGateEvaluationEncoded,
   type PromotionGateCanarySummaryEncoded,
 } from "@effect-scrapling/foundation-core/promotion-gate-policy-runtime";

@@ -203,6 +203,16 @@ If `docs/artifacts/e7-performance-budget-scorecard.json` reports
 3. capture whether the baseline was comparable
 4. open a blocking remediation bead instead of widening budgets first
 
+Use a blocking remediation bead command like:
+
+```bash
+CI=1 bd create "[E7] Remediate: quality harness performance budget breach" \
+  --type bug \
+  --priority 2 \
+  --depends-on bd-i62.13 \
+  --description "Investigate the failing E7 performance budget scorecard before changing thresholds."
+```
+
 Rollback in this lane means reverting the candidate change that introduced the
 performance regression and rerunning:
 
