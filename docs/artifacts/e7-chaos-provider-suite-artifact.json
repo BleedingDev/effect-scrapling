@@ -1,0 +1,106 @@
+{
+  "benchmark": "e7-chaos-provider-suite",
+  "suiteId": "suite-e7-chaos-provider",
+  "generatedAt": "2026-03-08T18:00:00.000Z",
+  "scenarioCount": 3,
+  "failedScenarioIds": [],
+  "results": [
+    {
+      "scenarioId": "scenario-network-timeout",
+      "expectedProvider": "browser",
+      "actualProvider": "browser",
+      "expectedAction": "guarded",
+      "actualAction": "guarded",
+      "expectedFailedStages": [
+        "canary"
+      ],
+      "actualFailedStages": [
+        "canary"
+      ],
+      "status": "pass",
+      "plannerRationale": [
+        {
+          "key": "mode",
+          "message": "Access mode resolved to hybrid."
+        },
+        {
+          "key": "rendering",
+          "message": "Rendering policy resolved to onDemand."
+        },
+        {
+          "key": "budget",
+          "message": "Concurrency budget resolved to 8/64."
+        },
+        {
+          "key": "capture-path",
+          "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 1 recent access failure(s), latest timeout."
+        }
+      ]
+    },
+    {
+      "scenarioId": "scenario-provider-outage",
+      "expectedProvider": "browser",
+      "actualProvider": "browser",
+      "expectedAction": "quarantined",
+      "actualAction": "quarantined",
+      "expectedFailedStages": [
+        "chaos"
+      ],
+      "actualFailedStages": [
+        "chaos"
+      ],
+      "status": "pass",
+      "plannerRationale": [
+        {
+          "key": "mode",
+          "message": "Access mode resolved to hybrid."
+        },
+        {
+          "key": "rendering",
+          "message": "Rendering policy resolved to onDemand."
+        },
+        {
+          "key": "budget",
+          "message": "Concurrency budget resolved to 8/64."
+        },
+        {
+          "key": "capture-path",
+          "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+        }
+      ]
+    },
+    {
+      "scenarioId": "scenario-throttling-window",
+      "expectedProvider": "browser",
+      "actualProvider": "browser",
+      "expectedAction": "guarded",
+      "actualAction": "guarded",
+      "expectedFailedStages": [
+        "canary"
+      ],
+      "actualFailedStages": [
+        "canary"
+      ],
+      "status": "pass",
+      "plannerRationale": [
+        {
+          "key": "mode",
+          "message": "Access mode resolved to hybrid."
+        },
+        {
+          "key": "rendering",
+          "message": "Rendering policy resolved to onDemand."
+        },
+        {
+          "key": "budget",
+          "message": "Concurrency budget resolved to 8/64."
+        },
+        {
+          "key": "capture-path",
+          "message": "Capture step selected browser provider. Hybrid mode escalated to browser for high-friction searchResult targets after 2 recent access failure(s), latest unspecified-access-failure."
+        }
+      ]
+    }
+  ],
+  "status": "pass"
+}
