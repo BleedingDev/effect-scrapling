@@ -140,6 +140,8 @@ Operator runbooks:
 - [E5 workflow simulation](docs/runbooks/e5-workflow-simulation.md)
 - [E5 operations and rollback drill](docs/runbooks/e5-operations-rollback-drill.md)
 - [E5 security review](docs/runbooks/e5-security-review.md)
+- [E6 reflector clustering](docs/runbooks/e6-reflector-clustering.md)
+- [E6 validator ladder](docs/runbooks/e6-validator-ladder.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`
 
