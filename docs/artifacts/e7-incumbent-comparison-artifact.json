@@ -1,0 +1,121 @@
+{
+  "benchmark": "e7-incumbent-comparison",
+  "comparisonId": "comparison-retail-smoke",
+  "generatedAt": "2026-03-08T15:00:00.000Z",
+  "incumbentCorpusId": "corpus-retail-smoke",
+  "candidateCorpusId": "corpus-retail-smoke",
+  "caseCount": 2,
+  "packCount": 2,
+  "results": [
+    {
+      "caseId": "case-catalog-example-com",
+      "packId": "pack-catalog-example-com",
+      "targetId": "target-catalog-example-com",
+      "incumbentRunId": "run-catalog-example-com",
+      "candidateRunId": "run-catalog-example-com",
+      "verdict": "match",
+      "snapshotDiff": {
+        "id": "diff-case-catalog-example-com",
+        "baselineSnapshotId": "run-catalog-example-com-snapshot",
+        "candidateSnapshotId": "run-catalog-example-com-snapshot",
+        "metrics": {
+          "fieldRecallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "changes": [],
+        "canonicalMetrics": {
+          "baselineFieldCount": 2,
+          "candidateFieldCount": 2,
+          "unchangedFieldCount": 2,
+          "addedFieldCount": 0,
+          "removedFieldCount": 0,
+          "changedFieldCount": 0,
+          "baselineConfidenceScore": 0.97,
+          "candidateConfidenceScore": 0.97,
+          "confidenceDelta": 0
+        },
+        "createdAt": "2026-03-08T15:00:00.000Z"
+      }
+    },
+    {
+      "caseId": "case-offers-example-com",
+      "packId": "pack-offers-example-com",
+      "targetId": "target-offers-example-com",
+      "incumbentRunId": "run-offers-example-com",
+      "candidateRunId": "run-offers-example-com",
+      "verdict": "match",
+      "snapshotDiff": {
+        "id": "diff-case-offers-example-com",
+        "baselineSnapshotId": "run-offers-example-com-snapshot",
+        "candidateSnapshotId": "run-offers-example-com-snapshot",
+        "metrics": {
+          "fieldRecallDelta": 0,
+          "falsePositiveDelta": 0,
+          "driftDelta": 0,
+          "latencyDeltaMs": 0,
+          "memoryDelta": 0
+        },
+        "changes": [],
+        "canonicalMetrics": {
+          "baselineFieldCount": 2,
+          "candidateFieldCount": 2,
+          "unchangedFieldCount": 2,
+          "addedFieldCount": 0,
+          "removedFieldCount": 0,
+          "changedFieldCount": 0,
+          "baselineConfidenceScore": 0.97,
+          "candidateConfidenceScore": 0.97,
+          "confidenceDelta": 0
+        },
+        "createdAt": "2026-03-08T15:00:00.000Z"
+      }
+    }
+  ],
+  "packSummaries": [
+    {
+      "packId": "pack-catalog-example-com",
+      "verdict": "match",
+      "caseIds": [
+        "case-catalog-example-com"
+      ],
+      "deltaSummary": {
+        "caseCount": 1,
+        "matchedCaseCount": 1,
+        "changedCaseCount": 0,
+        "totalAddedFieldCount": 0,
+        "totalRemovedFieldCount": 0,
+        "totalChangedFieldCount": 0,
+        "meanFieldRecallDelta": 0,
+        "meanFalsePositiveDelta": 0,
+        "meanDriftDelta": 0,
+        "meanConfidenceDelta": 0,
+        "meanLatencyDeltaMs": 0,
+        "meanMemoryDelta": 0
+      }
+    },
+    {
+      "packId": "pack-offers-example-com",
+      "verdict": "match",
+      "caseIds": [
+        "case-offers-example-com"
+      ],
+      "deltaSummary": {
+        "caseCount": 1,
+        "matchedCaseCount": 1,
+        "changedCaseCount": 0,
+        "totalAddedFieldCount": 0,
+        "totalRemovedFieldCount": 0,
+        "totalChangedFieldCount": 0,
+        "meanFieldRecallDelta": 0,
+        "meanFalsePositiveDelta": 0,
+        "meanDriftDelta": 0,
+        "meanConfidenceDelta": 0,
+        "meanLatencyDeltaMs": 0,
+        "meanMemoryDelta": 0
+      }
+    }
+  ]
+}

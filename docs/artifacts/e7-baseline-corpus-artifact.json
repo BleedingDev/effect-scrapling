@@ -1,0 +1,737 @@
+{
+  "benchmark": "e7-baseline-corpus",
+  "corpusId": "corpus-retail-smoke",
+  "generatedAt": "2026-03-08T14:25:00.000Z",
+  "caseCount": 2,
+  "packCount": 2,
+  "results": [
+    {
+      "caseId": "case-catalog-example-com",
+      "packId": "pack-catalog-example-com",
+      "targetId": "target-catalog-example-com",
+      "runId": "run-catalog-example-com",
+      "orchestration": {
+        "planId": "run-catalog-example-com",
+        "recipePackId": "pack-catalog-example-com",
+        "documentArtifactId": "run-catalog-example-com-html",
+        "documentSummary": {
+          "documentId": "run-catalog-example-com-html",
+          "rootPath": "document",
+          "nodeCount": 6,
+          "maxDepth": 3,
+          "tagNames": [
+            "body",
+            "document",
+            "h1",
+            "head",
+            "html",
+            "span"
+          ]
+        },
+        "selectorResolutions": [
+          {
+            "selectorPath": "title/primary",
+            "selector": "h1",
+            "values": [
+              "Catalog Widget"
+            ],
+            "matchedCount": 1,
+            "candidateOrder": [
+              "title/primary"
+            ],
+            "relocated": false,
+            "fallbackCount": 0,
+            "confidence": 1,
+            "confidenceImpact": 0,
+            "relocationTrace": [
+              {
+                "selectorPath": "title/primary",
+                "selector": "h1",
+                "fallbackDepth": 0,
+                "matchedCount": 1,
+                "confidenceImpact": 0,
+                "selected": true
+              }
+            ]
+          },
+          {
+            "selectorPath": "price/primary",
+            "selector": "[data-price]",
+            "values": [
+              "USD 1299.00"
+            ],
+            "matchedCount": 1,
+            "candidateOrder": [
+              "price/primary"
+            ],
+            "relocated": false,
+            "fallbackCount": 0,
+            "confidence": 1,
+            "confidenceImpact": 0,
+            "relocationTrace": [
+              {
+                "selectorPath": "price/primary",
+                "selector": "[data-price]",
+                "fallbackDepth": 0,
+                "matchedCount": 1,
+                "confidenceImpact": 0,
+                "selected": true
+              }
+            ]
+          }
+        ],
+        "fieldBindings": [
+          {
+            "field": "title",
+            "selectorResolutions": [
+              {
+                "selectorPath": "title/primary",
+                "selector": "h1",
+                "values": [
+                  "Catalog Widget"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "title/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "field": "price",
+            "selectorResolutions": [
+              {
+                "selectorPath": "price/primary",
+                "selector": "[data-price]",
+                "values": [
+                  "USD 1299.00"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "price/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "snapshotAssembly": {
+          "snapshot": {
+            "id": "run-catalog-example-com-snapshot",
+            "targetId": "target-catalog-example-com",
+            "observations": [
+              {
+                "field": "price",
+                "normalizedValue": {
+                  "amount": 1299,
+                  "currency": "USD"
+                },
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "run-catalog-example-com-html"
+                ]
+              },
+              {
+                "field": "title",
+                "normalizedValue": "Catalog Widget",
+                "confidence": 0.98,
+                "evidenceRefs": [
+                  "run-catalog-example-com-html"
+                ]
+              }
+            ],
+            "qualityScore": 0.8835,
+            "createdAt": "2026-03-08T14:25:00.000Z"
+          },
+          "qualityScoreInputs": {
+            "sourceObservationCount": 2,
+            "assembledObservationCount": 2,
+            "duplicateObservationCount": 0,
+            "uniqueFieldCount": 2,
+            "conflictingFieldCount": 0,
+            "uniqueEvidenceRefCount": 1,
+            "multiEvidenceObservationCount": 0,
+            "averageEvidenceRefsPerObservation": 1,
+            "averageConfidence": 0.97,
+            "minimumConfidence": 0.96,
+            "evidenceStrengthScore": 0.5,
+            "conflictFreeScore": 1,
+            "uniquenessScore": 1
+          },
+          "qualityScoreBreakdown": {
+            "confidenceContribution": 0.5335,
+            "evidenceStrengthContribution": 0.1,
+            "conflictFreeContribution": 0.15,
+            "uniquenessContribution": 0.1
+          }
+        },
+        "assertionReport": {
+          "snapshotId": "run-catalog-example-com-snapshot",
+          "evaluatedRuleCount": 2,
+          "assertedFields": [
+            "title",
+            "price"
+          ]
+        },
+        "evidenceManifest": {
+          "id": "run-catalog-example-com-snapshot-evidence-manifest",
+          "snapshotId": "run-catalog-example-com-snapshot",
+          "targetId": "target-catalog-example-com",
+          "documentId": "run-catalog-example-com-html",
+          "createdAt": "2026-03-08T14:25:00.000Z",
+          "observations": [
+            {
+              "observationIndex": 0,
+              "field": "price",
+              "observation": {
+                "field": "price",
+                "normalizedValue": {
+                  "amount": 1299,
+                  "currency": "USD"
+                },
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "run-catalog-example-com-html"
+                ]
+              },
+              "artifacts": [
+                {
+                  "id": "run-catalog-example-com-html",
+                  "runId": "run-catalog-example-com",
+                  "artifactId": "run-catalog-example-com-html",
+                  "kind": "html",
+                  "visibility": "raw",
+                  "locator": {
+                    "namespace": "captures/target-catalog-example-com",
+                    "key": "run-catalog-example-com/body.html"
+                  },
+                  "sha256": "f528eb27c5e98686f4369be157cbbb57c55e531c6a831137d3c68f05891cde00",
+                  "sizeBytes": 98,
+                  "mediaType": "text/html; charset=utf-8",
+                  "storedAt": "2026-03-08T14:20:00.000Z"
+                }
+              ],
+              "selectorTraces": [
+                {
+                  "documentId": "run-catalog-example-com-html",
+                  "rootPath": "document",
+                  "resolution": {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "values": [
+                      "USD 1299.00"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "price/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "observationIndex": 1,
+              "field": "title",
+              "observation": {
+                "field": "title",
+                "normalizedValue": "Catalog Widget",
+                "confidence": 0.98,
+                "evidenceRefs": [
+                  "run-catalog-example-com-html"
+                ]
+              },
+              "artifacts": [
+                {
+                  "id": "run-catalog-example-com-html",
+                  "runId": "run-catalog-example-com",
+                  "artifactId": "run-catalog-example-com-html",
+                  "kind": "html",
+                  "visibility": "raw",
+                  "locator": {
+                    "namespace": "captures/target-catalog-example-com",
+                    "key": "run-catalog-example-com/body.html"
+                  },
+                  "sha256": "f528eb27c5e98686f4369be157cbbb57c55e531c6a831137d3c68f05891cde00",
+                  "sizeBytes": 98,
+                  "mediaType": "text/html; charset=utf-8",
+                  "storedAt": "2026-03-08T14:20:00.000Z"
+                }
+              ],
+              "selectorTraces": [
+                {
+                  "documentId": "run-catalog-example-com-html",
+                  "rootPath": "document",
+                  "resolution": {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "values": [
+                      "Catalog Widget"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "title/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "canonicalSnapshot": {
+        "snapshotId": "run-catalog-example-com-snapshot",
+        "targetId": "target-catalog-example-com",
+        "qualityScore": 0.8835,
+        "confidenceScore": 0.97,
+        "fields": [
+          {
+            "field": "price",
+            "observation": {
+              "field": "price",
+              "normalizedValue": {
+                "amount": 1299,
+                "currency": "USD"
+              },
+              "confidence": 0.96,
+              "evidenceRefs": [
+                "run-catalog-example-com-html"
+              ]
+            },
+            "valueFingerprint": "{\"amount\":1299,\"currency\":\"USD\"}"
+          },
+          {
+            "field": "title",
+            "observation": {
+              "field": "title",
+              "normalizedValue": "Catalog Widget",
+              "confidence": 0.98,
+              "evidenceRefs": [
+                "run-catalog-example-com-html"
+              ]
+            },
+            "valueFingerprint": "\"Catalog Widget\""
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "case-offers-example-com",
+      "packId": "pack-offers-example-com",
+      "targetId": "target-offers-example-com",
+      "runId": "run-offers-example-com",
+      "orchestration": {
+        "planId": "run-offers-example-com",
+        "recipePackId": "pack-offers-example-com",
+        "documentArtifactId": "run-offers-example-com-html",
+        "documentSummary": {
+          "documentId": "run-offers-example-com-html",
+          "rootPath": "document",
+          "nodeCount": 6,
+          "maxDepth": 3,
+          "tagNames": [
+            "body",
+            "document",
+            "h1",
+            "head",
+            "html",
+            "span"
+          ]
+        },
+        "selectorResolutions": [
+          {
+            "selectorPath": "title/primary",
+            "selector": "h1",
+            "values": [
+              "Offers Widget"
+            ],
+            "matchedCount": 1,
+            "candidateOrder": [
+              "title/primary"
+            ],
+            "relocated": false,
+            "fallbackCount": 0,
+            "confidence": 1,
+            "confidenceImpact": 0,
+            "relocationTrace": [
+              {
+                "selectorPath": "title/primary",
+                "selector": "h1",
+                "fallbackDepth": 0,
+                "matchedCount": 1,
+                "confidenceImpact": 0,
+                "selected": true
+              }
+            ]
+          },
+          {
+            "selectorPath": "price/primary",
+            "selector": "[data-price]",
+            "values": [
+              "USD 899.00"
+            ],
+            "matchedCount": 1,
+            "candidateOrder": [
+              "price/primary"
+            ],
+            "relocated": false,
+            "fallbackCount": 0,
+            "confidence": 1,
+            "confidenceImpact": 0,
+            "relocationTrace": [
+              {
+                "selectorPath": "price/primary",
+                "selector": "[data-price]",
+                "fallbackDepth": 0,
+                "matchedCount": 1,
+                "confidenceImpact": 0,
+                "selected": true
+              }
+            ]
+          }
+        ],
+        "fieldBindings": [
+          {
+            "field": "title",
+            "selectorResolutions": [
+              {
+                "selectorPath": "title/primary",
+                "selector": "h1",
+                "values": [
+                  "Offers Widget"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "title/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "field": "price",
+            "selectorResolutions": [
+              {
+                "selectorPath": "price/primary",
+                "selector": "[data-price]",
+                "values": [
+                  "USD 899.00"
+                ],
+                "matchedCount": 1,
+                "candidateOrder": [
+                  "price/primary"
+                ],
+                "relocated": false,
+                "fallbackCount": 0,
+                "confidence": 1,
+                "confidenceImpact": 0,
+                "relocationTrace": [
+                  {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "fallbackDepth": 0,
+                    "matchedCount": 1,
+                    "confidenceImpact": 0,
+                    "selected": true
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "snapshotAssembly": {
+          "snapshot": {
+            "id": "run-offers-example-com-snapshot",
+            "targetId": "target-offers-example-com",
+            "observations": [
+              {
+                "field": "price",
+                "normalizedValue": {
+                  "amount": 899,
+                  "currency": "USD"
+                },
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "run-offers-example-com-html"
+                ]
+              },
+              {
+                "field": "title",
+                "normalizedValue": "Offers Widget",
+                "confidence": 0.98,
+                "evidenceRefs": [
+                  "run-offers-example-com-html"
+                ]
+              }
+            ],
+            "qualityScore": 0.8835,
+            "createdAt": "2026-03-08T14:25:00.000Z"
+          },
+          "qualityScoreInputs": {
+            "sourceObservationCount": 2,
+            "assembledObservationCount": 2,
+            "duplicateObservationCount": 0,
+            "uniqueFieldCount": 2,
+            "conflictingFieldCount": 0,
+            "uniqueEvidenceRefCount": 1,
+            "multiEvidenceObservationCount": 0,
+            "averageEvidenceRefsPerObservation": 1,
+            "averageConfidence": 0.97,
+            "minimumConfidence": 0.96,
+            "evidenceStrengthScore": 0.5,
+            "conflictFreeScore": 1,
+            "uniquenessScore": 1
+          },
+          "qualityScoreBreakdown": {
+            "confidenceContribution": 0.5335,
+            "evidenceStrengthContribution": 0.1,
+            "conflictFreeContribution": 0.15,
+            "uniquenessContribution": 0.1
+          }
+        },
+        "assertionReport": {
+          "snapshotId": "run-offers-example-com-snapshot",
+          "evaluatedRuleCount": 2,
+          "assertedFields": [
+            "title",
+            "price"
+          ]
+        },
+        "evidenceManifest": {
+          "id": "run-offers-example-com-snapshot-evidence-manifest",
+          "snapshotId": "run-offers-example-com-snapshot",
+          "targetId": "target-offers-example-com",
+          "documentId": "run-offers-example-com-html",
+          "createdAt": "2026-03-08T14:25:00.000Z",
+          "observations": [
+            {
+              "observationIndex": 0,
+              "field": "price",
+              "observation": {
+                "field": "price",
+                "normalizedValue": {
+                  "amount": 899,
+                  "currency": "USD"
+                },
+                "confidence": 0.96,
+                "evidenceRefs": [
+                  "run-offers-example-com-html"
+                ]
+              },
+              "artifacts": [
+                {
+                  "id": "run-offers-example-com-html",
+                  "runId": "run-offers-example-com",
+                  "artifactId": "run-offers-example-com-html",
+                  "kind": "html",
+                  "visibility": "raw",
+                  "locator": {
+                    "namespace": "captures/target-offers-example-com",
+                    "key": "run-offers-example-com/body.html"
+                  },
+                  "sha256": "e47e97079e3a0ade680eeb6c44cfaa7ec4704aaf909b6353d20bdcc427b15338",
+                  "sizeBytes": 95,
+                  "mediaType": "text/html; charset=utf-8",
+                  "storedAt": "2026-03-08T14:20:00.000Z"
+                }
+              ],
+              "selectorTraces": [
+                {
+                  "documentId": "run-offers-example-com-html",
+                  "rootPath": "document",
+                  "resolution": {
+                    "selectorPath": "price/primary",
+                    "selector": "[data-price]",
+                    "values": [
+                      "USD 899.00"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "price/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "price/primary",
+                        "selector": "[data-price]",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "observationIndex": 1,
+              "field": "title",
+              "observation": {
+                "field": "title",
+                "normalizedValue": "Offers Widget",
+                "confidence": 0.98,
+                "evidenceRefs": [
+                  "run-offers-example-com-html"
+                ]
+              },
+              "artifacts": [
+                {
+                  "id": "run-offers-example-com-html",
+                  "runId": "run-offers-example-com",
+                  "artifactId": "run-offers-example-com-html",
+                  "kind": "html",
+                  "visibility": "raw",
+                  "locator": {
+                    "namespace": "captures/target-offers-example-com",
+                    "key": "run-offers-example-com/body.html"
+                  },
+                  "sha256": "e47e97079e3a0ade680eeb6c44cfaa7ec4704aaf909b6353d20bdcc427b15338",
+                  "sizeBytes": 95,
+                  "mediaType": "text/html; charset=utf-8",
+                  "storedAt": "2026-03-08T14:20:00.000Z"
+                }
+              ],
+              "selectorTraces": [
+                {
+                  "documentId": "run-offers-example-com-html",
+                  "rootPath": "document",
+                  "resolution": {
+                    "selectorPath": "title/primary",
+                    "selector": "h1",
+                    "values": [
+                      "Offers Widget"
+                    ],
+                    "matchedCount": 1,
+                    "candidateOrder": [
+                      "title/primary"
+                    ],
+                    "relocated": false,
+                    "fallbackCount": 0,
+                    "confidence": 1,
+                    "confidenceImpact": 0,
+                    "relocationTrace": [
+                      {
+                        "selectorPath": "title/primary",
+                        "selector": "h1",
+                        "fallbackDepth": 0,
+                        "matchedCount": 1,
+                        "confidenceImpact": 0,
+                        "selected": true
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "canonicalSnapshot": {
+        "snapshotId": "run-offers-example-com-snapshot",
+        "targetId": "target-offers-example-com",
+        "qualityScore": 0.8835,
+        "confidenceScore": 0.97,
+        "fields": [
+          {
+            "field": "price",
+            "observation": {
+              "field": "price",
+              "normalizedValue": {
+                "amount": 899,
+                "currency": "USD"
+              },
+              "confidence": 0.96,
+              "evidenceRefs": [
+                "run-offers-example-com-html"
+              ]
+            },
+            "valueFingerprint": "{\"amount\":899,\"currency\":\"USD\"}"
+          },
+          {
+            "field": "title",
+            "observation": {
+              "field": "title",
+              "normalizedValue": "Offers Widget",
+              "confidence": 0.98,
+              "evidenceRefs": [
+                "run-offers-example-com-html"
+              ]
+            },
+            "valueFingerprint": "\"Offers Widget\""
+          }
+        ]
+      }
+    }
+  ]
+}
