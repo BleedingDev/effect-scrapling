@@ -130,6 +130,7 @@ Operator runbooks:
 - [E4 operations and rollback drill](docs/runbooks/e4-operations-rollback-drill.md)
 - [E5 crawl plan compilation](docs/runbooks/e5-crawl-plan-compilation.md)
 - [E5 durable workflow graph fanout fanin](docs/runbooks/e5-durable-workflow-graph-fanout-fanin.md)
+- [E5 crash resume harness](docs/runbooks/e5-crash-resume-harness.md)
 - [E5 workflow operational controls](docs/runbooks/e5-workflow-operational-controls.md)
 - [E5 resume and replay operations](docs/runbooks/e5-resume-replay-operations.md)
 - [E5 workflow inspection read models](docs/runbooks/e5-workflow-inspection-read-models.md)
@@ -165,6 +166,13 @@ E5 workflow simulation operators can run
 `bun test tests/scripts/e5-workflow-simulation.test.ts`. The default scorecard
 artifact is
 [`docs/artifacts/e5-workflow-simulation-scorecard.json`](docs/artifacts/e5-workflow-simulation-scorecard.json).
+
+E5 crash-resume operators can run
+`bun run benchmark:e5-crash-resume-harness`,
+`bun run check:e5-crash-resume-harness`, or
+`bun test tests/scripts/e5-crash-resume-harness.test.ts`. The default
+scorecard artifact is
+[`docs/artifacts/e5-crash-resume-harness-scorecard.json`](docs/artifacts/e5-crash-resume-harness-scorecard.json).
 
 ## CLI
 

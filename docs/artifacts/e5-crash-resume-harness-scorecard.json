@@ -1,0 +1,502 @@
+{
+  "benchmark": "e5-crash-resume-harness",
+  "generatedAt": "2026-03-08T03:57:12.488Z",
+  "sample": {
+    "profile": {
+      "targetCount": 4,
+      "observationsPerTarget": 25,
+      "totalObservations": 100
+    },
+    "crashAfterSequences": [
+      1,
+      2
+    ],
+    "restartCount": 8,
+    "baseline": [
+      {
+        "runId": "plan-target-product-0001-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0001-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0001-pack-example-com",
+          "planId": "plan-target-product-0001-pack-example-com",
+          "targetId": "target-product-0001",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0001",
+          "entryUrl": "https://example.com/products/0001",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:02.000Z",
+          "storedAt": "2026-03-07T14:00:02.000Z",
+          "stats": {
+            "runId": "plan-target-product-0001-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:02.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 2000,
+            "remainingTimeoutMs": 18000,
+            "timeoutUtilization": 0.1,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      },
+      {
+        "runId": "plan-target-product-0002-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0002-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0002-pack-example-com",
+          "planId": "plan-target-product-0002-pack-example-com",
+          "targetId": "target-product-0002",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0002",
+          "entryUrl": "https://example.com/products/0002",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:05.000Z",
+          "storedAt": "2026-03-07T14:00:05.000Z",
+          "stats": {
+            "runId": "plan-target-product-0002-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:05.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 5000,
+            "remainingTimeoutMs": 15000,
+            "timeoutUtilization": 0.25,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      },
+      {
+        "runId": "plan-target-product-0003-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0003-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0003-pack-example-com",
+          "planId": "plan-target-product-0003-pack-example-com",
+          "targetId": "target-product-0003",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0003",
+          "entryUrl": "https://example.com/products/0003",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:08.000Z",
+          "storedAt": "2026-03-07T14:00:08.000Z",
+          "stats": {
+            "runId": "plan-target-product-0003-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:08.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 8000,
+            "remainingTimeoutMs": 12000,
+            "timeoutUtilization": 0.4,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      },
+      {
+        "runId": "plan-target-product-0004-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0004-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0004-pack-example-com",
+          "planId": "plan-target-product-0004-pack-example-com",
+          "targetId": "target-product-0004",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0004",
+          "entryUrl": "https://example.com/products/0004",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:11.000Z",
+          "storedAt": "2026-03-07T14:00:11.000Z",
+          "stats": {
+            "runId": "plan-target-product-0004-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:11.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 11000,
+            "remainingTimeoutMs": 9000,
+            "timeoutUtilization": 0.55,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      }
+    ],
+    "recovered": [
+      {
+        "runId": "plan-target-product-0001-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0001-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0001-pack-example-com",
+          "planId": "plan-target-product-0001-pack-example-com",
+          "targetId": "target-product-0001",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0001",
+          "entryUrl": "https://example.com/products/0001",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:02.000Z",
+          "storedAt": "2026-03-07T14:00:02.000Z",
+          "stats": {
+            "runId": "plan-target-product-0001-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:02.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 2000,
+            "remainingTimeoutMs": 18000,
+            "timeoutUtilization": 0.1,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      },
+      {
+        "runId": "plan-target-product-0002-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0002-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0002-pack-example-com",
+          "planId": "plan-target-product-0002-pack-example-com",
+          "targetId": "target-product-0002",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0002",
+          "entryUrl": "https://example.com/products/0002",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:05.000Z",
+          "storedAt": "2026-03-07T14:00:05.000Z",
+          "stats": {
+            "runId": "plan-target-product-0002-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:05.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 5000,
+            "remainingTimeoutMs": 15000,
+            "timeoutUtilization": 0.25,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      },
+      {
+        "runId": "plan-target-product-0003-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0003-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0003-pack-example-com",
+          "planId": "plan-target-product-0003-pack-example-com",
+          "targetId": "target-product-0003",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0003",
+          "entryUrl": "https://example.com/products/0003",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:08.000Z",
+          "storedAt": "2026-03-07T14:00:08.000Z",
+          "stats": {
+            "runId": "plan-target-product-0003-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:08.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 8000,
+            "remainingTimeoutMs": 12000,
+            "timeoutUtilization": 0.4,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      },
+      {
+        "runId": "plan-target-product-0004-pack-example-com",
+        "checkpointCount": 3,
+        "stageFingerprint": "snapshot>quality>reflect",
+        "finalCheckpointId": "checkpoint-plan-target-product-0004-pack-example-com-0003",
+        "finalSequence": 3,
+        "finalStage": "reflect",
+        "finalOutcome": "succeeded",
+        "totalObservations": 25,
+        "inspection": {
+          "runId": "plan-target-product-0004-pack-example-com",
+          "planId": "plan-target-product-0004-pack-example-com",
+          "targetId": "target-product-0004",
+          "packId": "pack-example-com",
+          "accessPolicyId": "policy-browser",
+          "concurrencyBudgetId": "budget-target-product-0004",
+          "entryUrl": "https://example.com/products/0004",
+          "status": "succeeded",
+          "stage": "reflect",
+          "startedAt": "2026-03-07T14:00:00.000Z",
+          "updatedAt": "2026-03-07T14:00:11.000Z",
+          "storedAt": "2026-03-07T14:00:11.000Z",
+          "stats": {
+            "runId": "plan-target-product-0004-pack-example-com",
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "outcome": "succeeded",
+            "startedAt": "2026-03-07T14:00:00.000Z",
+            "updatedAt": "2026-03-07T14:00:11.000Z"
+          },
+          "progress": {
+            "plannedSteps": 6,
+            "completedSteps": 6,
+            "pendingSteps": 0,
+            "checkpointCount": 3,
+            "artifactCount": 1,
+            "completionRatio": 1,
+            "completedStepIds": [
+              "step-capture",
+              "step-extract",
+              "step-snapshot",
+              "step-diff",
+              "step-quality",
+              "step-reflect"
+            ],
+            "pendingStepIds": []
+          },
+          "budget": {
+            "maxAttempts": 3,
+            "configuredTimeoutMs": 20000,
+            "elapsedMs": 11000,
+            "remainingTimeoutMs": 9000,
+            "timeoutUtilization": 0.55,
+            "checkpointInterval": 2,
+            "stepsUntilNextCheckpoint": 0
+          }
+        }
+      }
+    ],
+    "matchedOutputs": true
+  },
+  "status": "pass"
+}
