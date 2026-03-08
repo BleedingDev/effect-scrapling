@@ -1,0 +1,205 @@
+{
+  "benchmark": "e9-scrapling-parity",
+  "comparisonId": "comparison-e9-scrapling-parity",
+  "generatedAt": "2026-03-08T22:15:00.000Z",
+  "caseCount": 10,
+  "measurementMode": "fixture-corpus-postcapture",
+  "scraplingRuntime": {
+    "scraplingVersion": "0.4.1",
+    "parserAvailable": true,
+    "fetcherAvailable": false,
+    "fetcherDiagnostic": "Fetcher runtime requires undeclared optional dependencies in this benchmark environment."
+  },
+  "summary": {
+    "ours": {
+      "measurementMode": "fixture-corpus-postcapture",
+      "fetchSuccessRate": 1,
+      "extractionCompleteness": 1,
+      "bypassSuccessRate": 1
+    },
+    "scrapling": {
+      "measurementMode": "fixture-corpus-postcapture",
+      "fetchSuccessRate": 1,
+      "extractionCompleteness": 1,
+      "bypassSuccessRate": 1
+    },
+    "equalOrBetter": {
+      "fetchSuccess": true,
+      "extractionCompleteness": true,
+      "bypassSuccess": true
+    }
+  },
+  "cases": [
+    {
+      "caseId": "case-e9-alza-tesla-s300w",
+      "retailer": "alza",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "alza/availability/primary",
+        "alza/price/primary",
+        "alza/product-identifier/primary",
+        "alza/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-alza-tesla-fan-f500",
+      "retailer": "alza",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "alza/availability/primary",
+        "alza/price/primary",
+        "alza/product-identifier/primary",
+        "alza/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-alza-tesla-heater-h300",
+      "retailer": "alza",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "alza/availability/primary",
+        "alza/price/primary",
+        "alza/product-identifier/primary",
+        "alza/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-alza-tesla-humidifier-h100",
+      "retailer": "alza",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "alza/availability/primary",
+        "alza/price/primary",
+        "alza/product-identifier/primary",
+        "alza/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-datart-tesla-s200b",
+      "retailer": "datart",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "datart/availability/primary",
+        "datart/price/primary",
+        "datart/product-identifier/primary",
+        "datart/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-datart-tesla-ar300",
+      "retailer": "datart",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "datart/availability/primary",
+        "datart/price/primary",
+        "datart/product-identifier/primary",
+        "datart/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-datart-tesla-dehumidifier-d400",
+      "retailer": "datart",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "datart/availability/primary",
+        "datart/price/primary",
+        "datart/product-identifier/primary",
+        "datart/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-tsbohemia-tesla-te300",
+      "retailer": "tsbohemia",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "tsbohemia/availability/primary",
+        "tsbohemia/price/primary",
+        "tsbohemia/product-identifier/primary",
+        "tsbohemia/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-tsbohemia-tesla-te310",
+      "retailer": "tsbohemia",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "tsbohemia/availability/primary",
+        "tsbohemia/price/primary",
+        "tsbohemia/product-identifier/primary",
+        "tsbohemia/title/primary"
+      ]
+    },
+    {
+      "caseId": "case-e9-tsbohemia-tesla-te320",
+      "retailer": "tsbohemia",
+      "ourCompleteness": 1,
+      "scraplingCompleteness": 1,
+      "ourFetchSuccess": true,
+      "scraplingFetchSuccess": true,
+      "ourBypassSuccess": true,
+      "scraplingBypassSuccess": true,
+      "valueAgreement": true,
+      "matchedSelectors": [
+        "tsbohemia/availability/primary",
+        "tsbohemia/price/primary",
+        "tsbohemia/product-identifier/primary",
+        "tsbohemia/title/primary"
+      ]
+    }
+  ],
+  "status": "pass"
+}

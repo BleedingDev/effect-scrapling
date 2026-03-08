@@ -15,6 +15,7 @@
     "./crawl-plan-runtime": "./src/crawl-plan-runtime.ts",
     "./diff-verdict": "./src/diff-verdict.ts",
     "./drift-regression-runtime": "./src/drift-regression-runtime.ts",
+    "./domain-normalizers": "./src/domain-normalizers.ts",
     "./durable-workflow-runtime": "./src/durable-workflow-runtime.ts",
     "./baseline-corpus-runtime": "./src/baseline-corpus-runtime.ts",
     "./chaos-provider-suite-runtime": "./src/chaos-provider-suite-runtime.ts",
