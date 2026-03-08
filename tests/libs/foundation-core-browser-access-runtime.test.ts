@@ -378,10 +378,10 @@ describe("foundation-core browser access runtime", () => {
           "timings",
         ]);
         expect(artifacts.map(({ locator }) => locator.namespace)).toEqual([
-          `captures/${browserPlan.targetId}`,
-          `captures/${browserPlan.targetId}`,
-          `captures/${browserPlan.targetId}`,
-          `captures/${browserPlan.targetId}`,
+          `captures/raw/${browserPlan.targetId}`,
+          `captures/raw/${browserPlan.targetId}`,
+          `captures/redacted/${browserPlan.targetId}`,
+          `captures/redacted/${browserPlan.targetId}`,
         ]);
         expect(artifacts.map(({ locator }) => locator.key)).toEqual([
           `${browserPlan.id}/rendered-dom.html`,

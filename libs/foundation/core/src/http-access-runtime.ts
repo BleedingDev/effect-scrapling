@@ -9,8 +9,14 @@ import {
 } from "./access-retry-runtime.ts";
 import { tryAbortableAccess, withAccessTimeout } from "./access-timeout-runtime.ts";
 import { ArtifactKindSchema, ArtifactVisibilitySchema } from "./budget-lease-artifact.ts";
+import { buildCaptureStorageLocator } from "./capture-artifact-storage.ts";
 import { ArtifactMetadataRecordSchema, StorageLocatorSchema } from "./config-storage.ts";
 import { RunPlanSchema } from "./run-state.ts";
+import {
+  sanitizeHeaderEntries,
+  sanitizeUrlForExport,
+  summarizeHtmlForRedactedExport,
+} from "./secret-sanitization.ts";
 import { HttpAccess } from "./service-topology.ts";
 import { IsoDateTimeSchema } from "./schema-primitives.ts";
 import { PolicyViolation, ProviderUnavailable, TimeoutError } from "./tagged-errors.ts";
@@ -37,13 +43,6 @@ type HttpFetch = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>
 const defaultRequestHeaders = {
   accept: "text/html,application/xhtml+xml",
 } as const;
-
-const redactedHeaderValue = "[REDACTED]";
-
-const explicitlySensitiveHeaderNames = new Set(["cookie2", "set-cookie2"]);
-
-const sensitiveHeaderNamePattern =
-  /(?:^|[-])(authorization|cookie|token|secret|session|api[-]?key)(?:$|[-])/;
 
 function readCauseMessage(cause: unknown, fallback: string) {
   if ((typeof cause === "object" && cause !== null) || typeof cause === "function") {
@@ -102,25 +101,8 @@ function toHttpAccessFailure(
   });
 }
 
-function shouldSanitizeHeader(name: string) {
-  return explicitlySensitiveHeaderNames.has(name) || sensitiveHeaderNamePattern.test(name);
-}
-
 export function sanitizeHttpHeaders(headers: Iterable<readonly [string, string]>) {
-  return Array.from(headers)
-    .map(([name, value]) => {
-      const normalizedName = name.toLowerCase();
-
-      return {
-        name: normalizedName,
-        value: shouldSanitizeHeader(normalizedName) ? redactedHeaderValue : value,
-      };
-    })
-    .sort((left, right) =>
-      left.name === right.name
-        ? left.value.localeCompare(right.value)
-        : left.name.localeCompare(right.name),
-    );
+  return sanitizeHeaderEntries(headers);
 }
 
 function sizeBytes(value: string) {
@@ -133,13 +115,16 @@ function sha256(value: string) {
 
 function buildCapturePayload(
   plan: Schema.Schema.Type<typeof RunPlanSchema>,
+  visibility: Schema.Schema.Type<typeof ArtifactVisibilitySchema>,
   keySuffix: string,
   mediaType: string,
   body: string,
 ) {
-  const locator = Schema.decodeUnknownSync(StorageLocatorSchema)({
-    namespace: `captures/${plan.targetId}`,
-    key: `${plan.id}/${keySuffix}`,
+  const locator = buildCaptureStorageLocator({
+    targetId: plan.targetId,
+    runId: plan.id,
+    keySuffix,
+    visibility,
   });
 
   return Schema.decodeUnknownSync(HttpCapturePayloadSchema)({
@@ -269,12 +254,13 @@ export function captureHttpArtifacts(
 
     const requestPayload = buildCapturePayload(
       decodedPlan,
+      "redacted",
       "request-metadata.json",
       "application/json",
       `${JSON.stringify(
         {
           method: "GET",
-          url: decodedPlan.entryUrl,
+          url: sanitizeUrlForExport(decodedPlan.entryUrl),
           headers: sanitizeHttpHeaders(Object.entries(requestHeaders)),
         },
         null,
@@ -283,6 +269,7 @@ export function captureHttpArtifacts(
     );
     const responsePayload = buildCapturePayload(
       decodedPlan,
+      "redacted",
       "response-metadata.json",
       "application/json",
       `${JSON.stringify(
@@ -290,16 +277,23 @@ export function captureHttpArtifacts(
           status: response.status,
           ok: response.ok,
           redirected: response.redirected,
-          url: response.url || decodedPlan.entryUrl,
+          url: sanitizeUrlForExport(response.url || decodedPlan.entryUrl),
           headers: sanitizeHttpHeaders(response.headers.entries()),
         },
         null,
         2,
       )}\n`,
     );
-    const htmlPayload = buildCapturePayload(decodedPlan, "body.html", responseMediaType, body);
+    const htmlPayload = buildCapturePayload(
+      decodedPlan,
+      "raw",
+      "body.html",
+      responseMediaType,
+      body,
+    );
     const timingsPayload = buildCapturePayload(
       decodedPlan,
+      "redacted",
       "timings.json",
       "application/json",
       `${JSON.stringify({ durationMs }, null, 2)}\n`,
@@ -344,6 +338,86 @@ export function captureHttpArtifacts(
       ],
       payloads,
     });
+  });
+}
+
+export const HttpArtifactExportSchema = Schema.Struct({
+  artifactId: NonEmptyStringSchema,
+  kind: ArtifactKindSchema,
+  sourceVisibility: ArtifactVisibilitySchema,
+  mediaType: NonEmptyStringSchema,
+  body: Schema.String,
+});
+
+export const HttpArtifactExportBundleSchema = Schema.Struct({
+  capturedAt: IsoDateTimeSchema,
+  exports: Schema.Array(HttpArtifactExportSchema),
+});
+
+function summarizeHttpArtifactExportFallback(artifactId: string, note: string) {
+  return `${JSON.stringify({ artifactId, note }, null, 2)}\n`;
+}
+
+function buildRedactedHttpExportBody(
+  artifact: Schema.Schema.Type<typeof ArtifactMetadataRecordSchema>,
+  payload: Schema.Schema.Type<typeof HttpCapturePayloadSchema> | undefined,
+) {
+  if (payload === undefined) {
+    return summarizeHttpArtifactExportFallback(
+      artifact.artifactId,
+      "Artifact payload was unavailable for redacted export.",
+    );
+  }
+
+  switch (artifact.kind) {
+    case "requestMetadata":
+    case "responseMetadata":
+    case "timings": {
+      return payload.body;
+    }
+    case "html": {
+      try {
+        return summarizeHtmlForRedactedExport(payload.body);
+      } catch {
+        return summarizeHttpArtifactExportFallback(
+          artifact.artifactId,
+          "Artifact payload failed redaction validation.",
+        );
+      }
+    }
+    default: {
+      return summarizeHttpArtifactExportFallback(
+        artifact.artifactId,
+        "Artifact kind is not supported by the HTTP redacted export surface.",
+      );
+    }
+  }
+}
+
+export function buildRedactedHttpArtifactExports(
+  bundle: Schema.Schema.Type<typeof HttpCaptureBundleSchema>,
+) {
+  const payloadsByLocator = new Map(
+    bundle.payloads.map(
+      (payload) => [`${payload.locator.namespace}/${payload.locator.key}`, payload] as const,
+    ),
+  );
+
+  return Schema.decodeUnknownSync(HttpArtifactExportBundleSchema)({
+    capturedAt: bundle.capturedAt,
+    exports: bundle.artifacts.map((artifact) => {
+      const payload = payloadsByLocator.get(
+        `${artifact.locator.namespace}/${artifact.locator.key}`,
+      );
+
+      return {
+        artifactId: artifact.artifactId,
+        kind: artifact.kind,
+        sourceVisibility: artifact.visibility,
+        mediaType: "application/json",
+        body: buildRedactedHttpExportBody(artifact, payload),
+      };
+    }),
   });
 }
 

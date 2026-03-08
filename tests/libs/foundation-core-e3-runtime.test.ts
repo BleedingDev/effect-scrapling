@@ -11,6 +11,7 @@ import { AccessPolicySchema } from "../../libs/foundation/core/src/access-policy
 import {
   HttpAccessLive,
   HttpCaptureBundleSchema,
+  buildRedactedHttpArtifactExports,
   captureHttpArtifacts,
 } from "../../libs/foundation/core/src/http-access-runtime.ts";
 import { RunPlanSchema } from "../../libs/foundation/core/src/run-state.ts";
@@ -491,7 +492,12 @@ describe("foundation-core access runtime", () => {
       );
 
       expect(capturedArtifacts).toHaveLength(4);
-      expect(capturedArtifacts[0]?.locator.namespace).toBe("captures/target-product-001");
+      expect(capturedArtifacts.map(({ locator }) => locator.namespace)).toEqual([
+        "captures/redacted/target-product-001",
+        "captures/redacted/target-product-001",
+        "captures/raw/target-product-001",
+        "captures/redacted/target-product-001",
+      ]);
     }),
   );
 
@@ -564,6 +570,8 @@ describe("foundation-core access runtime", () => {
           { name: "x-auth-token", value: "[REDACTED]" },
           { name: "x-request-id", value: "req-keep-me" },
         ]);
+        expect(requestMetadata.url).toBe("https://example.com/products/001");
+        expect(responseMetadata.url).toBe("https://example.com/products/001");
         expect(redactedBodies).toContain("[REDACTED]");
         expect(redactedBodies).not.toContain("request-secret");
         expect(redactedBodies).not.toContain("request-cookie-secret");
@@ -572,6 +580,60 @@ describe("foundation-core access runtime", () => {
         expect(redactedBodies).not.toContain("response-cookie-secret");
         expect(redactedBodies).not.toContain("response-auth-token-secret");
       }),
+  );
+
+  it.effect("defaults HTTP exports to redacted payloads while keeping raw HTML segregated", () =>
+    Effect.gen(function* () {
+      const decision = yield* planAccessExecution({
+        target: Schema.decodeUnknownSync(TargetProfileSchema)({
+          ...Schema.encodeSync(TargetProfileSchema)(target),
+          seedUrls: ["https://example.com/products/001?token=entry-secret"],
+        }),
+        pack,
+        accessPolicy: httpPolicy,
+        createdAt: FIXED_DATE,
+      });
+      const bundle = yield* captureHttpArtifacts(
+        decision.plan,
+        async () =>
+          new Response(
+            `<html><head><title>HTTP Export token=title-secret</title></head><body><main>Bearer html-secret token=body-secret</main><a href="/checkout?session=session-secret#frag">checkout</a><form action="?csrf=form-secret#frag"></form><input type="hidden" value="hidden-secret" /></body></html>`,
+            {
+              status: 200,
+              headers: { "content-type": "text/html; charset=utf-8" },
+            },
+          ),
+        () => new Date(FIXED_DATE),
+        () => 15,
+      );
+      const exportBundle = buildRedactedHttpArtifactExports(bundle);
+      const requestExport = JSON.parse(exportBundle.exports[0]?.body ?? "{}");
+      const htmlExport = JSON.parse(exportBundle.exports[2]?.body ?? "{}");
+
+      expect(
+        bundle.artifacts.map(({ visibility, locator }) => ({
+          visibility,
+          namespace: locator.namespace,
+        })),
+      ).toEqual([
+        { visibility: "redacted", namespace: "captures/redacted/target-product-001" },
+        { visibility: "redacted", namespace: "captures/redacted/target-product-001" },
+        { visibility: "raw", namespace: "captures/raw/target-product-001" },
+        { visibility: "redacted", namespace: "captures/redacted/target-product-001" },
+      ]);
+      expect(requestExport.url).toBe("https://example.com/products/001?token=%5BREDACTED%5D");
+      expect(htmlExport).toEqual({
+        title: "HTTP Export token=[REDACTED]",
+        textPreview: "Bearer [REDACTED] token=[REDACTED]",
+        linkTargets: ["/checkout?session=%5BREDACTED%5D", "?csrf=%5BREDACTED%5D"],
+        hiddenFieldCount: 1,
+      });
+      expect(exportBundle.exports[2]?.body).not.toContain("title-secret");
+      expect(exportBundle.exports[2]?.body).not.toContain("body-secret");
+      expect(exportBundle.exports[2]?.body).not.toContain("session-secret");
+      expect(exportBundle.exports[2]?.body).not.toContain("form-secret");
+      expect(exportBundle.exports[2]?.body).not.toContain("hidden-secret");
+    }),
   );
 
   it.effect("rejects browser-required plans for HTTP access", () =>

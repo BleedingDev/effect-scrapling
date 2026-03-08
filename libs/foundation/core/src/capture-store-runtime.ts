@@ -1,4 +1,5 @@
 import { Effect, Option, Ref, Schema } from "effect";
+import { enforceCaptureArtifactBoundary } from "./capture-artifact-storage.ts";
 import { ArtifactMetadataRecordSchema, StorageLocatorSchema } from "./config-storage.ts";
 import { HttpCaptureBundleSchema, HttpCapturePayloadSchema } from "./http-access-runtime.ts";
 import { CanonicalIdentifierSchema } from "./schema-primitives.ts";
@@ -57,6 +58,19 @@ function sortPayloads(
 }
 
 function validateBundleConsistency(bundle: Schema.Schema.Type<typeof HttpCaptureBundleSchema>) {
+  for (const artifact of bundle.artifacts) {
+    try {
+      enforceCaptureArtifactBoundary(artifact);
+    } catch {
+      return Effect.fail(
+        new PolicyViolation({
+          message:
+            "Capture-store bundles must keep raw and redacted artifacts in separate storage namespaces.",
+        }),
+      );
+    }
+  }
+
   const artifactKeys = sortArtifacts(bundle.artifacts).map(({ locator }) =>
     payloadStorageKey(locator),
   );

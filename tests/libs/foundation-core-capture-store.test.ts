@@ -13,7 +13,7 @@ import {
 function makeBundle(runId: string, htmlBody = "<html><body>ok</body></html>") {
   const responsePayload = Schema.decodeUnknownSync(HttpCapturePayloadSchema)({
     locator: {
-      namespace: "captures/target-product-001",
+      namespace: "captures/redacted/target-product-001",
       key: "plan-001/response-metadata.json",
     },
     mediaType: "application/json",
@@ -21,7 +21,7 @@ function makeBundle(runId: string, htmlBody = "<html><body>ok</body></html>") {
   });
   const htmlPayload = Schema.decodeUnknownSync(HttpCapturePayloadSchema)({
     locator: {
-      namespace: "captures/target-product-001",
+      namespace: "captures/raw/target-product-001",
       key: "plan-001/body.html",
     },
     mediaType: "text/html; charset=utf-8",
@@ -138,6 +138,32 @@ describe("foundation-core capture store runtime", () => {
         );
 
       expect(inconsistentMessage).toContain("one-to-one mapping");
+
+      const boundaryViolationMessage = yield* store
+        .persistBundle("run-001", {
+          ...Schema.encodeSync(HttpCaptureBundleSchema)(makeBundle("run-001")),
+          artifacts: [
+            {
+              ...Schema.encodeSync(ArtifactMetadataRecordSchema)(
+                makeBundle("run-001").artifacts[0]!,
+              ),
+              visibility: "raw",
+              locator: {
+                namespace: "captures/redacted/target-product-001",
+                key: "plan-001/body.html",
+              },
+            },
+            Schema.encodeSync(ArtifactMetadataRecordSchema)(makeBundle("run-001").artifacts[1]!),
+          ],
+        })
+        .pipe(
+          Effect.match({
+            onFailure: ({ message }) => message,
+            onSuccess: () => "unexpected-success",
+          }),
+        );
+
+      expect(boundaryViolationMessage).toContain("separate storage namespaces");
     }),
   );
 });

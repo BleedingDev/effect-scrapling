@@ -1,6 +1,5 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import * as cheerio from "cheerio";
 import { Deferred, Effect, Exit, Layer, Ref, Schema } from "effect";
 import {
   makeInMemoryBrowserAccessSecurityPolicy,
@@ -8,12 +7,14 @@ import {
 } from "./browser-access-policy.ts";
 import { makeBrowserCrashTelemetry, type BrowserLeakDetector } from "./browser-leak-detection.ts";
 import { ArtifactVisibilitySchema } from "./budget-lease-artifact.ts";
+import { buildCaptureStorageLocator } from "./capture-artifact-storage.ts";
 import {
   type ArtifactMetadataRecord,
   ArtifactMetadataRecordSchema,
   StorageLocatorSchema,
 } from "./config-storage.ts";
 import { BrowserAccess } from "./service-topology.ts";
+import { sanitizeUrlForExport, summarizeHtmlForRedactedExport } from "./secret-sanitization.ts";
 import type { RunPlan } from "./run-state.ts";
 import { RunPlanSchema } from "./run-state.ts";
 import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
@@ -214,15 +215,9 @@ type BrowserProcessLaunchDecision =
 const TEXT_ENCODER = new TextEncoder();
 const idleState: BrowserRuntimeState = { status: "idle" };
 const closedState: BrowserRuntimeState = { status: "closed" };
-const redactedExportValue = "[REDACTED]";
 const strippedScreenshotMessage = "Binary screenshot payload omitted from redacted export.";
 const missingPayloadExportNote = "Artifact payload was unavailable for redacted export.";
 const invalidPayloadExportNote = "Artifact payload failed redaction validation.";
-const sensitiveArtifactNamePattern =
-  /(?:authorization|cookie|token|secret|session|api[-_]?key|password|credential|csrf)/iu;
-const sensitiveInlineValuePattern =
-  /((?:authorization|cookie|token|secret|session|api[-_]?key|password|credential|csrf)[^:=\n]{0,32}\s*[:=]\s*)(\S+)/giu;
-const bearerTokenPattern = /\bBearer\s+\S+/giu;
 const idleBrowserProcessState = {
   status: "idle",
   nextGeneration: 0,
@@ -274,69 +269,17 @@ function utf8Bytes(value: string) {
   return TEXT_ENCODER.encode(value);
 }
 
-function normalizeText(value: string) {
-  return value.replace(/\s+/gu, " ").trim();
-}
-
-function sanitizeInlineSecrets(value: string) {
-  return value
-    .replace(sensitiveInlineValuePattern, (_, prefix: string) => `${prefix}${redactedExportValue}`)
-    .replace(bearerTokenPattern, `Bearer ${redactedExportValue}`);
-}
-
-function sanitizeArtifactSearchParams(searchParams: URLSearchParams) {
-  for (const [name] of searchParams.entries()) {
-    if (sensitiveArtifactNamePattern.test(name)) {
-      searchParams.set(name, redactedExportValue);
-    }
-  }
-}
-
-function sanitizeRelativeArtifactUrl(value: string) {
-  const withoutFragment = value.split("#", 1)[0] ?? "";
-  const queryIndex = withoutFragment.indexOf("?");
-  if (queryIndex === -1) {
-    return withoutFragment;
-  }
-
-  const path = withoutFragment.slice(0, queryIndex);
-  const searchParams = new URLSearchParams(withoutFragment.slice(queryIndex + 1));
-  sanitizeArtifactSearchParams(searchParams);
-
-  const encodedQuery = searchParams.toString();
-  return encodedQuery === "" ? path : `${path}?${encodedQuery}`;
-}
-
-function sanitizeArtifactUrl(value: string) {
-  const trimmedValue = value.trim();
-  if (trimmedValue === "") {
-    return trimmedValue;
-  }
-
-  try {
-    const parsed = new URL(trimmedValue);
-    parsed.username = "";
-    parsed.password = "";
-    parsed.hash = "";
-    sanitizeArtifactSearchParams(parsed.searchParams);
-
-    return parsed.toString();
-  } catch {
-    return sanitizeRelativeArtifactUrl(trimmedValue);
-  }
-}
-
 function encodeSanitizedNetworkSummary(
   summary: Schema.Schema.Type<typeof BrowserNetworkSummarySchema>,
 ) {
   const sanitized = Schema.decodeUnknownSync(BrowserNetworkSummarySchema)({
     navigation: summary.navigation.map((entry) => ({
       ...entry,
-      url: sanitizeArtifactUrl(entry.url),
+      url: sanitizeUrlForExport(entry.url),
     })),
     resources: summary.resources.map((entry) => ({
       ...entry,
-      url: sanitizeArtifactUrl(entry.url),
+      url: sanitizeUrlForExport(entry.url),
     })),
   });
 
@@ -344,45 +287,7 @@ function encodeSanitizedNetworkSummary(
 }
 
 function summarizeRenderedDomForExport(renderedDom: string) {
-  const $ = cheerio.load(renderedDom);
-  $("script, style, noscript, template").remove();
-
-  const linkTargets: string[] = [];
-  const seenTargets = new Set<string>();
-
-  for (const node of $("a[href], link[href], img[src], form[action]").toArray()) {
-    const target =
-      $(node).attr("href") ?? $(node).attr("src") ?? $(node).attr("action") ?? undefined;
-
-    if (target === undefined || target.trim() === "") {
-      continue;
-    }
-
-    const sanitizedTarget = sanitizeArtifactUrl(target.trim());
-    if (sanitizedTarget === "") {
-      continue;
-    }
-
-    if (!seenTargets.has(sanitizedTarget)) {
-      seenTargets.add(sanitizedTarget);
-      linkTargets.push(sanitizedTarget);
-    }
-  }
-
-  const textPreview = sanitizeInlineSecrets(normalizeText($("body").text() || $.root().text()));
-  const hiddenFieldCount = $("input[type='hidden'][value], meta[content]").length;
-  const title = sanitizeInlineSecrets(normalizeText($("title").first().text()));
-
-  return `${JSON.stringify(
-    {
-      title: title === "" ? null : title,
-      textPreview: textPreview === "" ? null : textPreview.slice(0, 400),
-      linkTargets,
-      hiddenFieldCount,
-    },
-    null,
-    2,
-  )}\n`;
+  return summarizeHtmlForRedactedExport(renderedDom);
 }
 
 function summarizeScreenshotForExport(artifact: ArtifactMetadataRecord) {
@@ -539,16 +444,19 @@ function remainingTimeoutMs(options: {
 
 function buildCapturePayload(input: {
   readonly plan: RunPlan;
+  readonly visibility: "raw" | "redacted";
   readonly keySuffix: string;
   readonly mediaType: string;
   readonly encoding: BrowserCapturePayloadEncoding;
   readonly body: string;
 }) {
   return Schema.decodeUnknownSync(BrowserCapturePayloadSchema)({
-    locator: {
-      namespace: `captures/${input.plan.targetId}`,
-      key: `${input.plan.id}/${input.keySuffix}`,
-    },
+    locator: buildCaptureStorageLocator({
+      targetId: input.plan.targetId,
+      runId: input.plan.id,
+      keySuffix: input.keySuffix,
+      visibility: input.visibility,
+    }),
     mediaType: input.mediaType,
     encoding: input.encoding,
     body: input.body,
@@ -887,6 +795,7 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
 
               const renderedDomPayload = buildCapturePayload({
                 plan,
+                visibility: "raw",
                 keySuffix: "rendered-dom.html",
                 mediaType: "text/html",
                 encoding: "utf8",
@@ -894,6 +803,7 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
               });
               const screenshotPayload = buildCapturePayload({
                 plan,
+                visibility: "raw",
                 keySuffix: "screenshot.png",
                 mediaType: "image/png",
                 encoding: "base64",
@@ -901,6 +811,7 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
               });
               const networkSummaryPayload = buildCapturePayload({
                 plan,
+                visibility: "redacted",
                 keySuffix: "network-summary.json",
                 mediaType: "application/json",
                 encoding: "utf8",
@@ -908,6 +819,7 @@ const captureDecodedBrowserArtifacts = Effect.fn("BrowserAccess.captureDecodedBr
               });
               const timingsPayload = buildCapturePayload({
                 plan,
+                visibility: "redacted",
                 keySuffix: "timings.json",
                 mediaType: "application/json",
                 encoding: "utf8",
