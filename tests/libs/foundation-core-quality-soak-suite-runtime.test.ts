@@ -101,4 +101,33 @@ describe("foundation-core quality soak suite runtime", () => {
       expect(artifact.stability.unboundedGrowthDetected).toBe(true);
     }),
   );
+
+  it.effect(
+    "rejects malformed suites with non-contiguous iterations through shared contracts",
+    () =>
+      Effect.gen(function* () {
+        const error = yield* Effect.flip(
+          evaluateQualitySoakSuite({
+            suiteId: "suite-e7-soak-endurance",
+            generatedAt: "2026-03-08T19:45:00.000Z",
+            samples: [
+              makeSample({
+                iteration: 1,
+                baselineCorpusMs: 12,
+                incumbentComparisonMs: 20,
+                heapDeltaKiB: 100,
+              }),
+              makeSample({
+                iteration: 3,
+                baselineCorpusMs: 18,
+                incumbentComparisonMs: 30,
+                heapDeltaKiB: 120,
+              }),
+            ],
+          }),
+        );
+
+        expect(error.message).toContain("contiguous iteration");
+      }),
+  );
 });

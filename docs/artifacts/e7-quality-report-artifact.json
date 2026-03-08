@@ -994,19 +994,19 @@
       "measurements": {
         "baselineCorpus": {
           "samples": 2,
-          "minMs": 38.546,
-          "meanMs": 38.807,
-          "p95Ms": 39.069,
-          "maxMs": 39.069
+          "minMs": 43.201,
+          "meanMs": 46.677,
+          "p95Ms": 50.153,
+          "maxMs": 50.153
         },
         "incumbentComparison": {
           "samples": 2,
-          "minMs": 120.303,
-          "meanMs": 126.895,
-          "p95Ms": 133.487,
-          "maxMs": 133.487
+          "minMs": 134.388,
+          "meanMs": 144.145,
+          "p95Ms": 153.902,
+          "maxMs": 153.902
         },
-        "heapDeltaKiB": 1248.668
+        "heapDeltaKiB": 1353.336
       },
       "comparison": {
         "baselinePath": null,

@@ -22,6 +22,7 @@ describe("e7 quality report harness", () => {
       artifactPath: "tmp/e7-quality-report.json",
     });
     expect(() => parseOptions(["--artifact"])).toThrow("Missing value for argument: --artifact");
+    expect(() => parseOptions(["--unknown"])).toThrow("Unknown argument: --unknown");
   });
 
   it("builds a default evidence bundle with aligned report sources", async () => {
@@ -52,11 +53,32 @@ describe("e7 quality report harness", () => {
 
       expect(persisted).toEqual(artifact);
       expect(artifact.summary.decision).toBe(artifact.evidence.promotionGate.verdict);
+      expect(artifact.summary.status).toBe("warn");
+      expect(artifact.summary.warningSectionKeys).toEqual(["performanceBudget", "promotionGate"]);
+      expect(artifact.summary.failingSectionKeys).toEqual([]);
       expect(artifact.sections).toHaveLength(6);
       expect(writes).toHaveLength(1);
       expect((await runDefaultQualityReport()).reportId).toBe("report-e7-quality");
     } finally {
       await rm(directory, { force: true, recursive: true });
     }
+  });
+
+  it("fails the CLI deterministically on unsupported arguments", async () => {
+    const exitCodes = new Array<number>();
+    const writes = new Array<string>();
+
+    await expect(
+      runQualityReportCli(["--unknown"], {
+        setExitCode: (code) => {
+          exitCodes.push(code);
+        },
+        writeLine: (line) => {
+          writes.push(line);
+        },
+      }),
+    ).rejects.toThrow("Unknown argument: --unknown");
+    expect(exitCodes).toEqual([1]);
+    expect(writes).toEqual([]);
   });
 });

@@ -31,6 +31,8 @@ describe("e7 soak endurance suite harness", () => {
       iterations: DEFAULT_ITERATIONS,
       warmupIterations: DEFAULT_WARMUP_ITERATIONS,
     });
+    expect(() => parseOptions(["--iterations", "0"])).toThrow();
+    expect(() => parseOptions(["--unknown"])).toThrow("Unknown argument: --unknown");
   });
 
   it("writes a stability report with bounded growth in a passing run", async () => {
