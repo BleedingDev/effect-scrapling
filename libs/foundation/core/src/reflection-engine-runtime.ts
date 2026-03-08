@@ -134,6 +134,7 @@ function buildDecision(input: PackPromotionAutomationInput) {
       Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
         id: `promotion-${input.pack.id}-${input.verdict.action}-${input.verdict.snapshotDiffId}`,
         packId: input.pack.id,
+        sourceVersion: input.pack.version,
         triggerVerdictId: input.verdict.id,
         createdAt: input.verdict.createdAt,
         fromState: input.pack.state,

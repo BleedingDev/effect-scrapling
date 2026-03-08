@@ -576,6 +576,7 @@ function makeRuntimeLayer(
             Effect.succeed({
               id: `decision-${verdict.id}`,
               packId: pack.id,
+              sourceVersion: pack.version,
               fromState: "shadow",
               toState: "active",
               triggerVerdictId: verdict.id,

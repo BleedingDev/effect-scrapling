@@ -8,7 +8,7 @@ import { CanonicalDomainSchema, CanonicalIdentifierSchema } from "./schema-primi
 import { SelectorCandidateSchema, SelectorFallbackPolicySchema } from "./selector-engine.ts";
 import { TargetKindSchema } from "./target-profile.ts";
 
-const DOMAIN_PATTERN_SCHEMA = Schema.Trim.pipe(
+const DOMAIN_PATTERN_SCHEMA = Schema.String.pipe(
   Schema.check(Schema.isNonEmpty()),
   Schema.check(Schema.isLowercased()),
   Schema.decode({

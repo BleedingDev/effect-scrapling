@@ -378,6 +378,7 @@ describe("foundation-core service topology", () => {
     const promotionDecision = Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
       id: "decision-pack-example-com-001",
       packId: sitePack.id,
+      sourceVersion: sitePack.version,
       fromState: "draft",
       toState: "shadow",
       triggerVerdictId: "verdict-pack-example-com-001",

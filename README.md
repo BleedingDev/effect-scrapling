@@ -150,6 +150,9 @@ Operator runbooks:
 - [E6 pack versioning and immutable active policy](docs/runbooks/e6-pack-versioning-immutable-active.md)
 - [E6 reflector clustering](docs/runbooks/e6-reflector-clustering.md)
 - [E6 validator ladder](docs/runbooks/e6-validator-ladder.md)
+- [E6 security review](docs/runbooks/e6-security-review.md)
+- [E6 performance budget](docs/runbooks/e6-performance-budget.md)
+- [E6 operations and rollback drill](docs/runbooks/e6-operations-rollback-drill.md)
 - [E5 post-validation triage](docs/artifacts/e5-post-validation-triage.md)
 - `docs/artifacts/e0-post-validation-triage.md`
 
@@ -265,6 +268,28 @@ E6 capability-slice operators can run `bun run check:e6-capability-slice` or
 `bun run example:e6-capability-slice` to validate the current end-to-end domain
 adaptation path with typed lifecycle, registry, trust, reflection, validation,
 automation, and governance evidence.
+
+E6 security reviewers can run `bun run check:e6-security-review` to replay the
+current pack-domain, version-bound governance decision, and immutable-active
+governance controls.
+
+E6 performance operators can run `bun run benchmark:e6-performance-budget`,
+`bun run check:e6-performance-budget`, or
+`bun test tests/scripts/e6-performance-budget.test.ts`. The latest committed
+scorecard artifact is
+[`docs/artifacts/e6-performance-budget-scorecard.json`](docs/artifacts/e6-performance-budget-scorecard.json).
+The capability-slice lane in that scorecard is measured as a 3-run micro-batch
+average per sample so the p95 reflects steady-state E6 work instead of a single
+runtime spike.
+
+E6 consumer validation can run `bun run check:e6-sdk-consumer` or
+`bun run example:e6-sdk-consumer` through workspace
+`@effect-scrapling/foundation-core/*` subpath contracts only.
+
+E6 rollback operators can follow
+[`docs/runbooks/e6-operations-rollback-drill.md`](docs/runbooks/e6-operations-rollback-drill.md)
+and record the latest executed evidence in
+[`docs/artifacts/e6-rollback-drill.md`](docs/artifacts/e6-rollback-drill.md).
 
 ## CLI
 

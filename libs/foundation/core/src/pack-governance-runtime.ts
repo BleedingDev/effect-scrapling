@@ -282,6 +282,15 @@ function ensureDecisionMatchesSubject(input: {
     );
   }
 
+  if (input.decision.sourceVersion !== input.subjectPackVersion) {
+    return Effect.fail(
+      new PolicyViolation({
+        message:
+          "Expected the curator decision source version to match the explicitly selected pack artifact version.",
+      }),
+    );
+  }
+
   if (input.subjectArtifact.definition.pack.state !== input.decision.fromState) {
     return Effect.fail(
       new PolicyViolation({

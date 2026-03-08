@@ -204,6 +204,7 @@ const verdict = Schema.decodeUnknownSync(QualityVerdictSchema)({
 const decision = Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
   id: "decision-pack-example-com-001",
   packId: sitePack.id,
+  sourceVersion: sitePack.version,
   fromState: "draft",
   toState: "shadow",
   triggerVerdictId: verdict.id,

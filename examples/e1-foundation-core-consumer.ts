@@ -63,6 +63,7 @@ export function runFoundationCoreConsumerExample() {
     const promotionDecision = Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
       id: "decision-pack-example-com-001",
       packId: "pack-example-com",
+      sourceVersion: "2026.03.06",
       fromState: "draft",
       toState: "shadow",
       triggerVerdictId: "verdict-pack-example-com-001",

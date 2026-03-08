@@ -367,6 +367,7 @@ function makeSqliteWorkflowLayer(filename: string) {
               Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
                 id: `decision-${verdict.id}`,
                 packId: pack.id,
+                sourceVersion: pack.version,
                 fromState: "shadow",
                 toState: "active",
                 triggerVerdictId: verdict.id,

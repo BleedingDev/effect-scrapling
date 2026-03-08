@@ -17,6 +17,7 @@ import {
 const E5_PUBLIC_IMPORT_PATH = "effect-scrapling/e5" as const;
 const CREATED_AT = "2026-03-08T09:30:00.000Z";
 const PACK_ID = "pack-example-com";
+const PACK_VERSION = "2026.03.08";
 const ACCESS_POLICY_ID = "policy-http";
 
 export const e5SdkConsumerPrerequisites = [
@@ -184,6 +185,7 @@ function makeDecision(verdictId: string) {
   return Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
     id: `decision-${verdictId}`,
     packId: PACK_ID,
+    sourceVersion: PACK_VERSION,
     fromState: "shadow",
     toState: "active",
     triggerVerdictId: verdictId,

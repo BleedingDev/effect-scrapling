@@ -1,0 +1,145 @@
+{
+  "benchmark": "e6-performance-budget",
+  "generatedAt": "2026-03-08T13:46:12.618Z",
+  "environment": {
+    "bun": "1.3.10",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "sampleSize": 12,
+  "warmupIterations": 3,
+  "profile": {
+    "catalogSize": 192,
+    "capabilitySliceRunsPerSample": 3,
+    "registryLookupsPerSample": 128,
+    "signalCount": 48,
+    "reflectionIterationsPerSample": 12,
+    "governanceCatalogArtifacts": 2,
+    "governanceIterationsPerSample": 12,
+    "minimumOccurrenceCount": 2
+  },
+  "budgets": {
+    "capabilitySliceP95Ms": 25,
+    "registryResolutionP95Ms": 25,
+    "reflectionRecommendationP95Ms": 100,
+    "promotionGovernanceP95Ms": 100,
+    "heapDeltaKiB": 16384
+  },
+  "measurements": {
+    "capabilitySlice": {
+      "samples": 12,
+      "minMs": 7.608,
+      "meanMs": 10.35,
+      "p95Ms": 16.329,
+      "maxMs": 20.536
+    },
+    "registryResolution": {
+      "samples": 12,
+      "minMs": 4.658,
+      "meanMs": 6.491,
+      "p95Ms": 9.424,
+      "maxMs": 10.238
+    },
+    "reflectionRecommendation": {
+      "samples": 12,
+      "minMs": 18.099,
+      "meanMs": 20.499,
+      "p95Ms": 23.47,
+      "maxMs": 23.823
+    },
+    "promotionGovernance": {
+      "samples": 12,
+      "minMs": 27.683,
+      "meanMs": 39.402,
+      "p95Ms": 66.922,
+      "maxMs": 70.491
+    },
+    "heapDeltaKiB": 14351.583
+  },
+  "stability": {
+    "resolvedPackFingerprint": {
+      "expected": "pack-shop-example-com:shadow@2026.03.08",
+      "observed": "pack-shop-example-com:shadow@2026.03.08",
+      "consistent": true
+    },
+    "clusterFingerprint": {
+      "expected": "price:selectorRegressionPattern:2>title:fixtureConsensusPattern:2",
+      "observed": "price:selectorRegressionPattern:2>title:fixtureConsensusPattern:2",
+      "consistent": true
+    },
+    "proposalFingerprint": {
+      "expected": "price:promoteSelectorCandidate:price/fallback>title:appendSelectorCandidate:title/secondary",
+      "observed": "price:promoteSelectorCandidate:price/fallback>title:appendSelectorCandidate:title/secondary",
+      "consistent": true
+    },
+    "qualityAction": {
+      "expected": "active",
+      "observed": "active",
+      "consistent": true
+    },
+    "decisionAction": {
+      "expected": "active",
+      "observed": "active",
+      "consistent": true
+    },
+    "governanceAuditFingerprint": {
+      "expected": "demote-previous-active>activate-version",
+      "observed": "demote-previous-active>activate-version",
+      "consistent": true
+    },
+    "activeVersion": {
+      "expected": "2026.03.09",
+      "observed": "2026.03.09",
+      "consistent": true
+    },
+    "registryResolvedPackFingerprint": {
+      "expected": "pack-shop-example-com-shadow:shadow@2026.03.08",
+      "observed": "pack-shop-example-com-shadow:shadow@2026.03.08",
+      "consistent": true
+    },
+    "reflectionClusterFingerprint": {
+      "expected": "price:selectorRegressionPattern:24>title:fixtureConsensusPattern:24",
+      "observed": "price:selectorRegressionPattern:24>title:fixtureConsensusPattern:24",
+      "consistent": true
+    },
+    "reflectionProposalFingerprint": {
+      "expected": "price:promoteSelectorCandidate:price/fallback>title:appendSelectorCandidate:title/secondary",
+      "observed": "price:promoteSelectorCandidate:price/fallback>title:appendSelectorCandidate:title/secondary",
+      "consistent": true
+    },
+    "promotionQualityAction": {
+      "expected": "active",
+      "observed": "active",
+      "consistent": true
+    },
+    "promotionDecisionAction": {
+      "expected": "active",
+      "observed": "active",
+      "consistent": true
+    },
+    "promotionGovernanceAuditFingerprint": {
+      "expected": "demote-previous-active>activate-version",
+      "observed": "demote-previous-active>activate-version",
+      "consistent": true
+    },
+    "promotionActiveVersion": {
+      "expected": "2026.03.09",
+      "observed": "2026.03.09",
+      "consistent": true
+    }
+  },
+  "comparison": {
+    "baselinePath": null,
+    "comparable": false,
+    "incompatibleReason": null,
+    "deltas": {
+      "capabilitySliceP95Ms": null,
+      "registryResolutionP95Ms": null,
+      "reflectionRecommendationP95Ms": null,
+      "promotionGovernanceP95Ms": null,
+      "heapDeltaKiB": null
+    }
+  },
+  "violations": [],
+  "status": "pass"
+}

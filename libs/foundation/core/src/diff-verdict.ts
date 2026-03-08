@@ -1,6 +1,7 @@
 import { Effect, Schema, SchemaGetter } from "effect";
 import { ObservationSchema } from "./observation-snapshot.ts";
 import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "./schema-primitives.ts";
+import { PackVersionSchema } from "./site-pack.ts";
 
 const RATE_DELTA_SCHEMA = Schema.Number.check(Schema.isGreaterThanOrEqualTo(-1)).check(
   Schema.isLessThanOrEqualTo(1),
@@ -29,6 +30,7 @@ const QUALITY_VERDICT_FIELDS = {
 const PACK_PROMOTION_DECISION_FIELDS = {
   id: CanonicalIdentifierSchema,
   packId: CanonicalIdentifierSchema,
+  sourceVersion: PackVersionSchema,
   triggerVerdictId: CanonicalIdentifierSchema,
   createdAt: IsoDateTimeSchema,
 } as const;

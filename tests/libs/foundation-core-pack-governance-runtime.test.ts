@@ -135,6 +135,7 @@ describe("foundation-core pack governance runtime", () => {
           decision: {
             id: "decision-promote-001",
             packId: "pack-shop-example-com",
+            sourceVersion: "2026.03.08",
             triggerVerdictId: "verdict-001",
             createdAt: "2026-03-08T12:00:00.000Z",
             fromState: "shadow",
@@ -201,6 +202,7 @@ describe("foundation-core pack governance runtime", () => {
         decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
           id: "decision-promote-001b",
           packId: "pack-shop-example-com",
+          sourceVersion: "2026.03.08",
           triggerVerdictId: "verdict-001b",
           createdAt: "2026-03-08T12:00:00.000Z",
           fromState: "shadow",
@@ -250,6 +252,7 @@ describe("foundation-core pack governance runtime", () => {
           decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
             id: "decision-rollback-001",
             packId: "pack-shop-example-com",
+            sourceVersion: "2026.03.07",
             triggerVerdictId: "verdict-rollback-001",
             createdAt: "2026-03-09T10:00:00.000Z",
             fromState: "quarantined",
@@ -309,6 +312,7 @@ describe("foundation-core pack governance runtime", () => {
         decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
           id: "decision-quarantine-001",
           packId: "pack-shop-example-com",
+          sourceVersion: "2026.03.09",
           triggerVerdictId: "verdict-quarantine-001",
           createdAt: "2026-03-09T11:00:00.000Z",
           fromState: "active",
@@ -354,6 +358,7 @@ describe("foundation-core pack governance runtime", () => {
           decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
             id: "decision-quarantine-002",
             packId: "pack-shop-example-com",
+            sourceVersion: "2026.03.09",
             triggerVerdictId: "verdict-quarantine-002",
             createdAt: "2026-03-09T11:00:00.000Z",
             fromState: "active",
@@ -390,6 +395,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-promote-002",
               packId: "pack-shop-example-com",
+              sourceVersion: "2026.03.08",
               triggerVerdictId: "verdict-002",
               createdAt: "2026-03-08T12:00:00.000Z",
               fromState: "shadow",
@@ -421,6 +427,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-promote-003",
               packId: "pack-shop-example-com",
+              sourceVersion: "2026.03.08",
               triggerVerdictId: "verdict-003",
               createdAt: "2026-03-09T12:00:00.000Z",
               fromState: "shadow",
@@ -457,6 +464,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-promote-003b",
               packId: "pack-shop-example-com",
+              sourceVersion: "2026.03.08",
               triggerVerdictId: "verdict-003b",
               createdAt: "2026-03-09T12:00:00.000Z",
               fromState: "shadow",
@@ -498,6 +506,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-rollback-002",
               packId: "pack-shop-example-com",
+              sourceVersion: "2026.03.07",
               triggerVerdictId: "verdict-rollback-002",
               createdAt: "2026-03-09T10:00:00.000Z",
               fromState: "quarantined",
@@ -529,6 +538,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-rollback-003",
               packId: "pack-shop-example-com",
+              sourceVersion: "2026.03.07",
               triggerVerdictId: "verdict-rollback-003",
               createdAt: "2026-03-09T10:00:00.000Z",
               fromState: "quarantined",
@@ -565,6 +575,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-promote-004",
               packId: "pack-shop-example-com",
+              sourceVersion: "2026.03.08",
               triggerVerdictId: "verdict-004",
               createdAt: "2026-03-09T12:00:00.000Z",
               fromState: "guarded",
@@ -600,6 +611,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-promote-005",
               packId: "pack-other-example-com",
+              sourceVersion: "2026.03.08",
               triggerVerdictId: "verdict-005",
               createdAt: "2026-03-09T12:00:00.000Z",
               fromState: "shadow",
@@ -635,6 +647,7 @@ describe("foundation-core pack governance runtime", () => {
             decision: Schema.decodeUnknownSync(PackPromotionDecisionSchema)({
               id: "decision-promote-006",
               packId: "pack-shop-example-com",
+              sourceVersion: "2026.03.11",
               triggerVerdictId: "verdict-006",
               createdAt: "2026-03-09T12:00:00.000Z",
               fromState: "shadow",
