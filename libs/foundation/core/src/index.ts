@@ -226,6 +226,40 @@ export {
   makeReflectionEngine,
 } from "./reflection-engine-runtime.ts";
 export {
+  QualityReportArtifact,
+  QualityReportArtifactSchema,
+  QualityReportEvidenceBundle,
+  QualityReportEvidenceBundleSchema,
+  QualityReportSection,
+  QualityReportSectionSchema,
+  QualityReportSummary,
+  QualityReportSummarySchema,
+  buildQualityReportExport,
+} from "./quality-report-runtime.ts";
+export type {
+  QualityReportArtifactEncoded,
+  QualityReportEvidenceBundleEncoded,
+  QualityReportSectionEncoded,
+  QualityReportSummaryEncoded,
+} from "./quality-report-runtime.ts";
+export {
+  QualitySoakArtifact,
+  QualitySoakArtifactSchema,
+  QualitySoakPolicy,
+  QualitySoakPolicySchema,
+  QualitySoakSample,
+  QualitySoakSampleSchema,
+  QualitySoakStabilityReport,
+  QualitySoakStabilityReportSchema,
+  evaluateQualitySoakSuite,
+} from "./quality-soak-suite-runtime.ts";
+export type {
+  QualitySoakArtifactEncoded,
+  QualitySoakPolicyEncoded,
+  QualitySoakSampleEncoded,
+  QualitySoakStabilityReportEncoded,
+} from "./quality-soak-suite-runtime.ts";
+export {
   AccessPlanner,
   ArtifactExporter,
   BrowserAccess,

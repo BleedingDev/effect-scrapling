@@ -12,12 +12,14 @@
   "files": [
     "dist",
     "src/e5.ts",
+    "src/e7.ts",
     "src/sdk",
     "package.json",
     "README.md"
   ],
   "exports": {
     "./e5": "./src/e5.ts",
+    "./e7": "./src/e7.ts",
     "./sdk": "./src/sdk/index.ts"
   },
   "engines": {
@@ -89,6 +91,10 @@
     "benchmark:e7-incumbent-comparison": "bun run scripts/benchmarks/e7-incumbent-comparison.ts --artifact docs/artifacts/e7-incumbent-comparison-artifact.json",
     "check:e7-incumbent-comparison": "bun test tests/libs/foundation-core-incumbent-comparison-runtime.test.ts tests/scripts/e7-incumbent-comparison.test.ts && bun run benchmark:e7-incumbent-comparison",
     "check:e7-promotion-gate-policy": "bun test tests/libs/foundation-core-promotion-gate-policy-runtime.test.ts",
+    "benchmark:e7-quality-report": "bun run scripts/benchmarks/e7-quality-report.ts --artifact docs/artifacts/e7-quality-report-artifact.json",
+    "check:e7-quality-report": "bun test tests/libs/foundation-core-quality-report-runtime.test.ts tests/scripts/e7-quality-report.test.ts tests/sdk/e7-public-consumer.test.ts && bun run benchmark:e7-quality-report",
+    "benchmark:e7-soak-endurance-suite": "bun run scripts/benchmarks/e7-soak-endurance-suite.ts --artifact docs/artifacts/e7-soak-endurance-artifact.json",
+    "check:e7-soak-endurance-suite": "bun test tests/libs/foundation-core-quality-soak-suite-runtime.test.ts tests/scripts/e7-soak-endurance-suite.test.ts && bun run benchmark:e7-soak-endurance-suite",
     "check:e1-foundation-core-consumer": "bun test tests/guardrails/e1-foundation-core-consumer.verify.test.ts && bun run example:e1-foundation-core-consumer",
     "benchmark:e0-performance-budget": "bun run scripts/benchmarks/e0-performance-budget.ts --baseline docs/artifacts/e0-performance-budget-baseline.json",
     "format": "bunx --bun oxfmt $(rg --files src tests apps libs tools scripts examples -g '*.ts')",

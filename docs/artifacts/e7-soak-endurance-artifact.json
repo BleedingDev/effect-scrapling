@@ -1,0 +1,57 @@
+{
+  "benchmark": "e7-soak-endurance-suite",
+  "suiteId": "suite-e7-soak-endurance",
+  "generatedAt": "2026-03-08T19:45:00.000Z",
+  "policy": {
+    "maxBaselineCorpusGrowthMs": 100,
+    "maxIncumbentComparisonGrowthMs": 200,
+    "maxHeapGrowthKiB": 4096,
+    "maxConsecutiveHeapGrowth": 4
+  },
+  "sampleCount": 4,
+  "status": "pass",
+  "violations": [],
+  "stability": {
+    "baselineCorpusGrowthMs": 0,
+    "incumbentComparisonGrowthMs": 0,
+    "heapGrowthKiB": 0,
+    "maxConsecutiveHeapGrowth": 1,
+    "baselineFingerprintStable": true,
+    "comparisonFingerprintStable": true,
+    "unboundedGrowthDetected": false
+  },
+  "samples": [
+    {
+      "iteration": 1,
+      "baselineCorpusMs": 53.795,
+      "incumbentComparisonMs": 138.347,
+      "heapDeltaKiB": 872.644,
+      "baselineFingerprint": "corpus-retail-smoke|2|2|case-catalog-example-com:pack-catalog-example-com:target-catalog-example-com:run-catalog-example-com-snapshot:0.97:price:{\"amount\":1299,\"currency\":\"USD\"},title:\"Catalog Widget\"|case-offers-example-com:pack-offers-example-com:target-offers-example-com:run-offers-example-com-snapshot:0.97:price:{\"amount\":899,\"currency\":\"USD\"},title:\"Offers Widget\"",
+      "comparisonFingerprint": "comparison-retail-smoke|2|2|case-catalog-example-com:match:diff-case-catalog-example-com:0|case-offers-example-com:match:diff-case-offers-example-com:0"
+    },
+    {
+      "iteration": 2,
+      "baselineCorpusMs": 40.964,
+      "incumbentComparisonMs": 128.03,
+      "heapDeltaKiB": 651.082,
+      "baselineFingerprint": "corpus-retail-smoke|2|2|case-catalog-example-com:pack-catalog-example-com:target-catalog-example-com:run-catalog-example-com-snapshot:0.97:price:{\"amount\":1299,\"currency\":\"USD\"},title:\"Catalog Widget\"|case-offers-example-com:pack-offers-example-com:target-offers-example-com:run-offers-example-com-snapshot:0.97:price:{\"amount\":899,\"currency\":\"USD\"},title:\"Offers Widget\"",
+      "comparisonFingerprint": "comparison-retail-smoke|2|2|case-catalog-example-com:match:diff-case-catalog-example-com:0|case-offers-example-com:match:diff-case-offers-example-com:0"
+    },
+    {
+      "iteration": 3,
+      "baselineCorpusMs": 40.249,
+      "incumbentComparisonMs": 138.329,
+      "heapDeltaKiB": 675.601,
+      "baselineFingerprint": "corpus-retail-smoke|2|2|case-catalog-example-com:pack-catalog-example-com:target-catalog-example-com:run-catalog-example-com-snapshot:0.97:price:{\"amount\":1299,\"currency\":\"USD\"},title:\"Catalog Widget\"|case-offers-example-com:pack-offers-example-com:target-offers-example-com:run-offers-example-com-snapshot:0.97:price:{\"amount\":899,\"currency\":\"USD\"},title:\"Offers Widget\"",
+      "comparisonFingerprint": "comparison-retail-smoke|2|2|case-catalog-example-com:match:diff-case-catalog-example-com:0|case-offers-example-com:match:diff-case-offers-example-com:0"
+    },
+    {
+      "iteration": 4,
+      "baselineCorpusMs": 48.02,
+      "incumbentComparisonMs": 128.042,
+      "heapDeltaKiB": 652.167,
+      "baselineFingerprint": "corpus-retail-smoke|2|2|case-catalog-example-com:pack-catalog-example-com:target-catalog-example-com:run-catalog-example-com-snapshot:0.97:price:{\"amount\":1299,\"currency\":\"USD\"},title:\"Catalog Widget\"|case-offers-example-com:pack-offers-example-com:target-offers-example-com:run-offers-example-com-snapshot:0.97:price:{\"amount\":899,\"currency\":\"USD\"},title:\"Offers Widget\"",
+      "comparisonFingerprint": "comparison-retail-smoke|2|2|case-catalog-example-com:match:diff-case-catalog-example-com:0|case-offers-example-com:match:diff-case-offers-example-com:0"
+    }
+  ]
+}
