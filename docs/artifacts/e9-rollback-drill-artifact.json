@@ -1,0 +1,28 @@
+{
+  "benchmark": "e9-rollback-drill",
+  "drillId": "drill-e9-rollback",
+  "generatedAt": "2026-03-08T22:45:00.000Z",
+  "status": "pass",
+  "executedChecks": [
+    "bun run check:e9-reference-packs",
+    "bun run check:e9-scrapling-parity",
+    "bun run check:e9-high-friction-canary",
+    "bun run check:e9-launch-readiness"
+  ],
+  "rollbackTargets": [
+    {
+      "domain": "alza",
+      "rollbackVersion": "2026.03.06"
+    },
+    {
+      "domain": "datart",
+      "rollbackVersion": "2026.03.06"
+    },
+    {
+      "domain": "tsbohemia",
+      "rollbackVersion": "2026.03.06"
+    }
+  ],
+  "recoveryReady": true,
+  "missingDocs": []
+}

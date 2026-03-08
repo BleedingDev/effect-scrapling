@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Effect, Schema } from "effect";
 import { captureHttpArtifacts } from "../libs/foundation/core/src/http-access-runtime.ts";
 import {
@@ -23,10 +26,18 @@ import {
   evaluateValidatorLadder,
 } from "../libs/foundation/core/src/validator-ladder-runtime.ts";
 import { SnapshotSchema } from "../libs/foundation/core/src/observation-snapshot.ts";
-import { E9ReferencePackSchema, ReferencePackDomainSchema } from "./e9-reference-packs.ts";
+import {
+  E9ReferencePackSchema,
+  ReferencePackDomainSchema,
+  alzaTeslaReferencePack,
+  datartTeslaReferencePack,
+  tsBohemiaTeslaReferencePack,
+} from "./e9-reference-packs.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const PositiveIntSchema = Schema.Int.check(Schema.isGreaterThan(0));
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
+export const DEFAULT_E9_REFERENCE_PACK_VALIDATION_GENERATED_AT = "2026-03-08T18:45:00.000Z";
 
 const ReferencePackValidationCaseInputSchema = Schema.Struct({
   domain: ReferencePackDomainSchema,
@@ -97,6 +108,52 @@ export const E9ReferencePackValidationArtifactSchema = Schema.Struct({
   results: E9ReferencePackValidationCaseResultsSchema,
   status: Schema.Literal("pass"),
 });
+
+async function readFixture(relativePath: string) {
+  return readFile(resolve(REPO_ROOT, relativePath), "utf8");
+}
+
+export async function createDefaultE9ReferencePackValidationInput(
+  generatedAt = DEFAULT_E9_REFERENCE_PACK_VALIDATION_GENERATED_AT,
+) {
+  const [alzaHtml, datartHtml, tsBohemiaHtml] = await Promise.all([
+    readFixture("tests/fixtures/e9-alza-tesla.html"),
+    readFixture("tests/fixtures/e9-datart-tesla.html"),
+    readFixture("tests/fixtures/e9-tsbohemia-tesla.html"),
+  ]);
+
+  return Schema.decodeUnknownSync(E9ReferencePackValidationInputSchema)({
+    validationId: "validation-e9-reference-packs",
+    generatedAt,
+    cases: [
+      {
+        domain: "alza",
+        referencePack: alzaTeslaReferencePack,
+        entryUrl: "https://www.alza.cz/tesla-smart-air-purifier-s300w-d7911946.htm",
+        html: alzaHtml,
+        previousActiveVersion: "2026.03.06",
+        nextActiveVersion: "2026.03.08",
+      },
+      {
+        domain: "datart",
+        referencePack: datartTeslaReferencePack,
+        entryUrl:
+          "https://www.datart.cz/cisticka-vzduchu-tesla-smart-air-purifier-s200b-cerna.html",
+        html: datartHtml,
+        previousActiveVersion: "2026.03.06",
+        nextActiveVersion: "2026.03.08",
+      },
+      {
+        domain: "tsbohemia",
+        referencePack: tsBohemiaTeslaReferencePack,
+        entryUrl: "https://www.tsbohemia.cz/tesla-te-300_d341842",
+        html: tsBohemiaHtml,
+        previousActiveVersion: "2026.03.06",
+        nextActiveVersion: "2026.03.08",
+      },
+    ],
+  });
+}
 
 function makeRunPlan(input: {
   domain: Schema.Schema.Type<typeof ReferencePackDomainSchema>;
