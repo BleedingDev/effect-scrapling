@@ -131,5 +131,6 @@ Forbidden shortcuts:
 
 ## Related Runbooks
 
+- `docs/runbooks/e6-shadow-active-governance-automation.md`
 - `docs/runbooks/e6-pack-governance-actions.md`
 - `docs/runbooks/e6-pack-registry-resolution.md`

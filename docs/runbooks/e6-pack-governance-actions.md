@@ -155,6 +155,7 @@ Forbidden rollback shortcuts:
 
 ## Related Runbooks
 
+- `docs/runbooks/e6-shadow-active-governance-automation.md`
 - `docs/runbooks/e6-pack-versioning-immutable-active.md`
 - `docs/runbooks/e6-pack-registry-resolution.md`
 - `docs/runbooks/e1-site-pack-state.md`

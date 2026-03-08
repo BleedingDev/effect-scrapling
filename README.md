@@ -146,6 +146,7 @@ Operator runbooks:
 - [E6 selector trust decay](docs/runbooks/e6-selector-trust-decay.md)
 - [E6 pack candidate generator](docs/runbooks/e6-pack-candidate-generator.md)
 - [E6 pack governance actions](docs/runbooks/e6-pack-governance-actions.md)
+- [E6 shadow to active governance automation](docs/runbooks/e6-shadow-active-governance-automation.md)
 - [E6 pack versioning and immutable active policy](docs/runbooks/e6-pack-versioning-immutable-active.md)
 - [E6 reflector clustering](docs/runbooks/e6-reflector-clustering.md)
 - [E6 validator ladder](docs/runbooks/e6-validator-ladder.md)
@@ -242,12 +243,28 @@ that surface is library-level through
 `@effect-scrapling/foundation-core/reflection-engine-runtime`; there is no
 dedicated CLI or API wrapper yet.
 
+E6 shadow-to-active automation operators can run
+`bun test tests/libs/foundation-core-validator-ladder-runtime.test.ts`,
+`bun test tests/libs/foundation-core-reflection-engine-runtime.test.ts`,
+`bun test tests/libs/foundation-core-pack-governance-runtime.test.ts`, and
+`bun run check:e6-capability-slice`. That is the current truthful replay path
+for typed validator gating, reflected promotion decisions, and governed
+activation of `shadow` candidates into fresh `active` versions.
+
 E6 pack-governance operators can run
 `bun test tests/libs/foundation-core-pack-governance-runtime.test.ts` and
 `bun test tests/libs/foundation-core-pack-lifecycle-runtime.test.ts`. Today that
 surface is library-level through
 `@effect-scrapling/foundation-core/pack-governance-runtime`; there is no
-dedicated CLI or API wrapper yet.
+dedicated CLI or API wrapper yet. The end-to-end operator workflow for
+validator gates, reflected promotion decisions, rollback, and audit expectations
+is documented in
+[`docs/runbooks/e6-shadow-active-governance-automation.md`](docs/runbooks/e6-shadow-active-governance-automation.md).
+
+E6 capability-slice operators can run `bun run check:e6-capability-slice` or
+`bun run example:e6-capability-slice` to validate the current end-to-end domain
+adaptation path with typed lifecycle, registry, trust, reflection, validation,
+automation, and governance evidence.
 
 ## CLI
 

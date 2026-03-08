@@ -124,6 +124,7 @@ Rollback sequence:
 
 ## Related Runbooks
 
+- `docs/runbooks/e6-shadow-active-governance-automation.md`
 - `docs/runbooks/e2-snapshot-diff-engine.md`
 - `docs/runbooks/e4-browser-soak-load.md`
 - `docs/runbooks/e5-workflow-simulation.md`
