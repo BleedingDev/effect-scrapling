@@ -8,6 +8,14 @@ import {
 } from "../../libs/foundation/core/src/promotion-gate-policy-runtime.ts";
 import { makePerformanceArtifact, makeQualityArtifact } from "../helpers/e7-promotion-fixtures.ts";
 
+async function makeComparablePerformanceArtifact() {
+  const baseline = await makePerformanceArtifact();
+  return await makePerformanceArtifact({
+    baselinePath: "/tmp/e7-performance-budget-baseline.json",
+    baseline,
+  });
+}
+
 describe("foundation-core promotion gate policy runtime", () => {
   it("promotes when quality regressions stay clear and performance is comparable within thresholds", async () => {
     const baseline = await makePerformanceArtifact();
@@ -270,11 +278,7 @@ describe("foundation-core promotion gate policy runtime", () => {
   });
 
   it("holds when live canary evidence records failing but non-quarantine scenarios", async () => {
-    const baseline = await makePerformanceArtifact();
-    const performance = await makePerformanceArtifact({
-      baselinePath: "/tmp/e7-performance-budget-baseline.json",
-      baseline,
-    });
+    const performance = await makeComparablePerformanceArtifact();
     const canary = Schema.decodeUnknownSync(LiveCanaryArtifactSchema)({
       benchmark: "e7-live-canary",
       suiteId: "suite-e7-live-canary",
@@ -325,11 +329,152 @@ describe("foundation-core promotion gate policy runtime", () => {
     );
 
     expect(evaluation.verdict).toBe("hold");
-    expect(evaluation.canary?.verdict).toBe("hold");
-    expect(
-      evaluation.rationale.some(
-        ({ code, message }) => code === "canary-hold" && message.includes("scenario-hold"),
-      ),
-    ).toBe(true);
+    expect(evaluation.canary).toMatchObject({
+      suiteId: "suite-e7-live-canary",
+      scenarioCount: 2,
+      passedScenarioCount: 1,
+      failedScenarioIds: ["scenario-hold"],
+      verdict: "hold",
+    });
+    expect(evaluation.rationale.map(({ code }) => code)).toEqual([
+      "quality-clean",
+      "performance-clean",
+      "canary-hold",
+    ]);
+    expect(evaluation.rationale.at(-1)?.message).toContain("scenario-hold");
+  });
+
+  it("promotes when live canary evidence stays clean and contributes a canary-clean rationale", async () => {
+    const performance = await makeComparablePerformanceArtifact();
+    const canary = Schema.decodeUnknownSync(LiveCanaryArtifactSchema)({
+      benchmark: "e7-live-canary",
+      suiteId: "suite-e7-live-canary",
+      generatedAt: "2026-03-08T21:15:00.000Z",
+      status: "pass",
+      summary: {
+        scenarioCount: 2,
+        passedScenarioCount: 2,
+        failedScenarioIds: [],
+        verdict: "promote",
+      },
+      results: [
+        {
+          scenarioId: "scenario-browser",
+          authorizationId: "auth-scenario-browser",
+          provider: "browser",
+          action: "active",
+          failedStages: [],
+          status: "pass",
+          plannerRationale: [
+            { key: "mode", message: "Hybrid browser canary path." },
+            { key: "rendering", message: "Browser rendering is required." },
+          ],
+        },
+        {
+          scenarioId: "scenario-http",
+          authorizationId: "auth-scenario-http",
+          provider: "http",
+          action: "active",
+          failedStages: [],
+          status: "pass",
+          plannerRationale: [
+            { key: "mode", message: "HTTP canary path." },
+            { key: "capture-path", message: "HTTP capture is sufficient." },
+          ],
+        },
+      ],
+    });
+
+    const evaluation = await Effect.runPromise(
+      evaluatePromotionGatePolicy({
+        evaluationId: "promotion-e7-canary-clean",
+        generatedAt: "2026-03-08T21:15:00.000Z",
+        quality: makeQualityArtifact(),
+        performance,
+        canary,
+      }),
+    );
+
+    expect(evaluation.verdict).toBe("promote");
+    expect(evaluation.canary).toMatchObject({
+      suiteId: "suite-e7-live-canary",
+      scenarioCount: 2,
+      passedScenarioCount: 2,
+      failedScenarioIds: [],
+      verdict: "promote",
+    });
+    expect(evaluation.rationale.map(({ code }) => code)).toEqual([
+      "quality-clean",
+      "performance-clean",
+      "canary-clean",
+    ]);
+    expect(evaluation.rationale.at(-1)?.message).toContain("did not add promotion risk");
+  });
+
+  it("quarantines when live canary evidence alone contributes a canary-quarantine rationale", async () => {
+    const performance = await makeComparablePerformanceArtifact();
+    const canary = Schema.decodeUnknownSync(LiveCanaryArtifactSchema)({
+      benchmark: "e7-live-canary",
+      suiteId: "suite-e7-live-canary",
+      generatedAt: "2026-03-08T21:15:00.000Z",
+      status: "fail",
+      summary: {
+        scenarioCount: 2,
+        passedScenarioCount: 1,
+        failedScenarioIds: ["scenario-quarantine"],
+        verdict: "quarantine",
+      },
+      results: [
+        {
+          scenarioId: "scenario-browser",
+          authorizationId: "auth-scenario-browser",
+          provider: "browser",
+          action: "active",
+          failedStages: [],
+          status: "pass",
+          plannerRationale: [
+            { key: "mode", message: "Hybrid browser canary path." },
+            { key: "rendering", message: "Browser rendering is required." },
+          ],
+        },
+        {
+          scenarioId: "scenario-quarantine",
+          authorizationId: "auth-scenario-quarantine",
+          provider: "http",
+          action: "quarantined",
+          failedStages: ["replay"],
+          status: "fail",
+          plannerRationale: [
+            { key: "mode", message: "HTTP canary path." },
+            { key: "capture-path", message: "HTTP capture is sufficient." },
+          ],
+        },
+      ],
+    });
+
+    const evaluation = await Effect.runPromise(
+      evaluatePromotionGatePolicy({
+        evaluationId: "promotion-e7-canary-quarantine",
+        generatedAt: "2026-03-08T21:15:00.000Z",
+        quality: makeQualityArtifact(),
+        performance,
+        canary,
+      }),
+    );
+
+    expect(evaluation.verdict).toBe("quarantine");
+    expect(evaluation.canary).toMatchObject({
+      suiteId: "suite-e7-live-canary",
+      scenarioCount: 2,
+      passedScenarioCount: 1,
+      failedScenarioIds: ["scenario-quarantine"],
+      verdict: "quarantine",
+    });
+    expect(evaluation.rationale.map(({ code }) => code)).toEqual([
+      "quality-clean",
+      "performance-clean",
+      "canary-quarantine",
+    ]);
+    expect(evaluation.rationale.at(-1)?.message).toContain("scenario-quarantine");
   });
 });

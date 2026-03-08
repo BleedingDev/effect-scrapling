@@ -1,5 +1,7 @@
 import { rm } from "node:fs/promises";
 import { describe, expect, it } from "@effect-native/bun-test";
+import { Schema } from "effect";
+import { LiveCanaryArtifactSchema } from "../../libs/foundation/core/src/live-canary-runtime.ts";
 import {
   createDefaultLiveCanaryInput,
   parseOptions,
@@ -35,17 +37,73 @@ describe("e7 live canary harness", () => {
     }
   });
 
+  it("persists the same deterministic artifact that the CLI emits on success", async () => {
+    const artifactPath = "tmp/e7-live-canary-cli-artifact.json";
+    const exitCodes = new Array<number>();
+    const output = new Array<string>();
+
+    try {
+      const artifact = await runLiveCanaryCli(["--artifact", artifactPath], {
+        setExitCode: (code) => {
+          exitCodes.push(code);
+        },
+        writeLine: (line) => {
+          output.push(line);
+        },
+      });
+      const persistedArtifact = Schema.decodeUnknownSync(LiveCanaryArtifactSchema)(
+        JSON.parse(await Bun.file(artifactPath).text()),
+      );
+
+      expect(exitCodes).toEqual([]);
+      expect(output).toHaveLength(1);
+      const outputLine = output[0];
+      if (outputLine === undefined) {
+        throw new Error("Expected the live canary CLI to emit exactly one artifact line.");
+      }
+      expect(JSON.parse(outputLine)).toEqual(artifact);
+      expect(persistedArtifact).toEqual(artifact);
+      expect(
+        artifact.results.map(({ scenarioId, provider, action, status }) => ({
+          scenarioId,
+          provider,
+          action,
+          status,
+        })),
+      ).toEqual([
+        {
+          scenarioId: "canary-product-browser",
+          provider: "browser",
+          action: "active",
+          status: "pass",
+        },
+        {
+          scenarioId: "canary-product-http",
+          provider: "http",
+          action: "active",
+          status: "pass",
+        },
+      ]);
+    } finally {
+      await rm("tmp", { force: true, recursive: true });
+    }
+  });
+
   it("fails the CLI deterministically on unsupported arguments", async () => {
     const exitCodes = new Array<number>();
+    const output = new Array<string>();
 
     await expect(
       runLiveCanaryCli(["--unknown"], {
         setExitCode: (code) => {
           exitCodes.push(code);
         },
-        writeLine: () => undefined,
+        writeLine: (line) => {
+          output.push(line);
+        },
       }),
     ).rejects.toThrow("Unknown argument: --unknown");
     expect(exitCodes).toEqual([1]);
+    expect(output).toEqual([]);
   });
 });
