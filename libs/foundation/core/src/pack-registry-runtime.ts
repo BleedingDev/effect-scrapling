@@ -1,6 +1,6 @@
 import { Effect, Layer, Option, Schema } from "effect";
 import { PackRegistry } from "./service-topology.ts";
-import { PackRegistryLookup, SitePack, SitePackSchema } from "./site-pack.ts";
+import { PackRegistryLookup, SitePack, SitePackSchema, comparePackVersions } from "./site-pack.ts";
 import type { PackRegistryLookupState } from "./site-pack.ts";
 
 export const PackRegistryCatalogSchema = Schema.Array(SitePackSchema).pipe(
@@ -86,7 +86,7 @@ function compareCatalogCandidates(lookup: PackRegistryLookup, left: SitePack, ri
     return specificityDelta;
   }
 
-  const versionDelta = right.version.localeCompare(left.version);
+  const versionDelta = comparePackVersions(right.version, left.version);
   if (versionDelta !== 0) {
     return versionDelta;
   }

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Schema } from "effect";
-import { SitePackDslSchema } from "../../libs/foundation/core/src/site-pack.ts";
+import {
+  SitePackDslSchema,
+  comparePackVersions,
+} from "../../libs/foundation/core/src/site-pack.ts";
 
 const validSitePackDsl = {
   pack: {
@@ -207,5 +210,11 @@ describe("foundation-core site pack DSL", () => {
         },
       }),
     ).toThrow();
+  });
+
+  it("compares dotted numeric pack versions by numeric segments before lexical fallback", () => {
+    expect(comparePackVersions("1.10.0", "1.9.0")).toBeGreaterThan(0);
+    expect(comparePackVersions("2026.3.10", "2026.03.9")).toBeGreaterThan(0);
+    expect(comparePackVersions("2026.03.08", "2026.03.08")).toBe(0);
   });
 });

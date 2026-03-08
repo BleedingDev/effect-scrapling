@@ -107,4 +107,36 @@ describe("foundation-core pack registry runtime", () => {
       }),
     ).toBe("pack-tenant-active");
   });
+
+  it("prefers the newest pack version by numeric segment ordering instead of raw lexical ordering", () => {
+    const resolved = resolvePackRegistryLookup(
+      [
+        Schema.decodeUnknownSync(SitePackSchema)({
+          id: "pack-version-1-9-0",
+          domainPattern: "*.example.com",
+          state: "active",
+          accessPolicyId: "policy-default",
+          version: "1.9.0",
+        }),
+        Schema.decodeUnknownSync(SitePackSchema)({
+          id: "pack-version-1-10-0",
+          domainPattern: "*.example.com",
+          state: "active",
+          accessPolicyId: "policy-default",
+          version: "1.10.0",
+        }),
+      ],
+      {
+        domain: "shop.example.com",
+        states: ["active"],
+      },
+    );
+
+    expect(
+      Option.match(resolved, {
+        onNone: () => "none",
+        onSome: (pack) => pack.id,
+      }),
+    ).toBe("pack-version-1-10-0");
+  });
 });

@@ -39,6 +39,53 @@ const PACK_VERSION_SCHEMA = Schema.Trim.pipe(
   }),
 );
 
+export const PackVersionSchema = PACK_VERSION_SCHEMA;
+
+const PACK_VERSION_SEGMENT_PATTERN = /[A-Za-z]+|\d+/gu;
+
+function packVersionSegments(version: string) {
+  return version.match(PACK_VERSION_SEGMENT_PATTERN) ?? [version];
+}
+
+function isNumericPackVersionSegment(segment: string) {
+  return /^\d+$/u.test(segment);
+}
+
+export function comparePackVersions(left: string, right: string) {
+  const leftSegments = packVersionSegments(left);
+  const rightSegments = packVersionSegments(right);
+  const segmentCount = Math.max(leftSegments.length, rightSegments.length);
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const leftSegment = leftSegments[index];
+    const rightSegment = rightSegments[index];
+
+    if (leftSegment === undefined) {
+      return -1;
+    }
+
+    if (rightSegment === undefined) {
+      return 1;
+    }
+
+    if (isNumericPackVersionSegment(leftSegment) && isNumericPackVersionSegment(rightSegment)) {
+      const numericDelta = Number(leftSegment) - Number(rightSegment);
+      if (numericDelta !== 0) {
+        return numericDelta;
+      }
+
+      continue;
+    }
+
+    const segmentDelta = leftSegment.localeCompare(rightSegment);
+    if (segmentDelta !== 0) {
+      return segmentDelta;
+    }
+  }
+
+  return left.localeCompare(right);
+}
+
 const DEFAULT_PACK_LOOKUP_STATES = ["active", "shadow"] as const;
 
 export const PackStateSchema = Schema.Literals([
@@ -284,6 +331,7 @@ export const SitePackDslSchema = SitePackDslBaseSchema.pipe(
 );
 
 export type PackState = Schema.Schema.Type<typeof PackStateSchema>;
+export type PackVersion = Schema.Schema.Type<typeof PackVersionSchema>;
 export type SitePackFieldSelectorEncoded = Schema.Codec.Encoded<typeof SitePackFieldSelector>;
 export type SitePackAssertionsEncoded = Schema.Codec.Encoded<typeof SitePackAssertionsSchema>;
 export type SitePackPolicy = Schema.Schema.Type<typeof SitePackPolicySchema>;
