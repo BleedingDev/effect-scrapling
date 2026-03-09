@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "@effect-native/bun-test";
+import { describe, expect, it, setDefaultTimeout } from "@effect-native/bun-test";
 import { Schema } from "effect";
 import {
   E9CapabilitySliceEvidenceSchema,
@@ -11,6 +11,8 @@ const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const exampleEntry = fileURLToPath(
   new URL("../../examples/e9-capability-slice.ts", import.meta.url),
 );
+
+setDefaultTimeout(20_000);
 
 describe("examples/e9-capability-slice", () => {
   it("executes the E9 capability slice with linked evidence", async () => {

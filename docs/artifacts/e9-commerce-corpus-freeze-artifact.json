@@ -1,0 +1,292 @@
+{
+  "benchmark": "e9-commerce-corpus-freeze",
+  "generatedAt": "2026-03-09T05:05:45.606Z",
+  "sourceArtifactPath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e9-commerce-discovery-artifact.json",
+  "targetPageCount": 640,
+  "selectedPageCount": 24,
+  "selectedSiteCount": 4,
+  "minimumSiteCount": 20,
+  "siteCoverage": 0.2,
+  "pageCoverage": 0.0375,
+  "shortfallCount": 616,
+  "pages": [
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/deti-138113",
+      "pageType": "listing",
+      "title": "Dětská móda » online na ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/s/celebrity-collections-7779",
+      "pageType": "search",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-air-purifier-s200b-cerna.html",
+      "pageType": "product",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/TSPD/?type=25",
+      "pageType": "listing",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/vyhledavani.html?query=tesla",
+      "pageType": "search",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/16-arzopa-z1rc-cerna-2560x1600-1610-60-hz-500cdm2-minihdmi-usbc-repro+dp708002/",
+      "pageType": "product",
+      "title": "16\" Arzopa Z1RC černá / 2560x1600 / 16:10 / 60 Hz / 500cd-m2 / mi | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/?q=tesla",
+      "pageType": "search",
+      "title": "tesla - Zbozi.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187586",
+      "pageType": "listing",
+      "title": "Tenisky (AIR FORCE 1) pro ženy online | ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-ar300-bila.html",
+      "pageType": "product",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/27-dell-p2723qe-professional-ips-3840x2160-169-5ms-10001-350cdm2-1xhdmi-1xdp-vesa-3ynbd+dp519327/",
+      "pageType": "product",
+      "title": "27\" DELL P2723QE Professional / IPS / 3840x2160 / 16:9 / 5ms / 10 | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/hracky/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187589",
+      "pageType": "listing",
+      "title": "Tenisky (AIR MAX 90) pro ženy online | ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/odvlhcovac-tesla-smart-dehumidifier-d400.html",
+      "pageType": "product",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/a4tech-g3200n-bezdratova-opticka-mys-24ghz-10m-dosah-vtrack-cerna+dp266292/",
+      "pageType": "product",
+      "title": "A4tech G3-200N / bezdrátová optická myš / 2.4GHz / 10m dosah / V- | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/hracky/detske-zbrane/?vyrobce=hasbro",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/znacka?category=20201",
+      "pageType": "listing",
+      "title": "Přehled značek - ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/male-domaci-spotrebice.html",
+      "pageType": "listing",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/adata-legend-710-512gb-ssd-m2-2280-pcie-gen-3-cteni-2400mbps-zapis-1800mbps+dp646970/",
+      "pageType": "product",
+      "title": "ADATA LEGEND 710 512GB / SSD / M.2 2280 / PCIe Gen 3 / čtení: 240 | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/hracky/kreativni-a-vyukove-hracky/interaktivni-knihy/?vyrobce=albi",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/s/five-star-girl-109490",
+      "pageType": "search",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/alavis-maxima-triple-blend-extra-silny-700g+dp529780/",
+      "pageType": "product",
+      "title": "ALAVIS MAXIMA Triple Blend Extra silný 700g | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/elektronika/tv-a-audio-video/audio/bluetooth-reproduktory/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/amd-ryzen-7-5700x-34ghz-tray-turbo-46-ghz-8c16t-l2-4mb-l3-32mb-am4-zen-3-65w+dp649095/",
+      "pageType": "product",
+      "title": "AMD RYZEN 7 5700X @ 3.4GHz - TRAY / Turbo 4.6 GHz / 8C16T / L2 4M | Mironet.cz",
+      "challengeSignals": []
+    }
+  ],
+  "allocations": [
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 6,
+      "allocatedPageCount": 6
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 6,
+      "allocatedPageCount": 6
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 6,
+      "allocatedPageCount": 6
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "state": "healthy",
+      "kind": "aggregator",
+      "availableSelectedPageCount": 6,
+      "allocatedPageCount": 6
+    }
+  ]
+}

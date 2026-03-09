@@ -1,0 +1,34 @@
+[
+  {
+    "siteId": "datart-cz",
+    "domain": "datart.cz",
+    "displayName": "Datart",
+    "kind": "retailer",
+    "seedUrls": ["https://www.datart.cz/"],
+    "sitemapUrls": ["https://www.datart.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "mironet-cz",
+    "domain": "mironet.cz",
+    "displayName": "Mironet",
+    "kind": "retailer",
+    "seedUrls": ["https://www.mironet.cz/"],
+    "sitemapUrls": ["https://www.mironet.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "aboutyou-cz",
+    "domain": "aboutyou.cz",
+    "displayName": "About You",
+    "kind": "retailer",
+    "seedUrls": ["https://www.aboutyou.cz/"],
+    "sitemapUrls": ["https://www.aboutyou.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "zbozi-cz",
+    "domain": "zbozi.cz",
+    "displayName": "Zbozi",
+    "kind": "aggregator",
+    "seedUrls": ["https://www.zbozi.cz/"],
+    "sitemapUrls": ["https://www.zbozi.cz/sitemap.xml"]
+  }
+]

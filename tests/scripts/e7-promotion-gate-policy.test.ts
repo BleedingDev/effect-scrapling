@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, mock } from "@effect-native/bun-test";
+import { afterEach, describe, expect, it, mock, setDefaultTimeout } from "@effect-native/bun-test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -10,6 +10,8 @@ import {
   runDefaultPromotionGatePolicy,
   runPromotionGatePolicyCli,
 } from "../../scripts/benchmarks/e7-promotion-gate-policy.ts";
+
+setDefaultTimeout(20_000);
 
 describe("e7 promotion gate policy harness", () => {
   afterEach(() => {

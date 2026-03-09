@@ -72,6 +72,16 @@ describe("e9 commerce discovery benchmark", () => {
         "https://www.zbozi.cz/telefony-navigace/mobilni-telefony/?vyrobce=apple",
       ),
     ).toBe("listing");
+    expect(
+      classifyE9DiscoveryUrl(
+        "datart-cz",
+        "https://www.datart.cz/cisticka-vzduchu-tesla-smart-air-purifier-s200b-cerna.html",
+      ),
+    ).toBe("product");
+    expect(
+      classifyE9DiscoveryUrl("datart-cz", "https://www.datart.cz/male-domaci-spotrebice.html"),
+    ).toBe("listing");
+    expect(classifyE9DiscoveryUrl("glami-cz", "https://www.glami.cz/adidas/")).toBe("listing");
   });
 
   it("does not let embedded product json-ld override strong listing signals", () => {
@@ -94,6 +104,29 @@ describe("e9 commerce discovery benchmark", () => {
     ).toEqual({
       hasJsonLdProduct: true,
       pageType: "listing",
+    });
+  });
+
+  it("lets explicit product URL hints win over generic listing signals", () => {
+    const html = `
+      <html>
+        <body>
+          ${'<a href="/item">item</a>'.repeat(48)}
+          ${"<span>1 999 Kč</span>".repeat(10)}
+        </body>
+      </html>
+    `;
+
+    expect(
+      classifyE9PageType(
+        "mironet-cz",
+        "https://www.mironet.cz/playstation-5-pro-2tb+dp780477/",
+        html,
+        "retailer",
+      ),
+    ).toEqual({
+      hasJsonLdProduct: false,
+      pageType: "product",
     });
   });
 });

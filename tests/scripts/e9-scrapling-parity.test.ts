@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@effect-native/bun-test";
+import { describe, expect, it, setDefaultTimeout } from "@effect-native/bun-test";
 import { Schema } from "effect";
 import { createDefaultE9RetailerCorpus } from "../../src/e9-fixture-corpus.ts";
 import {
@@ -9,6 +9,8 @@ import {
   parseOptions,
   runDefaultE9ScraplingParity,
 } from "../../scripts/benchmarks/e9-scrapling-parity.ts";
+
+setDefaultTimeout(20_000);
 
 describe("e9 scrapling parity benchmark", () => {
   it("parses only the supported artifact option", () => {

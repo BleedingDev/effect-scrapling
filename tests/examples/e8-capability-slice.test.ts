@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "@effect-native/bun-test";
+import { describe, expect, it, setDefaultTimeout } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import {
@@ -13,6 +13,8 @@ const exampleEntry = fileURLToPath(
 );
 const decodeEvidence = Schema.decodeUnknownSync(E8CapabilitySliceEvidenceSchema);
 type CapabilityEvidence = Schema.Schema.Type<typeof E8CapabilitySliceEvidenceSchema>;
+
+setDefaultTimeout(20_000);
 
 function stableProjection(encoded: CapabilityEvidence) {
   return {

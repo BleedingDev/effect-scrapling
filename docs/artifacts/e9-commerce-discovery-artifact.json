@@ -1,0 +1,941 @@
+{
+  "benchmark": "e9-commerce-discovery",
+  "generatedAt": "2026-03-09T05:05:31.803Z",
+  "targetSiteCount": 4,
+  "targetPagesPerSite": 6,
+  "targetPageCount": 24,
+  "selectedPageCount": 24,
+  "selectionCoverage": 1,
+  "sites": [
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.datart.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 924.036,
+        "finalUrl": "https://www.datart.cz/",
+        "ok": true,
+        "contentType": "text/html",
+        "htmlBytes": 6066,
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.datart.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 2309.984,
+        "finalUrl": "https://www.datart.cz/",
+        "ok": true,
+        "contentType": "text/html",
+        "htmlBytes": 53434,
+        "challengeSignals": []
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 7,
+      "selectedPageCount": 6,
+      "selectedProductCount": 3,
+      "selectedListingCount": 2,
+      "selectedSearchCount": 1,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-air-purifier-s200b-cerna.html",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-ar300-bila.html",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/odvlhcovac-tesla-smart-dehumidifier-d400.html",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/male-domaci-spotrebice.html",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/TSPD/?type=25",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/vyhledavani.html?query=tesla",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        }
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.mironet.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 1268.231,
+        "finalUrl": "https://www.mironet.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 496787,
+        "title": "Mironet.cz - internetový obchod",
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.mironet.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 2859.494,
+        "finalUrl": "https://www.mironet.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 503097,
+        "title": "Mironet.cz - internetový obchod",
+        "challengeSignals": []
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 136,
+      "selectedPageCount": 6,
+      "selectedProductCount": 6,
+      "selectedListingCount": 0,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.mironet.cz/16-arzopa-z1rc-cerna-2560x1600-1610-60-hz-500cdm2-minihdmi-usbc-repro+dp708002/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "16\" Arzopa Z1RC černá / 2560x1600 / 16:10 / 60 Hz / 500cd-m2 / mi | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/27-dell-p2723qe-professional-ips-3840x2160-169-5ms-10001-350cdm2-1xhdmi-1xdp-vesa-3ynbd+dp519327/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "27\" DELL P2723QE Professional / IPS / 3840x2160 / 16:9 / 5ms / 10 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/a4tech-g3200n-bezdratova-opticka-mys-24ghz-10m-dosah-vtrack-cerna+dp266292/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "A4tech G3-200N / bezdrátová optická myš / 2.4GHz / 10m dosah / V- | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/adata-legend-710-512gb-ssd-m2-2280-pcie-gen-3-cteni-2400mbps-zapis-1800mbps+dp646970/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "ADATA LEGEND 710 512GB / SSD / M.2 2280 / PCIe Gen 3 / čtení: 240 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/alavis-maxima-triple-blend-extra-silny-700g+dp529780/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "ALAVIS MAXIMA Triple Blend Extra silný 700g | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/amd-ryzen-7-5700x-34ghz-tray-turbo-46-ghz-8c16t-l2-4mb-l3-32mb-am4-zen-3-65w+dp649095/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "AMD RYZEN 7 5700X @ 3.4GHz - TRAY / Turbo 4.6 GHz / 8C16T / L2 4M | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apc-backups-pro-br650mi-650va-390w-power-saving+dp402598/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "APC Back-UPS Pro BR650MI / 650VA (390W) Power Saving | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apple-iphone-14-512gb-zluta-61-512gb-ios173+dp573060/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Apple iPhone 14 512GB žlutá / 6.1\" / 512GB / iOS17.3 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apple-iphone-16-128gb-ruzova-61-128gb-ios18+dp702613/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Apple iPhone 16 128GB růžová / 6.1\" / 128GB / iOS18 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apple-macbook-air-15-m4-2025-sky-blue-us-apple-m4-16gb-256gb-ssd-apple-10jadrova-igpu-macos+dp795669/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Apple MacBook Air 15\" M4 2025 Sky Blue US / Apple M4 / 16GB / 256 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/axagon-hmcwl9-usb-10gbps-hub-s-qi-3x-usba-usbc-hdmi-dp-4k60hz-rj45-glan-pd-100w-kabel-usbc-60cm+dp797875/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "AXAGON HMC-WL9, USB 10Gbps hub s Qi, 3x USB-A, USB-C, HDMI & DP 4 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/btoys-prekazkova-draha-se-stupinky-hudebni-balance-groove-od-3-let+dp800972/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "B-Toys Překážková dráha se stupínky hudební Balance & Groove / od | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dell-latitude-5450-xcto-seda-14-fhd-intel-core-i51335u-34ghz-16gb-512gb-ssd-intel-iris-xe-w11p+dp790312/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "DELL Latitude 5450 XCTO šedá / 14\" FHD / Intel Core i5-1335U 3.4G | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dewalt-dce530n-aku-horkovzdusna-pistole-18v-az-530-c-bez-aku+dp472626/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "DeWalt DCE530N / Aku horkovzdušná pistole / 18V / až 530 °C / bez | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dji-mic-mini-2-tx-1-rx-charging-case-cerna-bezdratovy-mikrofon-2x-vysilac-1-prijimac-nabijeci-pouzdro+dp717602/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "DJI Mic Mini (2 TX + 1 RX + Charging Case) černá / Bezdrátový mik | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dyson-big-ball-parquet-2-stribrna+dp783742/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Dyson Big Ball Parquet 2 stříbrná | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/eset-home-security-essential-1-zarizeni-1-rok+dp629528/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "ESET HOME Security Essential - 1 zařízení - 1 rok | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/eset-home-security-premium-1-zarizeni-1-rok+dp629573/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "ESET HOME Security Premium - 1 zařízení - 1 rok | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/automoto+rzn10774/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Auto-moto | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/automoto/zimni-vybava+c38303/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Auto-moto - Zimní výbava | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/chovatelske-potreby+rzn10771/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Chovatelské potřeby | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/chytre-hodinky-smart+rzn10760/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Chytré hodinky, SMART | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/domacnost+rzn10769/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Domácnost | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dum-dilna-a-zahrada+rzn10773/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dům, dílna a zahrada | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/gaming-hry-a-zabava+rzn10764/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Gaming, hry a zábava | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/hracky-pro-deti-a-miminka+rzn10770/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Hračky, pro děti a miminka | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/kancelar-a-papirnictvi+rzn10768/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Kancelář a papírnictví | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/komponenty+rzn10762/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Komponenty | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/mobily-a-tablety+rzn10758/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Mobily a tablety | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/napoje-a-potraviny+rzn21830/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Nápoje a potraviny | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/ProductList/showSearch?EXPS=91414195+or+91411391+or+91418202",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Výsledek hledání - 91414195 or 91411391 or 91418202 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/ProductList/showSearch?EXPS=93110489%2Bor%2B93110491%2Bor%2B93110494%2Bor%2B93110493%2Bor%2B93110492",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Výsledek hledání - 93110489+or+93110491+or+93110494+or+93 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        }
+      ]
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.aboutyou.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 331.726,
+        "finalUrl": "https://www.aboutyou.cz/vas-obchod",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 747535,
+        "title": "Módní online obchod s více než 1500 top značkami | ABOUT YOU",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "homepageBrowser": {
+        "url": "https://www.aboutyou.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 1373.91,
+        "finalUrl": "https://www.aboutyou.cz/vas-obchod",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 776018,
+        "title": "Módní online obchod s více než 1500 top značkami | ABOUT YOU",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 258,
+      "selectedPageCount": 6,
+      "selectedProductCount": 0,
+      "selectedListingCount": 4,
+      "selectedSearchCount": 2,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187586",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Tenisky (AIR FORCE 1) pro ženy online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187589",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Tenisky (AIR MAX 90) pro ženy online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/znacka?category=20201",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Přehled značek - ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/deti-138113",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Dětská móda » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi-20202",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Pánská móda online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi/boty-20215?brand=puma-182",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Pánské boty PUMA » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi/boty/tenisky-20345?color=38935",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Bílé pánské tenisky » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi/doplnky/tasky-batohy/batohy-20879?brand=nike-sportswear-53709",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Pánské batohy Nike Sportswear » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny-20201",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámská móda online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty » nakupuj na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=about-you-60555",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty ABOUT YOU » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=adidas-originals-290",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty ADIDAS ORIGINALS » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/celebrity-collections-7779",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/five-star-girl-109490",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kamila-sikl-108429",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kamila-sikl-aw25-109478",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kamila-sikl-co-created-by-about-you-105997",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Podstata svobody: Kamila Šikl co-created by ABOUT YOU | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kolekce-celebrit-7779",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kolekce-celebrit-7779?force-language=1",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/millane-106299",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Ženská energie: millane | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/h/product-safety-23996623440412",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Bezpečnost výrobku | ABOUT YOU pomoc a informace",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/hugo-3083?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "HUGO pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/karl-lagerfeld-5395?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Karl Lagerfeld pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/lauren-ralph-lauren-5472?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Lauren Ralph Lauren pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/polo-ralph-lauren-4352?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Polo Ralph Lauren pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/bershka-4739",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Bershka online obchod | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/coach-77444",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "COACH online obchod | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/coccinelle-4897",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Coccinelle e-shop ▷ luxusní kabelky &amp; doplňky | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        }
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.zbozi.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 1874.295,
+        "finalUrl": "https://www.zbozi.cz/?noredirect=1",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 144396,
+        "title": "Zboží.cz - Tisíce obchodů na jednom místě s možností srovnání cen",
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.zbozi.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 4528.615,
+        "finalUrl": "https://www.zbozi.cz/",
+        "ok": true,
+        "contentType": "text/html",
+        "htmlBytes": 6671,
+        "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+        "challengeSignals": []
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 138,
+      "selectedPageCount": 6,
+      "selectedProductCount": 0,
+      "selectedListingCount": 5,
+      "selectedSearchCount": 1,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.zbozi.cz/elektronika/tv-a-audio-video/audio/bluetooth-reproduktory/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/detske-zbrane/?vyrobce=hasbro",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/kreativni-a-vyukove-hracky/interaktivni-knihy/?vyrobce=albi",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/stavebnice/stavebnice-lego/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/damske-eroticke-pradlo/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/umele-vaginy-oraly-a-analy/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/vibratory/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/kategorie/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Kategorie - Zbozi.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/auticka/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/?q=tesla",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "title": "tesla - Zbozi.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/kancelar/kancelarske-potreby/kalendare/?pro-rok=2026",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        }
+      ]
+    }
+  ]
+}

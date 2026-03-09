@@ -162,8 +162,12 @@ const SITE_DISCOVERY_PROFILES: Readonly<Record<string, DiscoveryProfile>> = {
       "https://www.datart.cz/male-domaci-spotrebice.html",
       "https://www.datart.cz/vyhledavani.html?query=tesla",
     ],
-    productUrlPatterns: [/\/[^/]+\.html$/u],
-    listingUrlPatterns: [/\/[^/]+\.html\?sort=/u, /\/[^/]+\/?$/u],
+    productUrlPatterns: [/\/[^/?]*\d[^/?]*\.html$/u],
+    listingUrlPatterns: [
+      /\/(?:male-domaci-spotrebice|velke-domaci-spotrebice|tv-audio-video|telefony|pocitace-tablety)\.html$/u,
+      /\/[^/]+\.html\?sort=/u,
+      /\/[^/]+\/?$/u,
+    ],
     searchUrlPatterns: [/vyhledav/u, /[?&](query|q)=/u],
   },
   "tsbohemia-cz": {
@@ -201,12 +205,18 @@ const SITE_DISCOVERY_PROFILES: Readonly<Record<string, DiscoveryProfile>> = {
     offerUrlPatterns: [/\/vyrobek\//u, /\/obchod\//u],
   },
   "mironet-cz": {
+    extraSeedUrls: [
+      "https://www.mironet.cz/playstation-5-pro-2tb+dp780477/",
+      "https://www.mironet.cz/adata-legend-710-512gb-ssd-m2-2280-pcie-gen-3-cteni-2400mbps-zapis-1800mbps+dp646970/",
+      "https://www.mironet.cz/pocitace-a-notebooky+rzn10761/",
+      "https://www.mironet.cz/ProductList/showSearch?EXPS=91414195+or+91411391+or+91418202",
+    ],
     productUrlPatterns: [/\+dp\d+\/?$/u],
     listingUrlPatterns: [/\+rzn\d+\/?$/u, /\+c\d+\/?$/u, /\/vyprodej\/?$/u, /\/akcni-nabidky\/?$/u],
     searchUrlPatterns: [/productlist\/showsearch/u, /productlist\/remember/u],
   },
   "glami-cz": {
-    productUrlPatterns: [/\/p\/\d+/u, /^\/[^/]+\/?$/u],
+    productUrlPatterns: [/\/p\/\d+/u],
     listingUrlPatterns: [/^\/[^?]+\/$/u, /\/c\//u, /\/znacky\/?$/u],
     searchUrlPatterns: [/[?&]q=/u, /vyhled/u],
   },
@@ -229,6 +239,28 @@ const SITE_DISCOVERY_PROFILES: Readonly<Record<string, DiscoveryProfile>> = {
     productUrlPatterns: [/\/p\/[^/]+$/u, /\/produkt\//u],
     listingUrlPatterns: [/^\/c\//u, /^\/[^?]+\/$/u],
     searchUrlPatterns: [/[?&]q=/u, /vyhled/u],
+  },
+  "muziker-cz": {
+    extraSeedUrls: [
+      "https://muziker.cz/kytary",
+      "https://muziker.cz/lp-desky",
+      "https://muziker.cz/s/8ba2d716a5",
+      "https://muziker.cz/slevy-a-akce",
+    ],
+    listingUrlPatterns: [/^\/(?:kytary|lp-desky|slevy-a-akce|rozbaleno|vyhodne-sety)\/?$/u],
+    searchUrlPatterns: [/^\/s\//u, /[?&]q=/u],
+  },
+  "pilulka-cz": {
+    extraSeedUrls: [
+      "https://pilulka.cz/akce-a-slevy",
+      "https://pilulka.cz/doplnky-stravy",
+      "https://pilulka.cz/volne-prodejne-leky",
+      "https://pilulka.cz/na-imunitu",
+    ],
+    listingUrlPatterns: [
+      /^\/(?:akce-a-slevy|doplnky-stravy|volne-prodejne-leky|na-imunitu|traveni-a-metabolismus|energie-a-vitalita)\/?$/u,
+    ],
+    searchUrlPatterns: [/vyhled/u, /[?&](search|q)=/u],
   },
   "electroworld-cz": {
     productUrlPatterns: [/\/[^/]+\.html$/u],
@@ -554,6 +586,10 @@ export function classifyE9PageType(
     return { pageType: "offer" as const, hasJsonLdProduct };
   }
 
+  if (hintedPageType === "product") {
+    return { pageType: "product" as const, hasJsonLdProduct };
+  }
+
   if (hintedPageType === "listing" && !hasJsonLdProduct) {
     return { pageType: "listing" as const, hasJsonLdProduct };
   }
@@ -575,10 +611,6 @@ export function classifyE9PageType(
 
   if (listingSignals || hintedPageType === "listing") {
     return { pageType: "listing" as const, hasJsonLdProduct };
-  }
-
-  if (hintedPageType === "product") {
-    return { pageType: "product" as const, hasJsonLdProduct };
   }
 
   return { pageType: "unknown" as const, hasJsonLdProduct };

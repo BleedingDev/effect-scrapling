@@ -1,0 +1,2903 @@
+{
+  "benchmark": "e9-commerce-discovery",
+  "generatedAt": "2026-03-09T04:47:57.949Z",
+  "targetSiteCount": 13,
+  "targetPagesPerSite": 8,
+  "targetPageCount": 104,
+  "selectedPageCount": 79,
+  "selectionCoverage": 0.7596153846153846,
+  "sites": [
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "degraded",
+      "homepageHttp": {
+        "url": "https://www.alza.cz/",
+        "mode": "http",
+        "statusCode": 403,
+        "durationMs": 750.871,
+        "finalUrl": "https://www.alza.cz/",
+        "ok": false,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 63074,
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.alza.cz/",
+        "mode": "browser",
+        "statusCode": 403,
+        "durationMs": 911.803,
+        "finalUrl": "https://www.alza.cz/",
+        "ok": false,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 58676,
+        "title": "Alza.cz",
+        "challengeSignals": [
+          "cloudflare",
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 7,
+      "selectedPageCount": 0,
+      "selectedProductCount": 0,
+      "selectedListingCount": 0,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "homepageHttp": {
+        "url": "https://www.datart.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 999.857,
+        "finalUrl": "https://www.datart.cz/",
+        "ok": true,
+        "contentType": "text/html",
+        "htmlBytes": 6616,
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.datart.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 1686.855,
+        "finalUrl": "https://www.datart.cz/",
+        "ok": true,
+        "contentType": "text/html",
+        "htmlBytes": 60828,
+        "challengeSignals": []
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 7,
+      "selectedPageCount": 7,
+      "selectedProductCount": 3,
+      "selectedListingCount": 2,
+      "selectedSearchCount": 1,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-air-purifier-s200b-cerna.html",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-ar300-bila.html",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/odvlhcovac-tesla-smart-dehumidifier-d400.html",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/male-domaci-spotrebice.html",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/TSPD/?type=25",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/vyhledavani.html?query=tesla",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.datart.cz/",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        }
+      ]
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "degraded",
+      "homepageHttp": {
+        "url": "https://www.tsbohemia.cz/",
+        "mode": "http",
+        "statusCode": 403,
+        "durationMs": 239.987,
+        "finalUrl": "https://www.tsbohemia.cz/",
+        "ok": false,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 5963,
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.tsbohemia.cz/",
+        "mode": "browser",
+        "statusCode": 403,
+        "durationMs": 861.155,
+        "finalUrl": "https://www.tsbohemia.cz/",
+        "ok": false,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 5941,
+        "title": "Attention Required! | Cloudflare",
+        "challengeSignals": [
+          "cloudflare",
+          "captcha",
+          "attention required",
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 6,
+      "selectedPageCount": 0,
+      "selectedProductCount": 0,
+      "selectedListingCount": 0,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": []
+    },
+    {
+      "siteId": "heureka-cz",
+      "domain": "heureka.cz",
+      "kind": "aggregator",
+      "state": "degraded",
+      "homepageHttp": {
+        "url": "https://www.heureka.cz/",
+        "mode": "http",
+        "statusCode": 403,
+        "durationMs": 749.998,
+        "finalUrl": "https://www.heureka.cz/",
+        "ok": false,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 44292,
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.heureka.cz/",
+        "mode": "browser",
+        "statusCode": 403,
+        "durationMs": 1015.599,
+        "finalUrl": "https://www.heureka.cz/",
+        "ok": false,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 42855,
+        "title": "Just a moment...",
+        "challengeSignals": [
+          "cloudflare",
+          "bot"
+        ]
+      },
+      "sitemapCount": 2048,
+      "discoveredUrlCount": 2145,
+      "selectedPageCount": 0,
+      "selectedProductCount": 0,
+      "selectedListingCount": 0,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.zbozi.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 1793.204,
+        "finalUrl": "https://www.zbozi.cz/?noredirect=1",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 144396,
+        "title": "Zboží.cz - Tisíce obchodů na jednom místě s možností srovnání cen",
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.zbozi.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 5677.181,
+        "finalUrl": "https://www.zbozi.cz/",
+        "ok": true,
+        "contentType": "text/html",
+        "htmlBytes": 6671,
+        "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+        "challengeSignals": []
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 138,
+      "selectedPageCount": 8,
+      "selectedProductCount": 0,
+      "selectedListingCount": 7,
+      "selectedSearchCount": 1,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.zbozi.cz/elektronika/tv-a-audio-video/audio/bluetooth-reproduktory/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/detske-zbrane/?vyrobce=hasbro",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/kreativni-a-vyukove-hracky/interaktivni-knihy/?vyrobce=albi",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/detske-zbozi/hracky/stavebnice/stavebnice-lego/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/damske-eroticke-pradlo/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/umele-vaginy-oraly-a-analy/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/vibratory/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/kategorie/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Kategorie - Zbozi.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/auticka/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/auto-moto/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/auto-moto/auto-moto-baterie/autobaterie/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/auto-moto/autodoplnky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/auto-moto/pneumatiky/osobni-pneu/letni-osobni-pneu/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/?q=tesla",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "title": "tesla - Zbozi.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.zbozi.cz/kancelar/kancelarske-potreby/kalendare/?pro-rok=2026",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        }
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.mironet.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 1211.33,
+        "finalUrl": "https://www.mironet.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 496788,
+        "title": "Mironet.cz - internetový obchod",
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.mironet.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 2713.024,
+        "finalUrl": "https://www.mironet.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=UTF-8",
+        "htmlBytes": 503087,
+        "title": "Mironet.cz - internetový obchod",
+        "challengeSignals": []
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 136,
+      "selectedPageCount": 8,
+      "selectedProductCount": 8,
+      "selectedListingCount": 0,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.mironet.cz/16-arzopa-z1rc-cerna-2560x1600-1610-60-hz-500cdm2-minihdmi-usbc-repro+dp708002/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "16\" Arzopa Z1RC černá / 2560x1600 / 16:10 / 60 Hz / 500cd-m2 / mi | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/27-dell-p2723qe-professional-ips-3840x2160-169-5ms-10001-350cdm2-1xhdmi-1xdp-vesa-3ynbd+dp519327/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "27\" DELL P2723QE Professional / IPS / 3840x2160 / 16:9 / 5ms / 10 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/a4tech-g3200n-bezdratova-opticka-mys-24ghz-10m-dosah-vtrack-cerna+dp266292/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "A4tech G3-200N / bezdrátová optická myš / 2.4GHz / 10m dosah / V- | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/adata-legend-710-512gb-ssd-m2-2280-pcie-gen-3-cteni-2400mbps-zapis-1800mbps+dp646970/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "ADATA LEGEND 710 512GB / SSD / M.2 2280 / PCIe Gen 3 / čtení: 240 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/alavis-maxima-triple-blend-extra-silny-700g+dp529780/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "ALAVIS MAXIMA Triple Blend Extra silný 700g | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/amd-ryzen-7-5700x-34ghz-tray-turbo-46-ghz-8c16t-l2-4mb-l3-32mb-am4-zen-3-65w+dp649095/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "AMD RYZEN 7 5700X @ 3.4GHz - TRAY / Turbo 4.6 GHz / 8C16T / L2 4M | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apc-backups-pro-br650mi-650va-390w-power-saving+dp402598/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "APC Back-UPS Pro BR650MI / 650VA (390W) Power Saving | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apple-iphone-14-512gb-zluta-61-512gb-ios173+dp573060/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Apple iPhone 14 512GB žlutá / 6.1\" / 512GB / iOS17.3 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apple-iphone-16-128gb-ruzova-61-128gb-ios18+dp702613/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Apple iPhone 16 128GB růžová / 6.1\" / 128GB / iOS18 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/apple-macbook-air-15-m4-2025-sky-blue-us-apple-m4-16gb-256gb-ssd-apple-10jadrova-igpu-macos+dp795669/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Apple MacBook Air 15\" M4 2025 Sky Blue US / Apple M4 / 16GB / 256 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/axagon-hmcwl9-usb-10gbps-hub-s-qi-3x-usba-usbc-hdmi-dp-4k60hz-rj45-glan-pd-100w-kabel-usbc-60cm+dp797875/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "AXAGON HMC-WL9, USB 10Gbps hub s Qi, 3x USB-A, USB-C, HDMI & DP 4 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/btoys-prekazkova-draha-se-stupinky-hudebni-balance-groove-od-3-let+dp800972/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "B-Toys Překážková dráha se stupínky hudební Balance & Groove / od | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dell-latitude-5450-xcto-seda-14-fhd-intel-core-i51335u-34ghz-16gb-512gb-ssd-intel-iris-xe-w11p+dp790312/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "DELL Latitude 5450 XCTO šedá / 14\" FHD / Intel Core i5-1335U 3.4G | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dewalt-dce530n-aku-horkovzdusna-pistole-18v-az-530-c-bez-aku+dp472626/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "DeWalt DCE530N / Aku horkovzdušná pistole / 18V / až 530 °C / bez | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dji-mic-mini-2-tx-1-rx-charging-case-cerna-bezdratovy-mikrofon-2x-vysilac-1-prijimac-nabijeci-pouzdro+dp717602/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "DJI Mic Mini (2 TX + 1 RX + Charging Case) černá / Bezdrátový mik | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dyson-big-ball-parquet-2-stribrna+dp783742/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Dyson Big Ball Parquet 2 stříbrná | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/eset-home-security-essential-1-zarizeni-1-rok+dp629528/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "ESET HOME Security Essential - 1 zařízení - 1 rok | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/eset-home-security-premium-1-zarizeni-1-rok+dp629573/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "ESET HOME Security Premium - 1 zařízení - 1 rok | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/faitron-heatsbox-go-chytry-vyhrivany-obedovy-box-na-baterii-az-85c+dp617280/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Faitron HeatsBox GO / Chytrý vyhřívaný obědový box / na baterii / | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/fiskars-1069103-xseries-x18-univerzalni-sekera-s+dp737721/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Fiskars 1069103 X-series X18 Univerzální sekera S | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/google-pixel-9a-5g-8gb128gb-cerna-63-128gb-android-15+dp736705/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Google Pixel 9a 5G 8GB/128GB černá / 6.3\" / 128GB / Android 15 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/gskill-aegis-16gb-1x16gb-2666mhz-ddr4-19191943-12v+dp408236/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "G.Skill Aegis 16GB (1x16GB) 2666MHz / DDR4 / 19-19-19-43 / 1.2V | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/hotwav-cyber-15-12256gb-cerna-66-256gb-android-13+dp704234/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "HOTWAV Cyber 15 12+256GB černá / 6.6\" / 256GB / Android 13 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/hp-probook-4-g1a-16-stribrna-16-wuxga-intel-core-ultra-5-225h-17ghz-16gb-1tb-ssd-rtx-3050-4gb-w11h+dp792234/",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "HP ProBook 4 G1a 16 stříbrná / 16\" WUXGA / Intel Core Ultra 5 225 | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/automoto+rzn10774/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Auto-moto | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/automoto/zimni-vybava+c38303/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Auto-moto - Zimní výbava | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/chovatelske-potreby+rzn10771/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Chovatelské potřeby | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/chytre-hodinky-smart+rzn10760/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Chytré hodinky, SMART | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/domacnost+rzn10769/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Domácnost | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/dum-dilna-a-zahrada+rzn10773/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dům, dílna a zahrada | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/gaming-hry-a-zabava+rzn10764/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Gaming, hry a zábava | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.mironet.cz/hracky-pro-deti-a-miminka+rzn10770/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Hračky, pro děti a miminka | Mironet.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        }
+      ]
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.muziker.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 989.361,
+        "finalUrl": "https://www.muziker.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 736945,
+        "title": "Muziker - Milion radostí",
+        "challengeSignals": []
+      },
+      "homepageBrowser": {
+        "url": "https://www.muziker.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 1855.619,
+        "finalUrl": "https://www.muziker.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 739439,
+        "title": "Muziker - Milion radostí",
+        "challengeSignals": []
+      },
+      "sitemapCount": 2048,
+      "discoveredUrlCount": 2213,
+      "selectedPageCount": 8,
+      "selectedProductCount": 0,
+      "selectedListingCount": 6,
+      "selectedSearchCount": 2,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://muziker.cz/kytary",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Kytary | Nová kytara ve slevě - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://muziker.cz/lp-desky",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Vinylové desky • LP desky na gramofon - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://muziker.cz/slevy-a-akce",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Slevy a kupony - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/kytary",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Kytary | Nová kytara ve slevě - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/lp-desky",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Vinylové desky • LP desky na gramofon - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/slevy-a-akce",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Slevy a kupony - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/s/a56883b3ec",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "title": "Muziker slevové kódy ✔️ Aktuální slevové kupóny - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://muziker.cz/s/8ba2d716a5",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "title": "Štúdiový software | VST plugins - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/s/2d71c3a742",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Kontakt - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/s/4d445ac957",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Vinylové desky • LP desky na gramofon - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/s/8ba2d716a5",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Štúdiový software | VST plugins - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/s/a7bfde8fd3",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Reklamace a vrácení zboží - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "ov\\u011B\\u0159"
+          ]
+        },
+        {
+          "url": "https://www.muziker.cz/behringer-reproduktory",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Behringer Reproduktory - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/bespeco-reproduktorove-kabely",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Bespeco Reproduktorové kabely - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/bespeco-reproduktorove-kabely-metraz",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Bespeco Reproduktorové kabely-metráž - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/bespeco-reproduktory",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Bespeco Reproduktory - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/bezdratove-a-prenosne-reproduktory",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Bluetooth reproduktor &amp; Přenosný reproduktor - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/celestion-komponenty-pro-reproduktory",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Celestion Komponenty pro reproduktory - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.muziker.cz/celestion-reproduktory",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Celestion Reproduktory - Muziker",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        }
+      ]
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.pilulka.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 2269.837,
+        "finalUrl": "https://www.pilulka.cz/",
+        "ok": true,
+        "contentType": "text/html;charset=utf-8",
+        "htmlBytes": 1523335,
+        "title": "Pilulka.cz - lékárna pro lepší život",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "homepageBrowser": {
+        "url": "https://www.pilulka.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 2987.732,
+        "finalUrl": "https://www.pilulka.cz/",
+        "ok": true,
+        "contentType": "text/html;charset=utf-8",
+        "htmlBytes": 1554048,
+        "title": "Pilulka.cz - lékárna pro lepší život",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "sitemapCount": 2048,
+      "discoveredUrlCount": 2328,
+      "selectedPageCount": 8,
+      "selectedProductCount": 0,
+      "selectedListingCount": 8,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://pilulka.cz/akce-a-slevy",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Akce a slevy - sleva až 60% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://pilulka.cz/doplnky-stravy",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Doplňky stravy - sleva až 41% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://pilulka.cz/na-imunitu",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Vitamíny a doplňky stravy na imunitu - sleva až 40% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://pilulka.cz/volne-prodejne-leky",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Zdraví a léky - sleva až 49% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/akce-a-slevy",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Akce a slevy - sleva až 60% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/doplnky-stravy",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Doplňky stravy - sleva až 41% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/energie-a-vitalita",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Energie a vitalita - sleva až 38% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/na-imunitu",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Vitamíny a doplňky stravy na imunitu - sleva až 40% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/traveni-a-metabolismus",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zažívání a zdravá střeva - sleva až 40% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/volne-prodejne-leky",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Zdraví a léky - sleva až 49% | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/lamax-partygo1-prenosny-reproduktor",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "LAMAX PartyGo1, Přenosný reproduktor | Pilulka.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/lamax-partygo1-prenosny-reproduktor/pribalovy-letak",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "LAMAX PartyGo1, Přenosný reproduktor | Pilulka.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/reklamace-a-vraceni-zbozi",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Reklamace a vrácení zboží | Pilulka.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/advance-chlorella-spirulina-bio-tbl-1000",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "ADVANCE Chlorella + Spirulina BIO 1000&nbsp;tablet | Pilulka.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/advance-chlorella-spirulina-bio-tbl-1000/pribalovy-letak",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "ADVANCE Chlorella + Spirulina BIO 1000&nbsp;tablet - Příbalový leták | Pilulka.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/allnature-chia-seminka-1000g",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Allnature Chia semínko 1000&nbsp;g | Pilulka.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.pilulka.cz/allnature-chia-seminka-1000g/pribalovy-letak",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Allnature Chia semínko 1000&nbsp;g | Pilulka.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        }
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.biano.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 1434.992,
+        "finalUrl": "https://www.biano.cz/",
+        "ok": true,
+        "contentType": "text/html;charset=utf-8",
+        "htmlBytes": 773395,
+        "title": "Chytrý nákup nábytku a dekorací | BIANO",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "homepageBrowser": {
+        "url": "https://www.biano.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 1330.008,
+        "finalUrl": "https://www.biano.cz/",
+        "ok": true,
+        "contentType": "text/html;charset=utf-8",
+        "htmlBytes": 366182,
+        "title": "Chytrý nákup nábytku a dekorací | BIANO",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 277,
+      "selectedPageCount": 8,
+      "selectedProductCount": 8,
+      "selectedListingCount": 0,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.biano.cz/produkt/v/1020325-satni-skrin-s-vysuvem-mirelli-800-x-400-x-1800-mm-tresen",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Šatní skříň s výsuvem MIRELLI, 800 x 400 x 1800 mm, třešeň | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/110126155-rozkladaci-pohovka-hewlet-seda-cerna",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Rozkládací pohovka HEWLET Šedá-černá | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/146273537-potah-na-kreslo-usak-s-podsedakem-malaga-sedy-tiahome",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Potah na křeslo ušák s podsedákem MALAGA šedý TiaHome | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/165885117-kis-keter-titan-009762bkgl-skrin-nizka-sirka-80-cm",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "KIS-KETER Titan 009762BKGL Skříň nízká, šířka 80 cm | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/179120527-kulaty-konferencni-stolek-s-deskou-v-dubovem-dekoru-v-prirodni-barve-78x78-cm-soft-woodman",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Kulatý konferenční stolek s deskou v dubovém dekoru v přírodní barvě 78x78 cm Soft – Woodman | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/179122253-sada-2-odkladacich-stolku-woood-nila",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Sada 2 odkládacích stolků WOOOD Nila | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/179917497-nastenna-police-z-nerezove-oceli-wenko-premium",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Nástěnná police z nerezové oceli Wenko Premium | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/180894133-cerne-zavesne-kreslo-z-umeleho-ratanu-bonami-selection-mila",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Černé závěsné křeslo z umělého ratanu Bonami Selection Mila | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/181831771-lavedo-trinity-wotan-oak-50-koupelnova-skrinka-s-umyvadlem",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Lavedo Trinity Wotan Oak 50 koupelnová skříňka s umyvadlem | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/187760400-bezova-jidelni-zidle-gain-unique-furniture",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Béžová jídelní židle Gain – Unique Furniture | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/187763882-satni-skrin-flavio-800-x-1850-x-450-mm-modern-tmave-modra-barva",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Šatní skříň FLAVIO, 800 x 1850 x 450 mm, Modern: tmavě modrá barva | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/188943460-zahradni-hlinikova-souprava-arizona-seda-akce",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Zahradní hliníková souprava Arizona šedá - AKCE | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/191223098-rozkladaci-pohovka-na-kazdodenni-spani-160x200-novel",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Rozkládací pohovka na každodenní spaní 160x200 Novel | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/191805908-kesper-rohova-dvoupatrova-police-pridavna-policka-s-2-urovnemi-cerna-corner-black",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Kesper Rohová dvoupatrová police, přídavná polička s 2 úrovněmi, černá CORNER BLACK | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/200518724-bile-samodrzici-ocelove-koupelnove-policky-2-ks-cubiko-umbra",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Bílé samodržící ocelové koupelnové poličky 2 ks Cubiko – Umbra | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/207257654-karton-pak-ulozne-boxy-na-obleceni-organizery-do-skrine-eko-karton-20x54cm",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "KARTON PAK Úložné boxy na oblečení, organizéry do skříně EKO KARTON 20x54cm | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/220176854-bezova-sedaci-souprava-do-u-smart-cosaro-295x140-cm",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Béžová sedací souprava do U SMART COSARO 295x140 cm | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/223999142-koupelnova-skrinka-nad-pracku-houseland-libi-bila",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Koupelnová skříňka nad pračku Houseland Libi bílá | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/228184180-sedobezovy-nocni-stolek-madrid-tvilum",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Šedobéžový noční stolek Madrid – Tvilum | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/229292030-barova-zidle-arako-stribrna-bila",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Barová židle ARAKO stříbrná / bílá | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/231458074-tv-stena-houseland-cohen-dub-castello-bila",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "TV stěna Houseland Cohen Dub Castello/bílá | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/233661844-bezove-kartonove-ulozne-boxy-v-sade-3-ks-s-vikem-31x47x15-5-cm-inge-paper-laminate-bigso",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Béžové kartonové úložné boxy v sadě 3 ks s víkem 31x47x15,5 cm Inge Paper Laminate – Bigso | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkt/v/242295980-sundis-sada-4-uloznych-boxu-fly-tower-bila",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "SUNDIS Sada 4 úložných boxů - FLY TOWER - bílá | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/compare-products",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Porovnání produktů | BIANO",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkty",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Nábytek a bytové doplňky | BIANO",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkty/balkon-a-terasa",
+          "source": "sitemap",
+          "pageType": "offer",
+          "selected": false,
+          "title": "Balkon a terasa - 1 116 produktů | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkty/bazen-a-wellness",
+          "source": "sitemap",
+          "pageType": "offer",
+          "selected": false,
+          "title": "🏊 Bazén a wellness - 2 096 produktů | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkty/bodovky",
+          "source": "sitemap",
+          "pageType": "offer",
+          "selected": false,
+          "title": "Bodovky a bodové osvětlení - 3 021 produktů | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkty/botniky",
+          "source": "sitemap",
+          "pageType": "offer",
+          "selected": false,
+          "title": "👢 Botníky - 827 produktů | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkty/cestovani-s-detmi",
+          "source": "sitemap",
+          "pageType": "offer",
+          "selected": false,
+          "title": "Cestování s dětmi - 2 945 produktů | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.biano.cz/produkty/chranice-a-toppery",
+          "source": "sitemap",
+          "pageType": "offer",
+          "selected": false,
+          "title": "Chrániče a toppery - 1 416 produktů | BIANO",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        }
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.glami.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 992.084,
+        "finalUrl": "https://www.glami.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 182278,
+        "title": "Nejlepší nabídky a ceny - GLAMI.cz",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "homepageBrowser": {
+        "url": "https://www.glami.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 1142.095,
+        "finalUrl": "https://www.glami.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 179529,
+        "title": "Nejlepší nabídky a ceny - GLAMI.cz",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 112,
+      "selectedPageCount": 8,
+      "selectedProductCount": 0,
+      "selectedListingCount": 7,
+      "selectedSearchCount": 1,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.glami.cz/adidas/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Adidas | Aktuální kolekce a slevy - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/alfons-mucha/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Alfons Mucha | Největší výběr na jednom místě - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/aplikace/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Módní aplikace GLAMI pro iOS a Android",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://www.glami.cz/ara/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Ara | Největší výběr na jednom místě - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/artdeco/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Artdeco | Největší výběr na jednom místě - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/bonprix/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Bonprix | Nejnovější kolekce a slevy - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/buffalo/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Oblečení a obuv Buffalo | 907 kousků | novinky a slevy - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/calvin-klein/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Calvin Klein | 16 638 kousků za super ceny - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damska-obuv/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty – Novinky a slevy | GLAMI - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damske-doplnky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské doplňky | 95 327 kousků na jednom místě - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damske-obleceni-a-obuv/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské oblečení a obuv - Novinky a slevy - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damske-obleceni-a-obuv/premiove-znacky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské oblečení a obuv od prémiových značek | 99 490 kousků - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damske-obleceni-a-obuv/vyprodej/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "DÁMSKÁ MÓDA VE VÝPRODEJI | GLAMI - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damske-obleceni/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Stylové dámské oblečení - Nové kolekce a slevy - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damske-obleceni/plnostihla-postava/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské oblečení pro plnoštíhlé postavy | 69 500 kousků - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/damske-sperky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské šperky a hodinky | 64 823 kousků | novinky a slevy - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.glami.cz/?q=placeholder",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "title": "Hledat \"placeholder\" - GLAMI.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        }
+      ]
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.aboutyou.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 318.784,
+        "finalUrl": "https://www.aboutyou.cz/vas-obchod",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 747535,
+        "title": "Módní online obchod s více než 1500 top značkami | ABOUT YOU",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "homepageBrowser": {
+        "url": "https://www.aboutyou.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 958.687,
+        "finalUrl": "https://www.aboutyou.cz/vas-obchod",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 776018,
+        "title": "Módní online obchod s více než 1500 top značkami | ABOUT YOU",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 258,
+      "selectedPageCount": 8,
+      "selectedProductCount": 0,
+      "selectedListingCount": 6,
+      "selectedSearchCount": 2,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187586",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Tenisky (AIR FORCE 1) pro ženy online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187589",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Tenisky (AIR MAX 90) pro ženy online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/znacka?category=20201",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Přehled značek - ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/deti-138113",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Dětská móda » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi-20202",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Pánská móda online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi/boty-20215?brand=puma-182",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Pánské boty PUMA » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi/boty/tenisky-20345?color=38935",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Bílé pánské tenisky » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/muzi/doplnky/tasky-batohy/batohy-20879?brand=nike-sportswear-53709",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Pánské batohy Nike Sportswear » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny-20201",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámská móda online | ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty » nakupuj na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=about-you-60555",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty ABOUT YOU » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=adidas-originals-290",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty ADIDAS ORIGINALS » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=converse-32",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty CONVERSE » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=dr-martens-729",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Boty Dr. Martens ⇨ online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=jordan-61263",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské boty Jordan » online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/c/zeny/boty-20207?brand=new-balance-974",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Boty new balance ➤ online na ABOUT YOU",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/celebrity-collections-7779",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/five-star-girl-109490",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": true,
+          "title": "Zoe Wees uvádí: FIVE STAR GIRL | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kamila-sikl-108429",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Divoká a svobodná: Kamila Sikl | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kamila-sikl-aw25-109478",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Boho-Chic: Kamila Šikl AW25 | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kamila-sikl-co-created-by-about-you-105997",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Podstata svobody: Kamila Šikl co-created by ABOUT YOU | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kolekce-celebrit-7779",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Pouze na ABOUT YOU: Kolekce celebrit | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/kolekce-celebrit-7779?force-language=1",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Pouze na ABOUT YOU: Kolekce celebrit | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/s/millane-106299",
+          "source": "sitemap",
+          "pageType": "search",
+          "selected": false,
+          "title": "Ženská energie: millane | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/h/product-safety-23996623440412",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Bezpečnost výrobku | ABOUT YOU pomoc a informace",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/hugo-3083?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "HUGO pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/karl-lagerfeld-5395?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Karl Lagerfeld pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/lauren-ralph-lauren-5472?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Lauren Ralph Lauren pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/polo-ralph-lauren-4352?category=144187",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Polo Ralph Lauren pro ženy Premium | Nakupuj online | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/bershka-4739",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Bershka online obchod | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/coach-77444",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "COACH online obchod | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.aboutyou.cz/b/shop/coccinelle-4897",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Coccinelle e-shop ▷ luxusní kabelky &amp; doplňky | ABOUT YOU",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        }
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.astratex.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 940.006,
+        "finalUrl": "https://www.astratex.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 166510,
+        "title": "Astratex.cz - specialista na spodní prádlo a plavky",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "homepageBrowser": {
+        "url": "https://www.astratex.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 2780.687,
+        "finalUrl": "https://www.astratex.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 463131,
+        "title": "Astratex.cz - specialista na spodní prádlo a plavky",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 197,
+      "selectedPageCount": 8,
+      "selectedProductCount": 0,
+      "selectedListingCount": 8,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.astratex.cz/puncochove-zbozi/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Punčochové zboží | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/reklamace-zbozi/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Reklamace | Astratex.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/astratex/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Astratex | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/bambusove-panske-pradlo/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Bambusové pánské prádlo | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/basic-damske-obleceni-a-spodni-pradlo/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Basic dámské oblečení a spodní prádlo | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/basic-damske-zupany/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Basic dámské župany | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/basic-nocni-kosilky/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Basic noční košilky | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/bavlnena-nocni-kosile-good-night-kratka/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": true,
+          "title": "Bavlněná noční košile Good night krátká | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/bikiny/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Bikiny | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/bonusy-a-slevy-1/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Astratex.cz - specialista na spodní prádlo a plavky",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/calvin-klein/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Calvin Klein | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/damska-basic-pyzama/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámská basic pyžama | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/damska-bavlnena-pyzama/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámská bavlněná pyžama | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/damska-body/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámská body | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/damska-premium-kolekce/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámská premium kolekce | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/damska-pyzama-nadmerne-velikosti/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámská pyžama nadměrné velikosti | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/damske-pradlo/?mailcoup=WOMEN30&amp;lp=13212B_Atx",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské prádlo | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/damske-spodni-pradlo/?lp=726221&amp;par=znacky|rosme",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Dámské spodní prádlo | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/plavky/?lp=AT2496_2500GG_sada",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Plavky | Astratex.cz",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://api.astratex.cz/webapi/v3/auth/login/external?Strategy=Seznam&TargetSystem=Catalog&ReturnToUrl=http%3A%2F%2Fwww.astratex.cz%2Fdefault.aspx",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Přihlášení do Seznamu",
+          "hasJsonLdProduct": false,
+          "challengeSignals": []
+        },
+        {
+          "url": "https://exchange.astratex.cz/",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Výměna a vrácení",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://press.astratex.cz/",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Mediaccino",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "captcha",
+            "bot"
+          ]
+        },
+        {
+          "url": "https://profile.astratex.cz/registration",
+          "source": "sitemap",
+          "pageType": "unknown",
+          "selected": false,
+          "title": "Registrace | Astratex.cz",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.astratex.cz/",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Astratex.cz - specialista na spodní prádlo a plavky",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        }
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "homepageHttp": {
+        "url": "https://www.bonami.cz/",
+        "mode": "http",
+        "statusCode": 200,
+        "durationMs": 1763.562,
+        "finalUrl": "https://www.bonami.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 653076,
+        "title": "Bonami - Váš osobitý domov | Bonami",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "homepageBrowser": {
+        "url": "https://www.bonami.cz/",
+        "mode": "browser",
+        "statusCode": 200,
+        "durationMs": 3133.712,
+        "finalUrl": "https://www.bonami.cz/",
+        "ok": true,
+        "contentType": "text/html; charset=utf-8",
+        "htmlBytes": 654339,
+        "title": "Bonami - Váš osobitý domov | Bonami",
+        "challengeSignals": [
+          "bot"
+        ]
+      },
+      "sitemapCount": 0,
+      "discoveredUrlCount": 184,
+      "selectedPageCount": 8,
+      "selectedProductCount": 8,
+      "selectedListingCount": 0,
+      "selectedSearchCount": 0,
+      "selectedOfferCount": 0,
+      "pages": [
+        {
+          "url": "https://www.bonami.cz/p/kremovy-pratelny-koberec-200x290-cm-pompei-1612-ayyildiz-carpets",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Krémový pratelný koberec 200x290 cm Pompei 1612 – Ayyildiz Carpets | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/svetle-hnedy-pratelny-koberec-200x290-cm-pompei-1612-ayyildiz-carpets",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Světle hnědý pratelný koberec 200x290 cm Pompei 1612 – Ayyildiz Carpets | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/bavlnena-kuchynska-rukavice-cooksmart-r-country-animals",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Bavlněná kuchyňská rukavice Cooksmart ® Country Animals | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/bezova-bavlnena-deka-150x200-cm-jaipur-chunky-waffle-pineapple-elephant",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Béžová bavlněná deka 150x200 cm Jaipur Chunky Waffle – Pineapple Elephant | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/bezova-keramicka-konvicka-na-mleko-500-ml-cream-cream-bitz",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Béžová keramická konvička na mléko 500 ml Cream/Cream – Bitz | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/bezova-mansestrova-rozkladaci-pohovka-245-cm-nihad-bobochic-paris",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Béžová manšestrová rozkládací pohovka 245 cm Nihad – Bobochic Paris | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/bily-keramicky-svicen-kahler-design-urbania-lighthouse-smithy",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Bílý keramický svícen Kähler Design Urbania Lighthouse Smithy | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/bily-keramicky-vanocni-svicen-kahler-design-lighthouse-o-12-cm",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": true,
+          "title": "Bílý keramický vánoční svícen Kähler Design Lighthouse, ø 12 cm | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/bily-keramicky-vanocni-svicen-kahler-design-lighthouse-o-9-cm",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Bílý keramický vánoční svícen Kähler Design Lighthouse, ø 9 cm | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/cerna-jidelni-zidle-z-borovicoveho-dreva-gunn-woood",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Černá jídelní židle z borovicového dřeva Gunn – WOOOD | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/cerna-kremova-stojaci-lampa-s-textilnim-stinidlem-vyska-145-cm-nairobi-mauro-ferretti",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Černá/krémová stojací lampa s textilním stínidlem (výška 145 cm) Nairobi – Mauro Ferretti | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/cerna-termoska-na-jidlo-z-nerezove-oceli-400-ml-legendary-classic-black-stanley",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Černá termoska na jídlo z nerezové oceli 400 ml Legendary Classic Black – Stanley | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/cerna-termoska-z-nerezove-oceli-1-4-l-legendary-classic-bottle-black-20-stanley",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Černá termoska z nerezové oceli 1,4 l Legendary Classic Bottle Black 2.0 – Stanley | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/cerny-termo-hrnek-z-nerezove-oceli-350-ml-cafe-to-go-travel-mug-black-20-stanley",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Černý termo hrnek z nerezové oceli 350 ml Café-To-Go Travel Mug Black 2.0 – Stanley | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/cerveny-ve-zlate-barve-kovovy-skleneny-stojaci-ramecek-17-5x22-5-cm-elizabeth-mauro-ferretti",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Červený/ve zlaté barvě kovový/skleněný stojací rámeček 17,5x22,5 cm Elizabeth – Mauro Ferretti | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/dozy-na-potraviny-z-kamene-v-sade-3-ks-fenwick-premier-housewares",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Dózy na potraviny z kamene v sadě 3 ks Fenwick – Premier Housewares | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/hneda-bavlnena-deka-150x200-cm-jaipur-chunky-waffle-pineapple-elephant",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Hnědá bavlněná deka 150x200 cm Jaipur Chunky Waffle – Pineapple Elephant | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/kamenny-svicen-marble-mette-ditmer-denmark-1",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Kamenný svícen Marble – Mette Ditmer Denmark | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/kartonovy-organizer-na-dokumenty-johan-bigso-box-of-sweden-1",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Kartonový organizér na dokumenty Johan – Bigso Box of Sweden | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/kartonovy-organizer-na-dokumenty-johan-bigso-box-of-sweden-7",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Kartonový organizér na dokumenty Johan – Bigso Box of Sweden | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/kartonovy-organizer-na-dokumenty-johan-bigso-box-of-sweden-8",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Kartonový organizér na dokumenty Johan – Bigso Box of Sweden | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/khaki-vlneny-koberec-150x230-cm-cloria-micadoni",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Khaki vlněný koberec 150x230 cm Cloria – Micadoni | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/kos-na-pradlo-z-morske-travy-v-prirodni-barve-100-l-belize-compactor",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Koš na prádlo z mořské trávy v přírodní barvě 100 l Belize – Compactor | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/p/kremova-stolni-lampa-s-textilnim-stinidlem-vyska-63-cm-ester-mauro-ferretti",
+          "source": "sitemap",
+          "pageType": "product",
+          "selected": false,
+          "title": "Krémová stolní lampa s textilním stínidlem (výška 63 cm) Ester – Mauro Ferretti | Bonami",
+          "hasJsonLdProduct": true,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/produkty-premium",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Premium značky | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/produkty/akce-a-slevy",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Produkty v akční nabídce | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/vde-tivoli-1996",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "VDE Tivoli 1996 | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/kategorie",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Kategorie | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/kategorie/slevovy-kod",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Kategorie · Slevový kód | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/affiliate-program",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Affiliate program | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/apartmany-na-panstvi-bzi-nadcasovy-interier-s-respektem-k-historii",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Apartmány na panství Bzí: Nadčasový interiér s respektem k historii | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        },
+        {
+          "url": "https://www.bonami.cz/c/ayyildiz-carpets",
+          "source": "sitemap",
+          "pageType": "listing",
+          "selected": false,
+          "title": "Ayyildiz Carpets | Bonami",
+          "hasJsonLdProduct": false,
+          "challengeSignals": [
+            "bot"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+[
+  {
+    "siteId": "alza-cz",
+    "domain": "alza.cz",
+    "displayName": "Alza",
+    "kind": "retailer",
+    "seedUrls": ["https://www.alza.cz/"],
+    "sitemapUrls": ["https://www.alza.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "datart-cz",
+    "domain": "datart.cz",
+    "displayName": "Datart",
+    "kind": "retailer",
+    "seedUrls": ["https://www.datart.cz/"],
+    "sitemapUrls": ["https://www.datart.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "tsbohemia-cz",
+    "domain": "tsbohemia.cz",
+    "displayName": "TS Bohemia",
+    "kind": "retailer",
+    "seedUrls": ["https://www.tsbohemia.cz/"],
+    "sitemapUrls": ["https://www.tsbohemia.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "heureka-cz",
+    "domain": "heureka.cz",
+    "displayName": "Heureka",
+    "kind": "aggregator",
+    "seedUrls": ["https://www.heureka.cz/"],
+    "sitemapUrls": ["https://www.heureka.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "zbozi-cz",
+    "domain": "zbozi.cz",
+    "displayName": "Zbozi",
+    "kind": "aggregator",
+    "seedUrls": ["https://www.zbozi.cz/"],
+    "sitemapUrls": ["https://www.zbozi.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "mironet-cz",
+    "domain": "mironet.cz",
+    "displayName": "Mironet",
+    "kind": "retailer",
+    "seedUrls": ["https://www.mironet.cz/"],
+    "sitemapUrls": ["https://www.mironet.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "muziker-cz",
+    "domain": "muziker.cz",
+    "displayName": "Muziker",
+    "kind": "retailer",
+    "seedUrls": ["https://www.muziker.cz/"],
+    "sitemapUrls": ["https://www.muziker.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "pilulka-cz",
+    "domain": "pilulka.cz",
+    "displayName": "Pilulka",
+    "kind": "retailer",
+    "seedUrls": ["https://www.pilulka.cz/"],
+    "sitemapUrls": ["https://www.pilulka.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "biano-cz",
+    "domain": "biano.cz",
+    "displayName": "Biano",
+    "kind": "aggregator",
+    "seedUrls": ["https://www.biano.cz/"],
+    "sitemapUrls": ["https://www.biano.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "glami-cz",
+    "domain": "glami.cz",
+    "displayName": "Glami",
+    "kind": "aggregator",
+    "seedUrls": ["https://www.glami.cz/"],
+    "sitemapUrls": ["https://www.glami.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "aboutyou-cz",
+    "domain": "aboutyou.cz",
+    "displayName": "About You",
+    "kind": "retailer",
+    "seedUrls": ["https://www.aboutyou.cz/"],
+    "sitemapUrls": ["https://www.aboutyou.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "astratex-cz",
+    "domain": "astratex.cz",
+    "displayName": "Astratex",
+    "kind": "retailer",
+    "seedUrls": ["https://www.astratex.cz/"],
+    "sitemapUrls": ["https://www.astratex.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "bonami-cz",
+    "domain": "bonami.cz",
+    "displayName": "Bonami",
+    "kind": "retailer",
+    "seedUrls": ["https://www.bonami.cz/"],
+    "sitemapUrls": ["https://www.bonami.cz/sitemap.xml"]
+  }
+]

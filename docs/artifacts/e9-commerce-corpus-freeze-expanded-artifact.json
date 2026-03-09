@@ -1,0 +1,972 @@
+{
+  "benchmark": "e9-commerce-corpus-freeze",
+  "generatedAt": "2026-03-09T04:49:18.383Z",
+  "sourceArtifactPath": "/Users/satan/side/experiments/effect-scrapling/tmp/e9-commerce-discovery-expanded-artifact.json",
+  "targetPageCount": 640,
+  "selectedPageCount": 79,
+  "selectedSiteCount": 10,
+  "minimumSiteCount": 20,
+  "siteCoverage": 0.5,
+  "pageCoverage": 0.1234375,
+  "shortfallCount": 561,
+  "pages": [
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/deti-138113",
+      "pageType": "listing",
+      "title": "Dětská móda » online na ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/s/celebrity-collections-7779",
+      "pageType": "search",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/astratex/",
+      "pageType": "listing",
+      "title": "Astratex | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/1020325-satni-skrin-s-vysuvem-mirelli-800-x-400-x-1800-mm-tresen",
+      "pageType": "product",
+      "title": "Šatní skříň s výsuvem MIRELLI, 800 x 400 x 1800 mm, třešeň | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/bavlnena-kuchynska-rukavice-cooksmart-r-country-animals",
+      "pageType": "product",
+      "title": "Bavlněná kuchyňská rukavice Cooksmart ® Country Animals | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/adidas/",
+      "pageType": "listing",
+      "title": "Adidas | Aktuální kolekce a slevy - GLAMI.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/?q=placeholder",
+      "pageType": "search",
+      "title": "Hledat \"placeholder\" - GLAMI.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/16-arzopa-z1rc-cerna-2560x1600-1610-60-hz-500cdm2-minihdmi-usbc-repro+dp708002/",
+      "pageType": "product",
+      "title": "16\" Arzopa Z1RC černá / 2560x1600 / 16:10 / 60 Hz / 500cd-m2 / mi | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://muziker.cz/kytary",
+      "pageType": "listing",
+      "title": "Kytary | Nová kytara ve slevě - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://muziker.cz/s/8ba2d716a5",
+      "pageType": "search",
+      "title": "Štúdiový software | VST plugins - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://pilulka.cz/akce-a-slevy",
+      "pageType": "listing",
+      "title": "Akce a slevy - sleva až 60% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/?q=tesla",
+      "pageType": "search",
+      "title": "tesla - Zbozi.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-air-purifier-s200b-cerna.html",
+      "pageType": "product",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "url": "https://www.datart.cz/TSPD/?type=25",
+      "pageType": "listing",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "url": "https://www.datart.cz/vyhledavani.html?query=tesla",
+      "pageType": "search",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "url": "https://www.datart.cz/",
+      "pageType": "unknown",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/muzi-20202",
+      "pageType": "listing",
+      "title": "Pánská móda online | ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/bambusove-panske-pradlo/",
+      "pageType": "listing",
+      "title": "Bambusové pánské prádlo | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/110126155-rozkladaci-pohovka-hewlet-seda-cerna",
+      "pageType": "product",
+      "title": "Rozkládací pohovka HEWLET Šedá-černá | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/bezova-bavlnena-deka-150x200-cm-jaipur-chunky-waffle-pineapple-elephant",
+      "pageType": "product",
+      "title": "Béžová bavlněná deka 150x200 cm Jaipur Chunky Waffle – Pineapple Elephant | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/alfons-mucha/",
+      "pageType": "listing",
+      "title": "Alfons Mucha | Největší výběr na jednom místě - GLAMI.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/27-dell-p2723qe-professional-ips-3840x2160-169-5ms-10001-350cdm2-1xhdmi-1xdp-vesa-3ynbd+dp519327/",
+      "pageType": "product",
+      "title": "27\" DELL P2723QE Professional / IPS / 3840x2160 / 16:9 / 5ms / 10 | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://muziker.cz/lp-desky",
+      "pageType": "listing",
+      "title": "Vinylové desky • LP desky na gramofon - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://pilulka.cz/doplnky-stravy",
+      "pageType": "listing",
+      "title": "Doplňky stravy - sleva až 41% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/hracky/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "url": "https://www.datart.cz/cisticka-vzduchu-tesla-smart-ar300-bila.html",
+      "pageType": "product",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/muzi/boty-20215?brand=puma-182",
+      "pageType": "listing",
+      "title": "Pánské boty PUMA » online na ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/basic-damske-obleceni-a-spodni-pradlo/",
+      "pageType": "listing",
+      "title": "Basic dámské oblečení a spodní prádlo | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/146273537-potah-na-kreslo-usak-s-podsedakem-malaga-sedy-tiahome",
+      "pageType": "product",
+      "title": "Potah na křeslo ušák s podsedákem MALAGA šedý TiaHome | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/bezova-keramicka-konvicka-na-mleko-500-ml-cream-cream-bitz",
+      "pageType": "product",
+      "title": "Béžová keramická konvička na mléko 500 ml Cream/Cream – Bitz | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/aplikace/",
+      "pageType": "listing",
+      "title": "Módní aplikace GLAMI pro iOS a Android",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/a4tech-g3200n-bezdratova-opticka-mys-24ghz-10m-dosah-vtrack-cerna+dp266292/",
+      "pageType": "product",
+      "title": "A4tech G3-200N / bezdrátová optická myš / 2.4GHz / 10m dosah / V- | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://muziker.cz/slevy-a-akce",
+      "pageType": "listing",
+      "title": "Slevy a kupony - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://pilulka.cz/na-imunitu",
+      "pageType": "listing",
+      "title": "Vitamíny a doplňky stravy na imunitu - sleva až 40% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/hracky/detske-zbrane/?vyrobce=hasbro",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "url": "https://www.datart.cz/odvlhcovac-tesla-smart-dehumidifier-d400.html",
+      "pageType": "product",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187586",
+      "pageType": "listing",
+      "title": "Tenisky (AIR FORCE 1) pro ženy online | ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/basic-damske-zupany/",
+      "pageType": "listing",
+      "title": "Basic dámské župany | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/165885117-kis-keter-titan-009762bkgl-skrin-nizka-sirka-80-cm",
+      "pageType": "product",
+      "title": "KIS-KETER Titan 009762BKGL Skříň nízká, šířka 80 cm | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/bezova-mansestrova-rozkladaci-pohovka-245-cm-nihad-bobochic-paris",
+      "pageType": "product",
+      "title": "Béžová manšestrová rozkládací pohovka 245 cm Nihad – Bobochic Paris | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/ara/",
+      "pageType": "listing",
+      "title": "Ara | Největší výběr na jednom místě - GLAMI.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/adata-legend-710-512gb-ssd-m2-2280-pcie-gen-3-cteni-2400mbps-zapis-1800mbps+dp646970/",
+      "pageType": "product",
+      "title": "ADATA LEGEND 710 512GB / SSD / M.2 2280 / PCIe Gen 3 / čtení: 240 | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.muziker.cz/kytary",
+      "pageType": "listing",
+      "title": "Kytary | Nová kytara ve slevě - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://pilulka.cz/volne-prodejne-leky",
+      "pageType": "listing",
+      "title": "Zdraví a léky - sleva až 49% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/hracky/kreativni-a-vyukove-hracky/interaktivni-knihy/?vyrobce=albi",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "partial",
+      "url": "https://www.datart.cz/male-domaci-spotrebice.html",
+      "pageType": "listing",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/c/zeny/boty/tenisky-20273?productSeries=187589",
+      "pageType": "listing",
+      "title": "Tenisky (AIR MAX 90) pro ženy online | ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/basic-nocni-kosilky/",
+      "pageType": "listing",
+      "title": "Basic noční košilky | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/179120527-kulaty-konferencni-stolek-s-deskou-v-dubovem-dekoru-v-prirodni-barve-78x78-cm-soft-woodman",
+      "pageType": "product",
+      "title": "Kulatý konferenční stolek s deskou v dubovém dekoru v přírodní barvě 78x78 cm Soft – Woodman | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/bily-keramicky-svicen-kahler-design-urbania-lighthouse-smithy",
+      "pageType": "product",
+      "title": "Bílý keramický svícen Kähler Design Urbania Lighthouse Smithy | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/artdeco/",
+      "pageType": "listing",
+      "title": "Artdeco | Největší výběr na jednom místě - GLAMI.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/alavis-maxima-triple-blend-extra-silny-700g+dp529780/",
+      "pageType": "product",
+      "title": "ALAVIS MAXIMA Triple Blend Extra silný 700g | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.muziker.cz/lp-desky",
+      "pageType": "listing",
+      "title": "Vinylové desky • LP desky na gramofon - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.pilulka.cz/akce-a-slevy",
+      "pageType": "listing",
+      "title": "Akce a slevy - sleva až 60% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/detske-zbozi/hracky/stavebnice/stavebnice-lego/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/znacka?category=20201",
+      "pageType": "listing",
+      "title": "Přehled značek - ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/bavlnena-nocni-kosile-good-night-kratka/",
+      "pageType": "listing",
+      "title": "Bavlněná noční košile Good night krátká | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/179122253-sada-2-odkladacich-stolku-woood-nila",
+      "pageType": "product",
+      "title": "Sada 2 odkládacích stolků WOOOD Nila | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/bily-keramicky-vanocni-svicen-kahler-design-lighthouse-o-12-cm",
+      "pageType": "product",
+      "title": "Bílý keramický vánoční svícen Kähler Design Lighthouse, ø 12 cm | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/bonprix/",
+      "pageType": "listing",
+      "title": "Bonprix | Nejnovější kolekce a slevy - GLAMI.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/amd-ryzen-7-5700x-34ghz-tray-turbo-46-ghz-8c16t-l2-4mb-l3-32mb-am4-zen-3-65w+dp649095/",
+      "pageType": "product",
+      "title": "AMD RYZEN 7 5700X @ 3.4GHz - TRAY / Turbo 4.6 GHz / 8C16T / L2 4M | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.muziker.cz/slevy-a-akce",
+      "pageType": "listing",
+      "title": "Slevy a kupony - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.pilulka.cz/doplnky-stravy",
+      "pageType": "listing",
+      "title": "Doplňky stravy - sleva až 41% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/elektronika/tv-a-audio-video/audio/bluetooth-reproduktory/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.aboutyou.cz/s/five-star-girl-109490",
+      "pageType": "search",
+      "title": "Zoe Wees uvádí: FIVE STAR GIRL | ABOUT YOU",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/puncochove-zbozi/",
+      "pageType": "listing",
+      "title": "Punčochové zboží | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/179917497-nastenna-police-z-nerezove-oceli-wenko-premium",
+      "pageType": "product",
+      "title": "Nástěnná police z nerezové oceli Wenko Premium | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/kremovy-pratelny-koberec-200x290-cm-pompei-1612-ayyildiz-carpets",
+      "pageType": "product",
+      "title": "Krémový pratelný koberec 200x290 cm Pompei 1612 – Ayyildiz Carpets | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.glami.cz/buffalo/",
+      "pageType": "listing",
+      "title": "Oblečení a obuv Buffalo | 907 kousků | novinky a slevy - GLAMI.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/apc-backups-pro-br650mi-650va-390w-power-saving+dp402598/",
+      "pageType": "product",
+      "title": "APC Back-UPS Pro BR650MI / 650VA (390W) Power Saving | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.muziker.cz/s/a56883b3ec",
+      "pageType": "search",
+      "title": "Muziker slevové kódy ✔️ Aktuální slevové kupóny - Muziker",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.pilulka.cz/energie-a-vitalita",
+      "pageType": "listing",
+      "title": "Energie a vitalita - sleva až 38% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.zbozi.cz/eroticke-zbozi-a-pomucky/",
+      "pageType": "listing",
+      "title": "Zboží.cz - Tisíce obchodů na jednom místě",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.astratex.cz/reklamace-zbozi/",
+      "pageType": "listing",
+      "title": "Reklamace | Astratex.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://www.biano.cz/produkt/v/180894133-cerne-zavesne-kreslo-z-umeleho-ratanu-bonami-selection-mila",
+      "pageType": "product",
+      "title": "Černé závěsné křeslo z umělého ratanu Bonami Selection Mila | BIANO",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.bonami.cz/p/svetle-hnedy-pratelny-koberec-200x290-cm-pompei-1612-ayyildiz-carpets",
+      "pageType": "product",
+      "title": "Světle hnědý pratelný koberec 200x290 cm Pompei 1612 – Ayyildiz Carpets | Bonami",
+      "challengeSignals": [
+        "bot"
+      ]
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/apple-iphone-14-512gb-zluta-61-512gb-ios173+dp573060/",
+      "pageType": "product",
+      "title": "Apple iPhone 14 512GB žlutá / 6.1\" / 512GB / iOS17.3 | Mironet.cz",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.pilulka.cz/na-imunitu",
+      "pageType": "listing",
+      "title": "Vitamíny a doplňky stravy na imunitu - sleva až 40% | Pilulka.cz",
+      "challengeSignals": [
+        "bot"
+      ]
+    }
+  ],
+  "allocations": [
+    {
+      "siteId": "aboutyou-cz",
+      "domain": "aboutyou.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "astratex-cz",
+      "domain": "astratex.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "biano-cz",
+      "domain": "biano.cz",
+      "state": "healthy",
+      "kind": "aggregator",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "bonami-cz",
+      "domain": "bonami.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "glami-cz",
+      "domain": "glami.cz",
+      "state": "healthy",
+      "kind": "aggregator",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "muziker-cz",
+      "domain": "muziker.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "pilulka-cz",
+      "domain": "pilulka.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "zbozi-cz",
+      "domain": "zbozi.cz",
+      "state": "healthy",
+      "kind": "aggregator",
+      "availableSelectedPageCount": 8,
+      "allocatedPageCount": 8
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "state": "partial",
+      "kind": "retailer",
+      "availableSelectedPageCount": 7,
+      "allocatedPageCount": 7
+    }
+  ]
+}
