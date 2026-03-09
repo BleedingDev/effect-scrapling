@@ -15,11 +15,16 @@ describe("e9 commerce discovery benchmark", () => {
         "8",
         "--site-catalog",
         "tmp/sites.json",
+        "--site-concurrency",
+        "6",
+        "--http-only",
       ]),
     ).toEqual({
       artifactPath: "tmp/e9-commerce-discovery.json",
       targetPagesPerSite: 8,
       siteCatalogPath: "tmp/sites.json",
+      siteConcurrency: 6,
+      httpOnly: true,
     });
   });
 
@@ -82,6 +87,25 @@ describe("e9 commerce discovery benchmark", () => {
       classifyE9DiscoveryUrl("datart-cz", "https://www.datart.cz/male-domaci-spotrebice.html"),
     ).toBe("listing");
     expect(classifyE9DiscoveryUrl("glami-cz", "https://www.glami.cz/adidas/")).toBe("listing");
+    expect(
+      classifyE9DiscoveryUrl(
+        "ikea-cz",
+        "https://www.ikea.com/cz/cs/p/billy-knihovna-bila-30263844/",
+      ),
+    ).toBe("product");
+    expect(classifyE9DiscoveryUrl("ikea-cz", "https://www.ikea.com/cz/cs/search/?q=tesla")).toBe(
+      "search",
+    );
+    expect(classifyE9DiscoveryUrl("ebay-com", "https://www.ebay.com/sch/i.html?_nkw=tesla")).toBe(
+      "search",
+    );
+    expect(classifyE9DiscoveryUrl("fourhome-cz", "https://www.4home.cz/bytovy-textil/")).toBe(
+      "listing",
+    );
+    expect(classifyE9DiscoveryUrl("jysk-cz", "https://jysk.cz/loznice")).toBe("listing");
+    expect(classifyE9DiscoveryUrl("jysk-cz", "https://jysk.cz/search?query=matrace")).toBe(
+      "search",
+    );
   });
 
   it("does not let embedded product json-ld override strong listing signals", () => {

@@ -18,6 +18,8 @@ export const E9CommerceDiscoveryCliOptionsSchema = Schema.Struct({
   artifactPath: Schema.optional(NonEmptyStringSchema),
   targetPagesPerSite: Schema.optional(PositiveIntSchema),
   siteCatalogPath: Schema.optional(NonEmptyStringSchema),
+  siteConcurrency: Schema.optional(PositiveIntSchema),
+  httpOnly: Schema.optional(Schema.Boolean),
 });
 
 function readCauseMessage(cause: unknown, fallback: string) {
@@ -35,13 +37,16 @@ export function parseOptions(args: readonly string[]) {
   let artifactPath: string | undefined;
   let targetPagesPerSite: number | undefined;
   let siteCatalogPath: string | undefined;
+  let siteConcurrency: number | undefined;
+  let httpOnly = false;
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (
       argument === "--artifact" ||
       argument === "--pages-per-site" ||
-      argument === "--site-catalog"
+      argument === "--site-catalog" ||
+      argument === "--site-concurrency"
     ) {
       const rawValue = args[index + 1];
       if (rawValue === undefined || rawValue.startsWith("--")) {
@@ -52,11 +57,18 @@ export function parseOptions(args: readonly string[]) {
         artifactPath = Schema.decodeUnknownSync(NonEmptyStringSchema)(rawValue);
       } else if (argument === "--pages-per-site") {
         targetPagesPerSite = Schema.decodeUnknownSync(PositiveIntFromStringSchema)(rawValue);
+      } else if (argument === "--site-concurrency") {
+        siteConcurrency = Schema.decodeUnknownSync(PositiveIntFromStringSchema)(rawValue);
       } else {
         siteCatalogPath = Schema.decodeUnknownSync(NonEmptyStringSchema)(rawValue);
       }
 
       index += 1;
+      continue;
+    }
+
+    if (argument === "--http-only") {
+      httpOnly = true;
       continue;
     }
 
@@ -67,6 +79,8 @@ export function parseOptions(args: readonly string[]) {
     artifactPath,
     targetPagesPerSite,
     siteCatalogPath,
+    siteConcurrency,
+    httpOnly,
   });
 }
 
@@ -80,7 +94,9 @@ export async function runDefaultE9CommerceDiscovery(
   options: Schema.Schema.Type<typeof E9CommerceDiscoveryCliOptionsSchema> = {},
 ) {
   const artifact = await runE9CommerceDiscoveryBenchmark(
-    options.siteCatalogPath === undefined && options.targetPagesPerSite === undefined
+    options.siteCatalogPath === undefined &&
+      options.targetPagesPerSite === undefined &&
+      options.siteConcurrency === undefined
       ? {}
       : {
           ...(options.targetPagesPerSite === undefined
@@ -89,6 +105,10 @@ export async function runDefaultE9CommerceDiscovery(
           ...(options.siteCatalogPath === undefined
             ? {}
             : { siteCatalogPath: options.siteCatalogPath }),
+          ...(options.siteConcurrency === undefined
+            ? {}
+            : { siteConcurrency: options.siteConcurrency }),
+          ...(options.httpOnly ? { httpOnly: true } : {}),
         },
   );
 

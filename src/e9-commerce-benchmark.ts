@@ -140,6 +140,25 @@ type DiscoveryProfile = {
   readonly offerUrlPatterns?: ReadonlyArray<RegExp>;
 };
 
+type HtmlFetchSuccess = {
+  readonly ok: true;
+  readonly statusCode: number;
+  readonly finalUrl: string;
+  readonly contentType?: string;
+  readonly durationMs: number;
+  readonly html: string;
+  readonly htmlBytes: number;
+  readonly title?: string;
+};
+
+type HtmlFetchFailure = {
+  readonly ok: false;
+  readonly durationMs: number;
+  readonly error: string;
+};
+
+type HtmlFetchResult = HtmlFetchSuccess | HtmlFetchFailure;
+
 const SITE_DISCOVERY_PROFILES: Readonly<Record<string, DiscoveryProfile>> = {
   "alza-cz": {
     extraSeedUrls: [
@@ -216,6 +235,16 @@ const SITE_DISCOVERY_PROFILES: Readonly<Record<string, DiscoveryProfile>> = {
     searchUrlPatterns: [/productlist\/showsearch/u, /productlist\/remember/u],
   },
   "glami-cz": {
+    extraSeedUrls: [
+      "https://www.glami.cz/adidas/",
+      "https://www.glami.cz/panska-obuv/",
+      "https://www.glami.cz/obleceni-a-obuv/",
+      "https://www.glami.cz/slunecni-bryle/",
+      "https://www.glami.cz/dziny/siroky-strih/",
+      "https://www.glami.cz/mikiny/oversized/",
+      "https://www.glami.cz/svetry/polo-limec/",
+      "https://www.glami.cz/tenisky/adidas-samba/",
+    ],
     productUrlPatterns: [/\/p\/\d+/u],
     listingUrlPatterns: [/^\/[^?]+\/$/u, /\/c\//u, /\/znacky\/?$/u],
     searchUrlPatterns: [/[?&]q=/u, /vyhled/u],
@@ -266,6 +295,104 @@ const SITE_DISCOVERY_PROFILES: Readonly<Record<string, DiscoveryProfile>> = {
     productUrlPatterns: [/\/[^/]+\.html$/u],
     listingUrlPatterns: [/^\/[^?]+\/$/u],
     searchUrlPatterns: [/vyhledav/u, /[?&]q=/u],
+  },
+  "sportisimo-cz": {
+    extraSeedUrls: [
+      "https://www.sportisimo.cz/boty/",
+      "https://www.sportisimo.cz/obleceni/",
+      "https://www.sportisimo.cz/vybaveni/",
+      "https://www.sportisimo.cz/hledat/?q=tesla",
+    ],
+    listingUrlPatterns: [/^\/(?:boty|obleceni|vybaveni)\/?$/u],
+    searchUrlPatterns: [/\/hledat\/?/u, /[?&]q=/u],
+  },
+  "fourhome-cz": {
+    extraSeedUrls: [
+      "https://www.4home.cz/bytovy-textil/",
+      "https://www.4home.cz/povleceni/",
+      "https://www.4home.cz/kuchyne-a-jidelna/",
+      "https://www.4home.cz/hledani/?string=tesla",
+    ],
+    listingUrlPatterns: [/^\/(?:bytovy-textil|povleceni|kuchyne-a-jidelna)\/?$/u],
+    searchUrlPatterns: [/\/hledan/i, /[?&](q|string)=/u],
+  },
+  "bauhaus-cz": {
+    extraSeedUrls: [
+      "https://www.bauhaus.cz/sortiment",
+      "https://www.bauhaus.cz/sortiment/naradi-a-stroje",
+      "https://www.bauhaus.cz/sortiment/zahrada-a-volny-cas",
+      "https://www.bauhaus.cz/search?q=tesla",
+    ],
+    productUrlPatterns: [/\/p\/[^/?]+/u],
+    listingUrlPatterns: [/^\/sortiment(?:\/|$)/u],
+    searchUrlPatterns: [/\/search/u, /[?&]q=/u],
+  },
+  "lidl-shop-cz": {
+    extraSeedUrls: [
+      "https://www.lidl-shop.cz/c/domacnost/s10067705",
+      "https://www.lidl-shop.cz/c/kuchyne-a-jidelna/s10067706",
+      "https://www.lidl-shop.cz/c/elektro/s10067709",
+      "https://www.lidl-shop.cz/q/search?q=tesla",
+    ],
+    productUrlPatterns: [/\/p\/[^/?]+\/p\d+/u],
+    listingUrlPatterns: [/^\/c\/[^/?]+/u],
+    searchUrlPatterns: [/\/q\/search/u, /[?&]q=/u],
+  },
+  "ikea-cz": {
+    extraSeedUrls: [
+      "https://www.ikea.com/cz/cs/cat/nabytek-fu001/",
+      "https://www.ikea.com/cz/cs/cat/postele-bm003/",
+      "https://www.ikea.com/cz/cs/cat/kuchyne-ka002/",
+      "https://www.ikea.com/cz/cs/search/?q=tesla",
+    ],
+    productUrlPatterns: [/\/p\/[^/?]+-\d+\/?$/u],
+    listingUrlPatterns: [/\/cat\/[^/?]+/u],
+    searchUrlPatterns: [/\/search\/?/u, /[?&]q=/u],
+  },
+  "ebay-com": {
+    extraSeedUrls: [
+      "https://www.ebay.com/sch/i.html?_nkw=tesla",
+      "https://www.ebay.com/b/Electronics/bn_7000259124",
+      "https://www.ebay.com/b/Home-Garden/11700/bn_1853126",
+    ],
+    productUrlPatterns: [/\/itm\//u],
+    listingUrlPatterns: [/\/b\/[^/?]+/u],
+    searchUrlPatterns: [/\/sch\/i\.html/u, /[?&]_nkw=/u],
+    offerUrlPatterns: [/\/itm\//u],
+  },
+  "aboutyou-sk": {
+    productUrlPatterns: [/\/p\/[^/]+\/\d+$/u],
+    listingUrlPatterns: [/^\/c\//u, /^\/hub\//u, /^\/znacka/u],
+    searchUrlPatterns: [/^\/s\//u, /[?&]term=/u],
+  },
+  "boozt-com": {
+    productUrlPatterns: [/\/[a-z0-9-]+\/[a-z0-9-]+_[a-z0-9]+\/\d+/u, /\/product\//u],
+    listingUrlPatterns: [/^\/[a-z]{2}\/[a-z]{2}\/(?:women|men|kids|home)\/?/u],
+    searchUrlPatterns: [/\/search/u, /[?&]q=/u],
+  },
+  "asos-com": {
+    productUrlPatterns: [/\/prd\/\d+/u],
+    listingUrlPatterns: [/\/(?:men|women|search)\/?/u],
+    searchUrlPatterns: [/\/search\/?/u, /[?&]q=/u],
+  },
+  "shein-com": {
+    productUrlPatterns: [/\/[^/?]+-p-\d+\.html/u],
+    listingUrlPatterns: [/\/(?:cat|trend|campaigns)-/u],
+    searchUrlPatterns: [/\/pdsearch\//u, /[?&]keyword=/u],
+  },
+  "jysk-cz": {
+    extraSeedUrls: [
+      "https://jysk.cz/home",
+      "https://jysk.cz/loznice",
+      "https://jysk.cz/loznice/matrace",
+      "https://jysk.cz/obyvaci-pokoj",
+      "https://jysk.cz/zahrada",
+      "https://jysk.cz/search?query=matrace",
+    ],
+    listingUrlPatterns: [
+      /^\/(?:home|loznice|obyvaci-pokoj|zahrada|koupelna|kancelar|ulozne-prostory)(?:\/|$)/u,
+    ],
+    searchUrlPatterns: [/\/search/u, /[?&](query|q)=/u],
   },
 };
 
@@ -660,30 +787,26 @@ async function fetchHtml(url: string, headers?: HeadersInit) {
   }
 }
 
-async function probeWithBrowser(url: string) {
+async function fetchHtmlWithBrowser(url: string): Promise<HtmlFetchResult> {
   const playwrightModuleName = "playwright";
   try {
     const loaded = await import(playwrightModuleName);
     const chromium = Reflect.get(loaded, "chromium");
     if (typeof chromium !== "object" || chromium === null) {
-      return Schema.decodeUnknownSync(ProbeResultSchema)({
-        url,
-        mode: "browser",
+      return {
         ok: false,
+        durationMs: 0,
         error: "Playwright chromium export is unavailable.",
-        challengeSignals: [],
-      });
+      };
     }
 
     const launch = Reflect.get(chromium, "launch");
     if (typeof launch !== "function") {
-      return Schema.decodeUnknownSync(ProbeResultSchema)({
-        url,
-        mode: "browser",
+      return {
         ok: false,
+        durationMs: 0,
         error: "Playwright chromium.launch is unavailable.",
-        challengeSignals: [],
-      });
+      };
     }
 
     const startedAt = performance.now();
@@ -719,19 +842,16 @@ async function probeWithBrowser(url: string) {
         const html = await page.content();
         const title = await page.title();
         const durationMs = Number((performance.now() - startedAt).toFixed(3));
-        const finalUrl = page.url();
-        return Schema.decodeUnknownSync(ProbeResultSchema)({
-          url,
-          mode: "browser",
-          statusCode: response?.status() ?? undefined,
-          durationMs,
-          finalUrl,
+        return {
           ok: response?.ok() ?? html.length > 0,
+          statusCode: response?.status() ?? 200,
+          durationMs,
+          finalUrl: page.url(),
           contentType: response?.headers()["content-type"],
+          html,
           htmlBytes: Buffer.byteLength(html, "utf8"),
           title: title.trim() === "" ? undefined : title.trim(),
-          challengeSignals: collectChallengeSignals(`${title}\n${html}`),
-        });
+        };
       } finally {
         await context.close();
       }
@@ -739,18 +859,16 @@ async function probeWithBrowser(url: string) {
       await browser.close();
     }
   } catch (cause) {
-    return Schema.decodeUnknownSync(ProbeResultSchema)({
-      url,
-      mode: "browser",
+    return {
       ok: false,
+      durationMs: 0,
       error:
         (typeof cause === "object" || typeof cause === "function") && cause !== null
           ? typeof Reflect.get(cause, "message") === "string"
             ? String(Reflect.get(cause, "message"))
             : String(cause)
           : String(cause),
-      challengeSignals: [],
-    });
+    };
   }
 }
 
@@ -819,20 +937,8 @@ async function fetchSitemapUrls(site: BenchmarkSite) {
   return [...discovered];
 }
 
-async function discoverHomepageUrls(site: BenchmarkSite) {
-  const seedUrl = site.seedUrls[0];
-  if (seedUrl === undefined) {
-    return [] as string[];
-  }
-
-  const result = await fetchHtml(seedUrl, {
-    accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
-  });
-  if (!result.ok) {
-    return [];
-  }
-
-  const hrefMatches = result.html.matchAll(/href=["']([^"'#]+)["']/giu);
+function extractHomepageUrls(site: BenchmarkSite, html: string, baseUrl: string) {
+  const hrefMatches = html.matchAll(/href=["']([^"'#]+)["']/giu);
   const discovered = new Set<string>();
   for (const match of hrefMatches) {
     if (discovered.size >= MAX_HOMEPAGE_URLS_PER_SITE) {
@@ -845,12 +951,45 @@ async function discoverHomepageUrls(site: BenchmarkSite) {
     }
 
     try {
-      const parsed = new URL(href, seedUrl);
+      const parsed = new URL(href, baseUrl);
       if (isAllowedUrl(parsed, site.domain)) {
         discovered.add(parsed.toString());
       }
     } catch {
       continue;
+    }
+  }
+
+  return discovered;
+}
+
+async function discoverHomepageUrls(
+  site: BenchmarkSite,
+  homepageHttpFetch: Awaited<ReturnType<typeof fetchHtml>>,
+  homepageBrowserFetch: HtmlFetchResult,
+) {
+  const discovered = new Set<string>();
+
+  if (homepageHttpFetch.ok) {
+    const baseUrl = homepageHttpFetch.finalUrl ?? site.seedUrls[0] ?? `https://${site.domain}/`;
+    for (const url of extractHomepageUrls(site, homepageHttpFetch.html, baseUrl)) {
+      discovered.add(url);
+      if (discovered.size >= MAX_HOMEPAGE_URLS_PER_SITE) {
+        return [...discovered];
+      }
+    }
+  }
+
+  if (homepageBrowserFetch.ok) {
+    for (const url of extractHomepageUrls(
+      site,
+      homepageBrowserFetch.html,
+      homepageBrowserFetch.finalUrl,
+    )) {
+      discovered.add(url);
+      if (discovered.size >= MAX_HOMEPAGE_URLS_PER_SITE) {
+        break;
+      }
     }
   }
 
@@ -923,7 +1062,7 @@ function buildFetchPlan(
     ...pageTypeBuckets.unknown,
   ];
 
-  return [...new Set(fetchPlan)].slice(0, Math.max(targetPagesPerSite * 4, 32));
+  return [...new Set(fetchPlan)].slice(0, Math.max(targetPagesPerSite * 2, 32));
 }
 
 async function mapWithConcurrency<Input, Output>(
@@ -946,44 +1085,84 @@ async function buildDiscoveryPages(
   site: BenchmarkSite,
   candidateUrls: ReadonlyArray<string>,
   targetPagesPerSite: number,
+  allowBrowserFallback: boolean,
 ) {
   const orderedUrls = buildFetchPlan(site, candidateUrls, targetPagesPerSite);
-  const pageCandidates = await mapWithConcurrency(
-    orderedUrls,
-    PAGE_PROBE_CONCURRENCY,
-    async (url) => {
-      const result = await fetchHtml(url, {
-        accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-      });
-      if (!result.ok || result.contentType === undefined) {
+  const httpResults = await mapWithConcurrency(orderedUrls, PAGE_PROBE_CONCURRENCY, async (url) => {
+    const result = await fetchHtml(url, {
+      accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+      "user-agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+    });
+    if (!result.ok || result.contentType === undefined) {
+      return undefined;
+    }
+
+    const isHtml = HTML_CONTENT_TYPES.some((entry) => result.contentType?.includes(entry));
+    if (!isHtml) {
+      return undefined;
+    }
+
+    const { pageType, hasJsonLdProduct } = classifyE9PageType(
+      site.siteId,
+      url,
+      result.html,
+      site.kind,
+    );
+    return Schema.decodeUnknownSync(DiscoveryPageSchema)({
+      url,
+      source: "sitemap",
+      pageType,
+      selected: false,
+      title: decodeTitle(result.html),
+      hasJsonLdProduct,
+      challengeSignals: collectChallengeSignals(result.html),
+    });
+  });
+  const pages = httpResults.flatMap((page) => (page === undefined ? [] : [page]));
+
+  if (allowBrowserFallback && pages.length < targetPagesPerSite) {
+    const missingUrls = orderedUrls.filter((url) => pages.every((page) => page.url !== url));
+    const fallbackUrls = missingUrls.slice(
+      0,
+      Math.min(Math.max(targetPagesPerSite - pages.length, 8), 12),
+    );
+    const browserCandidates = await mapWithConcurrency(fallbackUrls, 2, async (url) => {
+      const result = await fetchHtmlWithBrowser(url);
+      if (!result.ok) {
         return undefined;
       }
 
-      const isHtml = HTML_CONTENT_TYPES.some((entry) => result.contentType?.includes(entry));
+      const isHtml = HTML_CONTENT_TYPES.some(
+        (entry) => result.contentType?.includes(entry) ?? false,
+      );
       if (!isHtml) {
         return undefined;
       }
 
       const { pageType, hasJsonLdProduct } = classifyE9PageType(
         site.siteId,
-        url,
+        result.finalUrl,
         result.html,
         site.kind,
       );
       return Schema.decodeUnknownSync(DiscoveryPageSchema)({
-        url,
-        source: "sitemap",
+        url: result.finalUrl,
+        source: "fallback",
         pageType,
         selected: false,
-        title: decodeTitle(result.html),
+        title: result.title ?? decodeTitle(result.html),
         hasJsonLdProduct,
         challengeSignals: collectChallengeSignals(result.html),
       });
-    },
-  );
-  const pages = pageCandidates.flatMap((page) => (page === undefined ? [] : [page]));
+    });
+
+    for (const page of browserCandidates) {
+      if (page !== undefined && pages.every((entry) => entry.url !== page.url)) {
+        pages.push(page);
+      }
+    }
+  }
 
   const selected = new Set<string>();
   const selectByType = (
@@ -1030,7 +1209,11 @@ function getSeedUrls(site: BenchmarkSite) {
   return [...site.seedUrls, ...(profile?.extraSeedUrls ?? [])];
 }
 
-async function buildSiteSummary(site: BenchmarkSite, targetPagesPerSite: number) {
+async function buildSiteSummary(
+  site: BenchmarkSite,
+  targetPagesPerSite: number,
+  httpOnly: boolean,
+) {
   const homepageUrl = getSeedUrls(site)[0] ?? `https://${site.domain}/`;
   const homepageHttpFetch = await fetchHtml(homepageUrl, {
     accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
@@ -1056,12 +1239,42 @@ async function buildSiteSummary(site: BenchmarkSite, targetPagesPerSite: number)
         : [],
     error: "error" in homepageHttpFetch ? homepageHttpFetch.error : undefined,
   });
-  const homepageBrowser = await probeWithBrowser(homepageUrl);
+  const homepageBrowserFetch = httpOnly
+    ? ({ ok: false, durationMs: 0, error: "Skipped by http-only discovery mode." } as const)
+    : await fetchHtmlWithBrowser(homepageUrl);
+  const homepageBrowser = homepageBrowserFetch.ok
+    ? Schema.decodeUnknownSync(ProbeResultSchema)({
+        url: homepageUrl,
+        mode: "browser",
+        statusCode: homepageBrowserFetch.statusCode,
+        durationMs: homepageBrowserFetch.durationMs,
+        finalUrl: homepageBrowserFetch.finalUrl,
+        ok: homepageBrowserFetch.ok,
+        contentType: homepageBrowserFetch.contentType,
+        htmlBytes: homepageBrowserFetch.htmlBytes,
+        title: homepageBrowserFetch.title,
+        challengeSignals: collectChallengeSignals(
+          `${homepageBrowserFetch.title ?? ""}\n${homepageBrowserFetch.html}`,
+        ),
+      })
+    : Schema.decodeUnknownSync(ProbeResultSchema)({
+        url: homepageUrl,
+        mode: "browser",
+        ok: false,
+        durationMs: homepageBrowserFetch.durationMs,
+        error: homepageBrowserFetch.error,
+        challengeSignals: [],
+      });
 
   const sitemapUrls = await fetchSitemapUrls(site);
-  const homepageUrls = await discoverHomepageUrls(site);
+  const homepageUrls = await discoverHomepageUrls(site, homepageHttpFetch, homepageBrowserFetch);
   const candidateUrls = [...new Set([...sitemapUrls, ...homepageUrls, ...getSeedUrls(site)])];
-  const pages = await buildDiscoveryPages(site, candidateUrls, targetPagesPerSite);
+  const pages = await buildDiscoveryPages(
+    site,
+    candidateUrls,
+    targetPagesPerSite,
+    !httpOnly && homepageBrowser.ok,
+  );
   const selectedPages = pages.filter(({ selected }) => selected);
   const selectedProductCount = selectedPages.filter(
     ({ pageType }) => pageType === "product",
@@ -1107,11 +1320,13 @@ export async function runE9CommerceDiscoveryBenchmark(
     readonly generatedAt?: string;
     readonly siteCatalogPath?: string;
     readonly siteConcurrency?: number;
+    readonly httpOnly?: boolean;
   } = {},
 ) {
   const targetPagesPerSite = options.targetPagesPerSite ?? 32;
   const generatedAt = options.generatedAt ?? new Date().toISOString();
   const siteConcurrency = options.siteConcurrency ?? 4;
+  const httpOnly = options.httpOnly ?? false;
   const siteCatalog =
     options.siteCatalogPath === undefined
       ? DEFAULT_SITE_CATALOG
@@ -1123,7 +1338,7 @@ export async function runE9CommerceDiscoveryBenchmark(
   for (let index = 0; index < siteCatalog.length; index += siteConcurrency) {
     const batch = siteCatalog.slice(index, index + siteConcurrency);
     const batchResults = await Promise.all(
-      batch.map((site) => buildSiteSummary(site, targetPagesPerSite)),
+      batch.map((site) => buildSiteSummary(site, targetPagesPerSite, httpOnly)),
     );
     sites.push(...batchResults);
   }

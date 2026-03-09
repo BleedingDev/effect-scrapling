@@ -1,0 +1,274 @@
+[
+  {
+    "siteId": "datart-cz",
+    "domain": "datart.cz",
+    "displayName": "Datart",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.datart.cz/",
+      "https://www.datart.cz/male-domaci-spotrebice.html",
+      "https://www.datart.cz/vyhledavani.html?query=tesla"
+    ],
+    "sitemapUrls": ["https://www.datart.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "zbozi-cz",
+    "domain": "zbozi.cz",
+    "displayName": "Zbozi",
+    "kind": "aggregator",
+    "seedUrls": [
+      "https://www.zbozi.cz/",
+      "https://www.zbozi.cz/elektronika/",
+      "https://www.zbozi.cz/?q=tesla"
+    ],
+    "sitemapUrls": ["https://www.zbozi.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "mironet-cz",
+    "domain": "mironet.cz",
+    "displayName": "Mironet",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.mironet.cz/",
+      "https://www.mironet.cz/pocitace-a-notebooky+rzn10761/",
+      "https://www.mironet.cz/ProductList/showSearch?EXPS=91414195+or+91411391+or+91418202"
+    ],
+    "sitemapUrls": ["https://www.mironet.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "muziker-cz",
+    "domain": "muziker.cz",
+    "displayName": "Muziker",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.muziker.cz/",
+      "https://muziker.cz/kytary",
+      "https://muziker.cz/s/8ba2d716a5"
+    ],
+    "sitemapUrls": ["https://www.muziker.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "pilulka-cz",
+    "domain": "pilulka.cz",
+    "displayName": "Pilulka",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.pilulka.cz/",
+      "https://pilulka.cz/akce-a-slevy",
+      "https://pilulka.cz/doplnky-stravy"
+    ],
+    "sitemapUrls": ["https://www.pilulka.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "biano-cz",
+    "domain": "biano.cz",
+    "displayName": "Biano",
+    "kind": "aggregator",
+    "seedUrls": [
+      "https://www.biano.cz/",
+      "https://www.biano.cz/produkty/",
+      "https://www.biano.cz/produkty?q=tesla"
+    ],
+    "sitemapUrls": ["https://www.biano.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "glami-cz",
+    "domain": "glami.cz",
+    "displayName": "Glami",
+    "kind": "aggregator",
+    "seedUrls": [
+      "https://www.glami.cz/",
+      "https://www.glami.cz/adidas/",
+      "https://www.glami.cz/panska-obuv/",
+      "https://www.glami.cz/obleceni-a-obuv/",
+      "https://www.glami.cz/slunecni-bryle/",
+      "https://www.glami.cz/dziny/siroky-strih/",
+      "https://www.glami.cz/tenisky/adidas-samba/",
+      "https://www.glami.cz/?q=tesla"
+    ],
+    "sitemapUrls": ["https://www.glami.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "aboutyou-cz",
+    "domain": "aboutyou.cz",
+    "displayName": "About You CZ",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.aboutyou.cz/",
+      "https://www.aboutyou.cz/c/zeny-20201",
+      "https://www.aboutyou.cz/s/tesla"
+    ],
+    "sitemapUrls": ["https://www.aboutyou.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "aboutyou-sk",
+    "domain": "aboutyou.sk",
+    "displayName": "About You SK",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.aboutyou.sk/",
+      "https://www.aboutyou.sk/c/zeny-20201",
+      "https://www.aboutyou.sk/s/tesla"
+    ],
+    "sitemapUrls": ["https://www.aboutyou.sk/sitemap.xml"]
+  },
+  {
+    "siteId": "astratex-cz",
+    "domain": "astratex.cz",
+    "displayName": "Astratex",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.astratex.cz/",
+      "https://www.astratex.cz/damske-pradlo/",
+      "https://www.astratex.cz/vyhledavani/?search=tesla"
+    ],
+    "sitemapUrls": ["https://www.astratex.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "bonami-cz",
+    "domain": "bonami.cz",
+    "displayName": "Bonami",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.bonami.cz/",
+      "https://www.bonami.cz/c/bytove-doplnky",
+      "https://www.bonami.cz/search?query=tesla"
+    ],
+    "sitemapUrls": ["https://www.bonami.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "mobilpohotovost-cz",
+    "domain": "mp.cz",
+    "displayName": "Mobil Pohotovost",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.mp.cz/",
+      "https://www.mp.cz/mobily/",
+      "https://www.mp.cz/vyhledavani?search=iphone"
+    ],
+    "sitemapUrls": []
+  },
+  {
+    "siteId": "sportisimo-cz",
+    "domain": "sportisimo.cz",
+    "displayName": "Sportisimo",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.sportisimo.cz/",
+      "https://www.sportisimo.cz/boty/",
+      "https://www.sportisimo.cz/hledat/?q=tesla"
+    ],
+    "sitemapUrls": ["https://www.sportisimo.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "fourhome-cz",
+    "domain": "4home.cz",
+    "displayName": "4home",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.4home.cz/",
+      "https://www.4home.cz/bytovy-textil/",
+      "https://www.4home.cz/kuchyne-a-jidelna/"
+    ],
+    "sitemapUrls": ["https://www.4home.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "bauhaus-cz",
+    "domain": "bauhaus.cz",
+    "displayName": "Bauhaus",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.bauhaus.cz/",
+      "https://www.bauhaus.cz/sortiment",
+      "https://www.bauhaus.cz/sortiment/naradi-a-stroje"
+    ],
+    "sitemapUrls": ["https://www.bauhaus.cz/sitemap.xml"]
+  },
+  {
+    "siteId": "lidl-shop-cz",
+    "domain": "lidl-shop.cz",
+    "displayName": "Lidl Shop",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.lidl-shop.cz/",
+      "https://www.lidl-shop.cz/c/domacnost/s10067705",
+      "https://www.lidl-shop.cz/c/elektro/s10067709"
+    ],
+    "sitemapUrls": []
+  },
+  {
+    "siteId": "ikea-cz",
+    "domain": "ikea.com",
+    "displayName": "IKEA CZ",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.ikea.com/cz/cs/",
+      "https://www.ikea.com/cz/cs/cat/nabytek-fu001/",
+      "https://www.ikea.com/cz/cs/search/?q=tesla"
+    ],
+    "sitemapUrls": []
+  },
+  {
+    "siteId": "ebay-com",
+    "domain": "ebay.com",
+    "displayName": "eBay",
+    "kind": "aggregator",
+    "seedUrls": [
+      "https://www.ebay.com/",
+      "https://www.ebay.com/sch/i.html?_nkw=tesla",
+      "https://www.ebay.com/b/Electronics/bn_7000259124"
+    ],
+    "sitemapUrls": []
+  },
+  {
+    "siteId": "boozt-com",
+    "domain": "boozt.com",
+    "displayName": "Boozt",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.boozt.com/",
+      "https://www.boozt.com/eu/en/women",
+      "https://www.boozt.com/eu/en/search?q=tesla"
+    ],
+    "sitemapUrls": []
+  },
+  {
+    "siteId": "asos-com",
+    "domain": "asos.com",
+    "displayName": "ASOS",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.asos.com/",
+      "https://www.asos.com/women/",
+      "https://www.asos.com/search/?q=tesla"
+    ],
+    "sitemapUrls": []
+  },
+  {
+    "siteId": "shein-com",
+    "domain": "shein.com",
+    "displayName": "SHEIN",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://www.shein.com/",
+      "https://www.shein.com/cat-all.html",
+      "https://www.shein.com/pdsearch/tesla/"
+    ],
+    "sitemapUrls": []
+  },
+  {
+    "siteId": "jysk-cz",
+    "domain": "jysk.cz",
+    "displayName": "JYSK",
+    "kind": "retailer",
+    "seedUrls": [
+      "https://jysk.cz/",
+      "https://jysk.cz/home",
+      "https://jysk.cz/loznice",
+      "https://jysk.cz/loznice/matrace",
+      "https://jysk.cz/obyvaci-pokoj",
+      "https://jysk.cz/search?query=matrace"
+    ],
+    "sitemapUrls": ["https://jysk.cz/sitemap.xml"]
+  }
+]

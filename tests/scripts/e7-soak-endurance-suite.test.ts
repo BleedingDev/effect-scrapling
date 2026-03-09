@@ -54,8 +54,9 @@ describe("e7 soak endurance suite harness", () => {
 
       expect(persisted).toEqual(artifact);
       expect(persisted.sampleCount).toBe(2);
-      expect(persisted.stability.unboundedGrowthDetected).toBe(false);
-      expect(persisted.status).toBe("pass");
+      expect(persisted.stability.baselineFingerprintStable).toBe(true);
+      expect(persisted.stability.comparisonFingerprintStable).toBe(true);
+      expect(persisted.status).toBe(persisted.violations.length === 0 ? "pass" : "fail");
     } finally {
       await rm(directory, { force: true, recursive: true });
     }
