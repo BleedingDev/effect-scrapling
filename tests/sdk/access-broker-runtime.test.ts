@@ -18,6 +18,7 @@ import {
   IdentityLeaseManagerService,
   BUILTIN_LEASED_EGRESS_PLUGIN_ID,
   BUILTIN_LEASED_IDENTITY_PLUGIN_ID,
+  BUILTIN_TOR_EGRESS_PLUGIN_ID,
   BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
   EgressPluginRegistry,
   makeEgressPluginRegistryLiveLayer,
@@ -351,6 +352,62 @@ describe("sdk access broker runtime", () => {
           makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
         ),
       ),
+  );
+
+  it.effect("builtin tor plugin materializes a first-class tor transport binding", () =>
+    Effect.gen(function* () {
+      const registry = yield* EgressPluginRegistry;
+      const plugin = yield* registry.resolve(BUILTIN_TOR_EGRESS_PLUGIN_ID);
+      const lease = yield* plugin.acquire({
+        url: sharedPlan.targetUrl,
+        profile: {
+          ...sharedPlan.egress,
+          pluginId: BUILTIN_TOR_EGRESS_PLUGIN_ID,
+          profileId: "tor",
+          poolId: "tor-pool",
+          routePolicyId: "tor-route",
+          routeKind: "tor",
+          routeKey: "tor",
+          routeConfig: {
+            kind: "tor",
+          },
+        },
+        config: {
+          proxyUrl: "socks5://127.0.0.1:9050",
+          egressKey: "tor-exit-a",
+        },
+        plan: {
+          ...sharedPlan,
+          egress: {
+            ...sharedPlan.egress,
+            pluginId: BUILTIN_TOR_EGRESS_PLUGIN_ID,
+            profileId: "tor",
+            poolId: "tor-pool",
+            routePolicyId: "tor-route",
+            routeKind: "tor",
+            routeKey: "tor",
+            routeConfig: {
+              kind: "tor",
+            },
+          },
+        },
+      });
+
+      expect(lease.egressKey).toBe("tor-exit-a");
+      expect(lease.transportBinding).toEqual({
+        kind: "tor",
+        routeKind: "tor",
+        proxyUrl: "socks5://127.0.0.1:9050",
+        diagnostics: {
+          routeKind: "tor",
+          routeConfigKind: "tor",
+        },
+      });
+    }).pipe(
+      Effect.provide(
+        makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
+      ),
+    ),
   );
 
   it.effect(

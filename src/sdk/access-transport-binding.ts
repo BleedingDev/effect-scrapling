@@ -20,6 +20,15 @@ export type ActivatedProxyTransportBinding = {
   readonly diagnostics: Readonly<Record<string, unknown>>;
 };
 
+export type ActivatedTorTransportBinding = {
+  readonly kind: "tor";
+  readonly routeKind: "tor";
+  readonly proxyUrl?: string | undefined;
+  readonly proxyHeaders?: Readonly<Record<string, string>> | undefined;
+  readonly bypass?: string | undefined;
+  readonly diagnostics: Readonly<Record<string, unknown>>;
+};
+
 export type ActivatedWireGuardTransportBinding = {
   readonly kind: "wireguard";
   readonly routeKind: "wireguard";
@@ -35,11 +44,13 @@ export type ActivatedWireGuardTransportBinding = {
 export type ActivatedTransportBinding =
   | ActivatedDirectTransportBinding
   | ActivatedProxyTransportBinding
+  | ActivatedTorTransportBinding
   | ActivatedWireGuardTransportBinding;
 
 export type AccessTransportBinding = ActivatedTransportBinding;
 export type DirectTransportBinding = ActivatedDirectTransportBinding;
 export type ProxyTransportBinding = ActivatedProxyTransportBinding;
+export type TorTransportBinding = ActivatedTorTransportBinding;
 export type WireGuardTransportBinding = ActivatedWireGuardTransportBinding;
 
 function nonEmptyRecord(
@@ -94,6 +105,31 @@ export function createActivatedProxyTransportBinding(input: {
       : { bypass: asNonEmptyString(input.bypass) }),
     diagnostics: {
       routeKind: input.routeKind,
+      ...input.diagnostics,
+    },
+  };
+}
+
+export function createActivatedTorTransportBinding(input: {
+  readonly proxyUrl?: string | undefined;
+  readonly proxyHeaders?: Readonly<Record<string, string>> | undefined;
+  readonly bypass?: string | undefined;
+  readonly diagnostics?: Readonly<Record<string, unknown>> | undefined;
+}): ActivatedTorTransportBinding {
+  return {
+    kind: "tor",
+    routeKind: "tor",
+    ...(asNonEmptyString(input.proxyUrl) === undefined
+      ? {}
+      : { proxyUrl: asNonEmptyString(input.proxyUrl) }),
+    ...(nonEmptyRecord(input.proxyHeaders) === undefined
+      ? {}
+      : { proxyHeaders: nonEmptyRecord(input.proxyHeaders) }),
+    ...(asNonEmptyString(input.bypass) === undefined
+      ? {}
+      : { bypass: asNonEmptyString(input.bypass) }),
+    diagnostics: {
+      routeKind: "tor",
       ...input.diagnostics,
     },
   };
@@ -156,6 +192,29 @@ export function deriveActivatedTransportBinding(input: {
         ? {}
         : { exitNodeId: asNonEmptyString(routeConfig?.exitNodeId) }),
       ...(proxyShape === undefined ? {} : proxyShape),
+      diagnostics: {
+        routeKind,
+        routeConfigKind: routeConfig?.kind ?? routeKind,
+      },
+    };
+  }
+
+  if (routeKind === "tor" || routeConfig?.kind === "tor") {
+    if (proxyShape === undefined) {
+      return {
+        kind: "tor",
+        routeKind: "tor",
+        diagnostics: {
+          routeKind,
+          routeConfigKind: routeConfig?.kind ?? routeKind,
+        },
+      };
+    }
+
+    return {
+      kind: "tor",
+      routeKind: "tor",
+      ...proxyShape,
       diagnostics: {
         routeKind,
         routeConfigKind: routeConfig?.kind ?? routeKind,
@@ -234,6 +293,21 @@ export function resolveTransportBinding(input: {
     };
   }
 
+  if (input.binding.kind === "tor" && derived.kind === "tor") {
+    return {
+      ...derived,
+      ...input.binding,
+      ...(input.binding.proxyHeaders === undefined
+        ? {}
+        : { proxyHeaders: input.binding.proxyHeaders }),
+      ...(input.binding.bypass === undefined ? {} : { bypass: input.binding.bypass }),
+      diagnostics: {
+        ...derived.diagnostics,
+        ...input.binding.diagnostics,
+      },
+    };
+  }
+
   return input.binding;
 }
 
@@ -257,7 +331,10 @@ export function toFetchTransportProxyConfig(
     return undefined;
   }
 
-  const proxyUrl = binding.kind === "proxy" ? binding.proxyUrl : asNonEmptyString(binding.proxyUrl);
+  const proxyUrl =
+    binding.kind === "proxy" || binding.kind === "tor"
+      ? binding.proxyUrl
+      : asNonEmptyString(binding.proxyUrl);
   if (proxyUrl === undefined) {
     return undefined;
   }
@@ -278,7 +355,10 @@ export function toBrowserTransportProxyConfig(
     return undefined;
   }
 
-  const proxyUrl = binding.kind === "proxy" ? binding.proxyUrl : asNonEmptyString(binding.proxyUrl);
+  const proxyUrl =
+    binding.kind === "proxy" || binding.kind === "tor"
+      ? binding.proxyUrl
+      : asNonEmptyString(binding.proxyUrl);
   if (proxyUrl === undefined) {
     return undefined;
   }
@@ -289,7 +369,10 @@ export function toBrowserTransportProxyConfig(
   parsed.username = "";
   parsed.password = "";
 
-  const bypass = binding.kind === "proxy" ? binding.bypass : asNonEmptyString(binding.bypass);
+  const bypass =
+    binding.kind === "proxy" || binding.kind === "tor"
+      ? binding.bypass
+      : asNonEmptyString(binding.bypass);
 
   return {
     server: parsed.toString(),

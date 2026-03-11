@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import {
   createActivatedProxyTransportBinding,
+  createActivatedTorTransportBinding,
   createActivatedWireGuardTransportBinding,
   deriveActivatedTransportBinding,
   resolveTransportBinding,
@@ -48,6 +49,56 @@ describe("sdk access transport binding", () => {
       username: "user",
       password: "pass",
       bypass: "localhost",
+    });
+  });
+
+  it("treats tor as a first-class transport binding instead of a generic proxy alias", () => {
+    const binding = createActivatedTorTransportBinding({
+      proxyUrl: "socks5://127.0.0.1:9050",
+      bypass: "localhost",
+    });
+
+    expect(binding).toEqual({
+      kind: "tor",
+      routeKind: "tor",
+      proxyUrl: "socks5://127.0.0.1:9050",
+      bypass: "localhost",
+      diagnostics: {
+        routeKind: "tor",
+      },
+    });
+    expect(
+      deriveActivatedTransportBinding({
+        routeKind: "tor",
+        routeConfig: {
+          kind: "tor",
+          proxyUrl: "socks5://127.0.0.1:9050",
+        },
+      }),
+    ).toMatchObject({
+      kind: "tor",
+      routeKind: "tor",
+      proxyUrl: "socks5://127.0.0.1:9050",
+    });
+    expect(toFetchTransportProxyConfig(binding)).toBe("socks5://127.0.0.1:9050");
+    expect(toBrowserTransportProxyConfig(binding)).toEqual({
+      server: "socks5://127.0.0.1:9050",
+      bypass: "localhost",
+    });
+    expect(
+      deriveActivatedTransportBinding({
+        routeKind: "tor",
+        routeConfig: {
+          kind: "tor",
+        },
+      }),
+    ).toEqual({
+      kind: "tor",
+      routeKind: "tor",
+      diagnostics: {
+        routeKind: "tor",
+        routeConfigKind: "tor",
+      },
     });
   });
 

@@ -1115,6 +1115,91 @@ describe("sdk access provider runtime", () => {
     }),
   );
 
+  it.effect("passes first-class tor transport bindings into the injected fetch transport", () =>
+    Effect.suspend(() => {
+      let proxy:
+        | string
+        | {
+            readonly url: string;
+            readonly headers?: HeadersInit | undefined;
+          }
+        | undefined;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("http-basic");
+        const result = yield* provider.execute({
+          url: "https://example.com/products/sku-tor",
+          context: {
+            targetUrl: "https://example.com/products/sku-tor",
+            targetDomain: "example.com",
+            providerId: "http-basic",
+            mode: "http",
+            timeoutMs: 900,
+            egress: {
+              allocationMode: "static",
+              pluginId: "builtin-tor-egress",
+              profileId: "tor",
+              poolId: "tor-pool",
+              routePolicyId: "tor-route",
+              routeKind: "tor",
+              routeKey: "tor",
+              routeConfig: {
+                kind: "tor",
+                proxyUrl: "socks5://127.0.0.1:9050",
+              },
+              transportBinding: {
+                kind: "tor",
+                routeKind: "tor",
+                proxyUrl: "socks5://127.0.0.1:9050",
+                diagnostics: {
+                  routeKind: "tor",
+                  routeConfigKind: "tor",
+                },
+              },
+              egressKey: "tor-exit-a",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-default",
+              httpUserAgent: "HTTP Agent",
+              browserUserAgent: "Browser Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            http: {
+              userAgent: "HTTP Agent",
+            },
+            warnings: [],
+          },
+        });
+
+        expect(result.status).toBe(200);
+        expect(proxy).toBe("socks5://127.0.0.1:9050");
+      }).pipe(
+        Effect.provide(AccessProviderRegistryLive),
+        Effect.provideService(FetchService, {
+          fetch: async (_input, init) => {
+            proxy = init?.proxy;
+            return new Response("<html><head><title>tor</title></head><body>ok</body></html>", {
+              status: 200,
+              headers: {
+                "content-type": "text/html; charset=utf-8",
+              },
+            });
+          },
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
   it.effect("fails HTTP execution when a wireguard transport does not expose a proxy bridge", () =>
     Effect.suspend(
       () =>
@@ -1485,6 +1570,138 @@ describe("sdk access provider runtime", () => {
               content: async () =>
                 "<html><head><title>Browser Runtime</title></head><body>ok</body></html>",
               url: () => "https://example.com/browser-proxy",
+              waitForLoadState: async () => undefined,
+              route: async () => undefined,
+              close: async () => undefined,
+            }).pipe(Effect.map((value) => ({ value, warnings: [] })));
+          },
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
+  it.effect("passes first-class tor transport bindings into the injected browser runtime", () =>
+    Effect.suspend(() => {
+      let proxy:
+        | {
+            readonly server: string;
+            readonly bypass?: string | undefined;
+            readonly username?: string | undefined;
+            readonly password?: string | undefined;
+          }
+        | undefined;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-basic");
+        const result = yield* provider.execute({
+          url: "https://example.com/browser-tor",
+          context: {
+            targetUrl: "https://example.com/browser-tor",
+            targetDomain: "example.com",
+            providerId: "browser-basic",
+            mode: "browser",
+            timeoutMs: 900,
+            egress: {
+              allocationMode: "static",
+              pluginId: "builtin-tor-egress",
+              profileId: "tor",
+              poolId: "tor-pool",
+              routePolicyId: "tor-route",
+              routeKind: "tor",
+              routeKey: "tor",
+              routeConfig: {
+                kind: "tor",
+                proxyUrl: "socks5://127.0.0.1:9050",
+                bypass: "localhost,127.0.0.1",
+              },
+              transportBinding: {
+                kind: "tor",
+                routeKind: "tor",
+                proxyUrl: "socks5://127.0.0.1:9050",
+                bypass: "localhost,127.0.0.1",
+                diagnostics: {
+                  routeKind: "tor",
+                  routeConfigKind: "tor",
+                },
+              },
+              egressKey: "tor-exit-a",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-default",
+              browserUserAgent: "Browser Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            browser: {
+              runtimeProfileId: "patchright-default",
+              waitUntil: "commit",
+              timeoutMs: 900,
+              userAgent: "Browser Agent",
+              poolKey: "browser-basic::patchright-default::tor-exit-a::identity-a",
+            },
+            warnings: [],
+          },
+        });
+
+        expect(result.status).toBe(200);
+        expect(proxy).toEqual({
+          server: "socks5://127.0.0.1:9050",
+          bypass: "localhost,127.0.0.1",
+        });
+      }).pipe(
+        Effect.provide(AccessProviderRegistryLive),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (options, use) => {
+            proxy = options.proxy;
+
+            return use({
+              goto: async () => ({
+                status: () => 200,
+                allHeaders: async () => ({
+                  "content-type": "text/html; charset=utf-8",
+                }),
+                request: () => ({
+                  url: () => "https://example.com/browser-tor",
+                  redirectedFrom: () => null,
+                }),
+              }),
+              content: async () =>
+                "<html><head><title>Browser Tor</title></head><body>ok</body></html>",
+              url: () => "https://example.com/browser-tor",
               waitForLoadState: async () => undefined,
               route: async () => undefined,
               close: async () => undefined,

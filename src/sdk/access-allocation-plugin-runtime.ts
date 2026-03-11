@@ -39,6 +39,7 @@ import {
 import { type ResolvedExecutionPlan } from "./access-runtime.ts";
 import {
   createActivatedProxyTransportBinding,
+  createActivatedTorTransportBinding,
   createActivatedWireGuardTransportBinding,
   deriveActivatedTransportBinding,
   type ActivatedTransportBinding,
@@ -788,16 +789,27 @@ export function makeProxyStaticEgressPlugin(input: {
         return {
           ...profile,
           routeConfig,
-          transportBinding: createActivatedProxyTransportBinding({
-            routeKind: input.kind,
-            proxyUrl,
-            proxyHeaders,
-            bypass,
-            diagnostics: {
-              routeKind: profile.routeKind,
-              routeConfigKind: routeConfig.kind,
-            },
-          }),
+          transportBinding:
+            input.kind === "tor"
+              ? createActivatedTorTransportBinding({
+                  proxyUrl,
+                  proxyHeaders,
+                  bypass,
+                  diagnostics: {
+                    routeKind: profile.routeKind,
+                    routeConfigKind: routeConfig.kind,
+                  },
+                })
+              : createActivatedProxyTransportBinding({
+                  routeKind: input.kind,
+                  proxyUrl,
+                  proxyHeaders,
+                  bypass,
+                  diagnostics: {
+                    routeKind: profile.routeKind,
+                    routeConfigKind: routeConfig.kind,
+                  },
+                }),
           egressKey: config.egressKey ?? proxyUrl,
           release: Effect.void,
         } satisfies ResolvedEgressLease;
