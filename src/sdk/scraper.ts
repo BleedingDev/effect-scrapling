@@ -1,15 +1,22 @@
 import * as cheerio from "cheerio";
 import { isIP } from "node:net";
+import { performance } from "node:perf_hooks";
 import { Effect, Layer, Schema, ServiceMap } from "effect";
+import {
+  AccessExecutionRuntime,
+  AccessExecutionRuntimeLive,
+  DEFAULT_BROWSER_PROVIDER_ID,
+  DEFAULT_HTTP_PROVIDER_ID,
+  toExecutionMetadata,
+  type AccessExecutionInput,
+  type ResolvedExecutionPlan,
+} from "./access-runtime.ts";
 import {
   AccessPreviewRequestSchema,
   AccessPreviewResponseSchema,
-  type AccessMode,
   type AccessPreviewRequest,
   type AccessPreviewResponse,
-  type BrowserOptions,
   type BrowserWaitUntil,
-  DEFAULT_BROWSER_WAIT_UNTIL,
   ExtractRunRequestSchema,
   ExtractRunResponseSchema,
   type ExtractRunRequest,
@@ -25,8 +32,6 @@ import { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "
 
 const MAX_REDIRECTS = 5;
 const DEFAULT_USER_AGENT = "effect-scrapling/0.0.1";
-const DEFAULT_BROWSER_USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
 const RENDER_PREVIEW_LINK_LIMIT = 8;
 const RENDER_PREVIEW_TEXT_LIMIT = 280;
 const IPV4_SEGMENT_TEXT_SCHEMA = Schema.String.check(Schema.isPattern(/^(?:0|[1-9]\d{0,2})$/u));
@@ -74,12 +79,12 @@ function decodeRequest<S extends Schema.Top & { readonly DecodingServices: never
   });
 }
 
-function resolveBrowserWaitUntil(waitUntil?: BrowserWaitUntil): BrowserWaitUntil {
-  return waitUntil ?? DEFAULT_BROWSER_WAIT_UNTIL;
-}
-
-function resolveHeaders(userAgent?: string): Record<string, string> {
+function resolveHeaders(
+  userAgent?: string,
+  extraHeaders?: Readonly<Record<string, string>>,
+): Record<string, string> {
   return {
+    ...extraHeaders,
     "user-agent": userAgent ?? DEFAULT_USER_AGENT,
     accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   };
@@ -169,6 +174,30 @@ function buildRenderPreviewArtifacts(page: FetchPageResult) {
       kind: "timings" as const,
       mediaType: "application/json" as const,
       durationMs: page.durationMs,
+      requestCount: page.timings.requestCount,
+      redirectCount: page.timings.redirectCount,
+      blockedRequestCount: page.timings.blockedRequestCount,
+      ...(page.timings.responseHeadersDurationMs === undefined
+        ? {}
+        : { responseHeadersDurationMs: page.timings.responseHeadersDurationMs }),
+      ...(page.timings.bodyReadDurationMs === undefined
+        ? {}
+        : { bodyReadDurationMs: page.timings.bodyReadDurationMs }),
+      ...(page.timings.routeRegistrationDurationMs === undefined
+        ? {}
+        : { routeRegistrationDurationMs: page.timings.routeRegistrationDurationMs }),
+      ...(page.timings.gotoDurationMs === undefined
+        ? {}
+        : { gotoDurationMs: page.timings.gotoDurationMs }),
+      ...(page.timings.loadStateDurationMs === undefined
+        ? {}
+        : { loadStateDurationMs: page.timings.loadStateDurationMs }),
+      ...(page.timings.domReadDurationMs === undefined
+        ? {}
+        : { domReadDurationMs: page.timings.domReadDurationMs }),
+      ...(page.timings.headerReadDurationMs === undefined
+        ? {}
+        : { headerReadDurationMs: page.timings.headerReadDurationMs }),
     },
   ] as const;
 }
@@ -368,48 +397,6 @@ function resolveValidatedUrl(candidate: string, currentUrl?: URL): URL {
   return parsed;
 }
 
-type RequestFetchOptions = {
-  readonly mode: AccessMode;
-  readonly timeoutMs: number;
-  readonly userAgent?: string | undefined;
-  readonly browser?: BrowserOptions | undefined;
-};
-
-type HttpFetchOptions = {
-  readonly mode: "http";
-  readonly timeoutMs: number;
-  readonly userAgent?: string;
-};
-
-type BrowserFetchOptions = {
-  readonly mode: "browser";
-  readonly timeoutMs: number;
-  readonly userAgent?: string;
-  readonly waitUntil: BrowserWaitUntil;
-};
-
-type ResolvedFetchOptions = HttpFetchOptions | BrowserFetchOptions;
-
-function resolveFetchOptions(request: RequestFetchOptions): ResolvedFetchOptions {
-  const mode: AccessMode = request.mode;
-  if (mode === "browser") {
-    const userAgent = request.browser?.userAgent ?? request.userAgent;
-    return {
-      mode,
-      timeoutMs: request.browser?.timeoutMs ?? request.timeoutMs,
-      waitUntil: resolveBrowserWaitUntil(request.browser?.waitUntil),
-      ...(userAgent !== undefined ? { userAgent } : {}),
-    };
-  }
-
-  const userAgent = request.userAgent;
-  return {
-    mode: "http",
-    timeoutMs: request.timeoutMs,
-    ...(userAgent !== undefined ? { userAgent } : {}),
-  };
-}
-
 type FetchPageResult = {
   readonly url: string;
   readonly finalUrl: string;
@@ -418,36 +405,83 @@ type FetchPageResult = {
   readonly contentLength: number;
   readonly html: string;
   readonly durationMs: number;
+  readonly timings: {
+    readonly requestCount: number;
+    readonly redirectCount: number;
+    readonly blockedRequestCount: number;
+    readonly responseHeadersDurationMs?: number | undefined;
+    readonly bodyReadDurationMs?: number | undefined;
+    readonly routeRegistrationDurationMs?: number | undefined;
+    readonly gotoDurationMs?: number | undefined;
+    readonly loadStateDurationMs?: number | undefined;
+    readonly domReadDurationMs?: number | undefined;
+    readonly headerReadDurationMs?: number | undefined;
+  };
   readonly warnings: ReadonlyArray<string>;
 };
 
+function roundTiming(value: number) {
+  return Math.round(Math.max(0, value) * 1_000) / 1_000;
+}
+
+function countRedirectChain(request: unknown) {
+  if (!request || typeof request !== "object") {
+    return 0;
+  }
+
+  let redirectCount = 0;
+  let current: unknown = request;
+
+  while (current && typeof current === "object") {
+    const redirectedFrom = Reflect.get(current, "redirectedFrom");
+    if (typeof redirectedFrom !== "function") {
+      break;
+    }
+
+    current = redirectedFrom.call(current);
+    if (current === undefined || current === null) {
+      break;
+    }
+
+    redirectCount += 1;
+  }
+
+  return redirectCount;
+}
+
 function fetchPageHttp(
   url: string,
-  timeoutMs: number,
-  userAgent?: string,
+  plan: ResolvedExecutionPlan,
 ): Effect.Effect<FetchPageResult, NetworkError, FetchService> {
   return Effect.gen(function* () {
     const fetchService = yield* FetchService;
     return yield* Effect.tryPromise({
       try: async () => {
         const abortController = new AbortController();
-        const timeout = setTimeout(() => abortController.abort("request-timeout"), timeoutMs);
-        const startedAt = Date.now();
+        const timeout = setTimeout(() => abortController.abort("request-timeout"), plan.timeoutMs);
+        const startedAt = performance.now();
         let currentUrl = resolveValidatedUrl(url);
+        let requestCount = 0;
+        let redirectCount = 0;
+        let responseHeadersDurationMs = 0;
 
         try {
-          for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+          for (let redirectHop = 0; redirectHop <= MAX_REDIRECTS; redirectHop += 1) {
+            requestCount += 1;
+            const responseStartedAt = performance.now();
             const response = await fetchService.fetch(currentUrl.toString(), {
               method: "GET",
-              headers: resolveHeaders(userAgent),
+              headers: resolveHeaders(plan.http?.userAgent, plan.egress.requestHeaders),
               redirect: "manual",
               signal: abortController.signal,
             });
+            responseHeadersDurationMs += performance.now() - responseStartedAt;
 
             if (response.status >= 300 && response.status < 400) {
-              if (redirectCount === MAX_REDIRECTS) {
+              if (redirectHop === MAX_REDIRECTS) {
                 throw new Error(`Redirect limit exceeded after ${MAX_REDIRECTS} hops`);
               }
+              redirectCount += 1;
 
               const location = response.headers.get("location");
               if (!location) {
@@ -458,8 +492,9 @@ function fetchPageHttp(
               continue;
             }
 
+            const bodyStartedAt = performance.now();
             const html = await response.text();
-            const endedAt = Date.now();
+            const bodyReadDurationMs = performance.now() - bodyStartedAt;
 
             if (!response.ok) {
               throw new Error(`HTTP ${response.status} ${response.statusText}`);
@@ -472,8 +507,15 @@ function fetchPageHttp(
               contentType: response.headers.get("content-type") ?? "",
               contentLength: html.length,
               html,
-              durationMs: Math.max(1, endedAt - startedAt),
-              warnings: [],
+              durationMs: Math.max(0.001, roundTiming(performance.now() - startedAt)),
+              timings: {
+                requestCount,
+                redirectCount,
+                blockedRequestCount: 0,
+                responseHeadersDurationMs: roundTiming(responseHeadersDurationMs),
+                bodyReadDurationMs: roundTiming(bodyReadDurationMs),
+              },
+              warnings: [...plan.warnings],
             };
           }
 
@@ -502,18 +544,26 @@ function resolveBrowserLoadState(
 
 function fetchPageBrowser(
   url: string,
-  options: BrowserFetchOptions,
+  plan: ResolvedExecutionPlan & { readonly browser: NonNullable<ResolvedExecutionPlan["browser"]> },
 ): Effect.Effect<FetchPageResult, BrowserError> {
   return withPooledBrowserPage(
     {
-      userAgent: options.userAgent ?? DEFAULT_BROWSER_USER_AGENT,
+      runtimeProfileId: plan.browser.runtimeProfileId,
+      poolKey: plan.browser.poolKey,
+      userAgent:
+        plan.browser.userAgent ??
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+      ...(plan.identity.locale === undefined ? {} : { locale: plan.identity.locale }),
+      ...(plan.identity.timezoneId === undefined ? {} : { timezoneId: plan.identity.timezoneId }),
     },
     (page: PlaywrightPage) =>
       Effect.tryPromise({
         try: async () => {
-          const startedAt = Date.now();
+          const startedAt = performance.now();
           let blockedRequestReason: string | undefined;
+          let blockedRequestCount = 0;
 
+          const routeRegistrationStartedAt = performance.now();
           await page.route("**/*", async (route) => {
             const requestUrl = route.request().url();
             const violation = getUrlPolicyViolation(new URL(requestUrl), {
@@ -522,32 +572,39 @@ function fetchPageBrowser(
 
             if (violation) {
               blockedRequestReason ??= `Blocked browser request to ${requestUrl}: ${violation}`;
+              blockedRequestCount += 1;
               await route.abort("blockedbyclient");
               return;
             }
 
             await route.continue();
           });
+          const routeRegistrationDurationMs = performance.now() - routeRegistrationStartedAt;
 
+          const gotoStartedAt = performance.now();
           const response = await page.goto(url, {
-            waitUntil: options.waitUntil,
-            timeout: options.timeoutMs,
+            waitUntil: plan.browser.waitUntil,
+            timeout: plan.browser.timeoutMs,
           });
+          const gotoDurationMs = performance.now() - gotoStartedAt;
 
           if (!response) {
             throw new Error("Navigation completed without an HTTP response");
           }
 
-          await page.waitForLoadState(resolveBrowserLoadState(options.waitUntil), {
-            timeout: options.timeoutMs,
+          const loadStateStartedAt = performance.now();
+          await page.waitForLoadState(resolveBrowserLoadState(plan.browser.waitUntil), {
+            timeout: plan.browser.timeoutMs,
           });
+          const loadStateDurationMs = performance.now() - loadStateStartedAt;
 
           if (blockedRequestReason) {
             throw new Error(blockedRequestReason);
           }
 
+          const domReadStartedAt = performance.now();
           const html = await page.content();
-          const endedAt = Date.now();
+          const domReadDurationMs = performance.now() - domReadStartedAt;
           const status = response.status();
           const finalUrl = resolveValidatedUrl(page.url()).toString();
 
@@ -555,7 +612,14 @@ function fetchPageBrowser(
             throw new Error(`HTTP ${status}`);
           }
 
+          const headerReadStartedAt = performance.now();
           const headers = await response.allHeaders();
+          const headerReadDurationMs = performance.now() - headerReadStartedAt;
+          const requestGetter = Reflect.get(response, "request");
+          const redirectCount =
+            typeof requestGetter === "function"
+              ? countRedirectChain(requestGetter.call(response))
+              : 0;
 
           return {
             url,
@@ -564,7 +628,18 @@ function fetchPageBrowser(
             contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
             contentLength: html.length,
             html,
-            durationMs: Math.max(1, endedAt - startedAt),
+            durationMs: Math.max(0.001, roundTiming(performance.now() - startedAt)),
+            timings: {
+              requestCount: redirectCount + 1,
+              redirectCount,
+              blockedRequestCount,
+              routeRegistrationDurationMs: roundTiming(routeRegistrationDurationMs),
+              gotoDurationMs: roundTiming(gotoDurationMs),
+              loadStateDurationMs: roundTiming(loadStateDurationMs),
+              domReadDurationMs: roundTiming(domReadDurationMs),
+              headerReadDurationMs: roundTiming(headerReadDurationMs),
+            },
+            warnings: [...plan.warnings],
           };
         },
         catch: (error) =>
@@ -576,7 +651,7 @@ function fetchPageBrowser(
   ).pipe(
     Effect.map(({ value, warnings }) => ({
       ...value,
-      warnings,
+      warnings: [...plan.warnings, ...warnings],
     })),
     Effect.mapError(
       (error) =>
@@ -590,12 +665,21 @@ function fetchPageBrowser(
 
 function fetchPage(
   url: string,
-  options: ResolvedFetchOptions,
+  plan: ResolvedExecutionPlan,
 ): Effect.Effect<FetchPageResult, NetworkError | BrowserError, FetchService> {
-  if (options.mode === "browser") {
-    return fetchPageBrowser(url, options);
+  if (plan.mode === "browser" && plan.browser !== undefined) {
+    return fetchPageBrowser(url, { ...plan, browser: plan.browser });
   }
-  return fetchPageHttp(url, options.timeoutMs, options.userAgent);
+  return fetchPageHttp(url, plan);
+}
+
+function resolveExecutionPlan(
+  input: AccessExecutionInput,
+): Effect.Effect<ResolvedExecutionPlan, InvalidInputError> {
+  return Effect.gen(function* () {
+    const runtime = yield* AccessExecutionRuntime;
+    return yield* runtime.resolve(input);
+  }).pipe(Effect.provide(AccessExecutionRuntimeLive));
 }
 
 export function accessPreview(
@@ -612,8 +696,12 @@ export function accessPreview(
       "access preview",
     );
     const validatedUrl = yield* parseUserFacingUrl(request.url);
-    const options = resolveFetchOptions(request);
-    const page = yield* fetchPage(validatedUrl, options);
+    const executionPlan = yield* resolveExecutionPlan({
+      defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+      defaultTimeoutMs: request.timeoutMs,
+      execution: request.execution,
+    });
+    const page = yield* fetchPage(validatedUrl, executionPlan);
 
     const response: AccessPreviewResponse = {
       ok: true,
@@ -625,6 +713,8 @@ export function accessPreview(
         contentType: page.contentType,
         contentLength: Math.max(1, page.contentLength),
         durationMs: page.durationMs,
+        execution: toExecutionMetadata(executionPlan),
+        timings: page.timings,
       },
       warnings: [...page.warnings],
     };
@@ -654,12 +744,22 @@ export function renderPreview(
       "render preview",
     );
     const validatedUrl = yield* parseUserFacingUrl(request.url);
-    const browserUserAgent = request.browser?.userAgent ?? request.userAgent;
+    const executionPlan = yield* resolveExecutionPlan({
+      defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+      defaultTimeoutMs: request.timeoutMs,
+      execution: request.execution,
+    });
+    if (executionPlan.mode !== "browser" || executionPlan.browser === undefined) {
+      return yield* Effect.fail(
+        new InvalidInputError({
+          message: "Render preview requires a browser execution provider",
+          details: `Resolved provider "${executionPlan.providerId}" does not support rendered DOM preview.`,
+        }),
+      );
+    }
     const page = yield* fetchPageBrowser(validatedUrl, {
-      mode: "browser",
-      timeoutMs: request.browser?.timeoutMs ?? request.timeoutMs,
-      waitUntil: resolveBrowserWaitUntil(request.browser?.waitUntil),
-      ...(browserUserAgent !== undefined ? { userAgent: browserUserAgent } : {}),
+      ...executionPlan,
+      browser: executionPlan.browser,
     });
 
     const response: RenderPreviewResponse = {
@@ -667,7 +767,7 @@ export function renderPreview(
       command: "render preview",
       data: {
         url: page.url,
-        mode: "browser",
+        execution: toExecutionMetadata(executionPlan),
         status: {
           code: page.status,
           ok: page.status < 400,
@@ -732,9 +832,13 @@ export function extractRun(
     const selector = request.selector;
     const limit = request.limit;
     const all = request.all;
-    const options = resolveFetchOptions(request);
+    const executionPlan = yield* resolveExecutionPlan({
+      defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+      defaultTimeoutMs: request.timeoutMs,
+      execution: request.execution,
+    });
 
-    const page = yield* fetchPage(validatedUrl, options);
+    const page = yield* fetchPage(validatedUrl, executionPlan);
 
     const values = yield* Effect.try({
       try: () => extractValues(page.html, selector, request.attr, all, limit),
@@ -755,6 +859,7 @@ export function extractRun(
         count: values.length,
         values,
         durationMs: page.durationMs,
+        execution: toExecutionMetadata(executionPlan),
       },
       warnings:
         values.length === 0

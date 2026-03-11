@@ -24,36 +24,79 @@ function pickAlias(payload: JsonObject, ...keys: string[]): unknown {
   return undefined;
 }
 
-function normalizeSharedPayload(payload: JsonObject): JsonObject {
+function normalizeExecutionPayload(payload: JsonObject): JsonObject | undefined {
+  const executionPayload =
+    payload.execution === undefined
+      ? undefined
+      : decodeJsonObject('"execution"', payload.execution);
+  const httpPayload =
+    executionPayload?.http === undefined
+      ? undefined
+      : decodeJsonObject('"execution.http"', executionPayload.http);
   const browserPayload =
-    payload.browser === undefined ? undefined : decodeJsonObject('"browser"', payload.browser);
-  const waitUntil =
-    pickAlias(payload, "waitUntil", "wait-until") ??
+    executionPayload?.browser === undefined
+      ? undefined
+      : decodeJsonObject('"execution.browser"', executionPayload.browser);
+  const sharedUserAgent =
+    pickAlias(payload, "userAgent", "user-agent") ??
+    (executionPayload ? pickAlias(executionPayload, "userAgent", "user-agent") : undefined);
+  const httpUserAgent =
+    sharedUserAgent ??
+    pickAlias(payload, "httpUserAgent", "http-user-agent") ??
+    (executionPayload
+      ? pickAlias(executionPayload, "httpUserAgent", "http-user-agent")
+      : undefined) ??
+    (httpPayload ? pickAlias(httpPayload, "userAgent", "user-agent") : undefined);
+  const browserWaitUntil =
+    pickAlias(payload, "browserWaitUntil", "browser-wait-until", "waitUntil", "wait-until") ??
     (browserPayload ? pickAlias(browserPayload, "waitUntil", "wait-until") : undefined);
-  const waitMs =
-    pickAlias(payload, "waitMs", "wait-ms", "browserTimeoutMs", "browser-timeout-ms") ??
+  const browserTimeoutMs =
+    pickAlias(payload, "browserTimeoutMs", "browser-timeout-ms", "waitMs", "wait-ms") ??
+    (executionPayload ? pickAlias(executionPayload, "timeoutMs", "timeout-ms") : undefined) ??
     (browserPayload ? pickAlias(browserPayload, "timeoutMs", "timeout-ms") : undefined);
   const browserUserAgent =
+    sharedUserAgent ??
     pickAlias(payload, "browserUserAgent", "browser-user-agent") ??
-    (browserPayload ? pickAlias(browserPayload, "userAgent", "user-agent") : undefined);
+    pickAlias(browserPayload ?? {}, "userAgent", "user-agent");
 
-  return {
-    url: pickAlias(payload, "url"),
-    timeoutMs: pickAlias(payload, "timeoutMs", "timeout-ms"),
-    userAgent: pickAlias(payload, "userAgent", "user-agent"),
-    mode: pickAlias(payload, "mode"),
-    browser:
-      browserPayload !== undefined ||
-      waitUntil !== undefined ||
-      waitMs !== undefined ||
-      browserUserAgent !== undefined
-        ? {
-            waitUntil,
-            timeoutMs: waitMs,
-            userAgent: browserUserAgent,
-          }
-        : undefined,
+  const execution = {
+    providerId:
+      pickAlias(payload, "providerId", "provider-id", "provider") ??
+      pickAlias(executionPayload ?? {}, "providerId", "provider-id"),
+    egressProfileId:
+      pickAlias(payload, "egressProfileId", "egress-profile", "egressProfile") ??
+      pickAlias(executionPayload ?? {}, "egressProfileId", "egress-profile"),
+    identityProfileId:
+      pickAlias(payload, "identityProfileId", "identity-profile", "identityProfile") ??
+      pickAlias(executionPayload ?? {}, "identityProfileId", "identity-profile"),
+    browserRuntimeProfileId:
+      pickAlias(
+        payload,
+        "browserRuntimeProfileId",
+        "browser-runtime-profile",
+        "browserRuntimeProfile",
+      ) ?? pickAlias(executionPayload ?? {}, "browserRuntimeProfileId", "browser-runtime-profile"),
+    ...(httpUserAgent === undefined
+      ? {}
+      : {
+          http: {
+            userAgent: httpUserAgent,
+          },
+        }),
+    ...(browserWaitUntil === undefined &&
+    browserTimeoutMs === undefined &&
+    browserUserAgent === undefined
+      ? {}
+      : {
+          browser: {
+            ...(browserWaitUntil === undefined ? {} : { waitUntil: browserWaitUntil }),
+            ...(browserTimeoutMs === undefined ? {} : { timeoutMs: browserTimeoutMs }),
+            ...(browserUserAgent === undefined ? {} : { userAgent: browserUserAgent }),
+          },
+        }),
   };
+
+  return Object.keys(execution).length === 0 ? undefined : execution;
 }
 
 export function normalizePayload(
@@ -61,26 +104,32 @@ export function normalizePayload(
   rawPayload: unknown,
 ): JsonObject {
   const payload = decodeJsonObject("Request body", rawPayload);
-  const sharedPayload = normalizeSharedPayload(payload);
+  const execution = normalizeExecutionPayload(payload);
+  const timeoutMs = pickAlias(payload, "timeoutMs", "timeout-ms");
 
   if (kind === "access") {
-    return sharedPayload;
+    return {
+      url: pickAlias(payload, "url"),
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+      ...(execution === undefined ? {} : { execution }),
+    };
   }
 
   if (kind === "render") {
     return {
-      url: sharedPayload.url,
-      timeoutMs: sharedPayload.timeoutMs,
-      userAgent: sharedPayload.userAgent,
-      browser: sharedPayload.browser,
+      url: pickAlias(payload, "url"),
+      ...(timeoutMs === undefined ? {} : { timeoutMs }),
+      ...(execution === undefined ? {} : { execution }),
     };
   }
 
   return {
-    ...sharedPayload,
+    url: pickAlias(payload, "url"),
     selector: pickAlias(payload, "selector"),
     attr: pickAlias(payload, "attr"),
     all: pickAlias(payload, "all"),
     limit: pickAlias(payload, "limit"),
+    ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    ...(execution === undefined ? {} : { execution }),
   };
 }
