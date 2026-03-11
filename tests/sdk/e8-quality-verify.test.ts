@@ -11,8 +11,11 @@ import {
   runSnapshotDiffOperation,
 } from "effect-scrapling/e8";
 import { executeCli } from "../../src/standalone.ts";
+import { resetAccessHealthGatewayForTests } from "../../src/sdk/access-health-gateway.ts";
 import { InvalidInputError } from "../../src/sdk/errors.ts";
+import { type ExtractRunResponse } from "../../src/sdk/schemas.ts";
 import { runDefaultBaselineCorpus } from "../../scripts/benchmarks/e7-baseline-corpus.ts";
+import { stripVolatileAccessTelemetry } from "./test-envelope-normalizers.ts";
 
 function makePack() {
   return {
@@ -70,9 +73,14 @@ function mockHtmlFetch(body: string) {
   };
 }
 
+function normalizeExtractRunResponse(response: ExtractRunResponse): ExtractRunResponse {
+  return stripVolatileAccessTelemetry(response);
+}
+
 describe("E8 extraction and quality verification", () => {
   it.effect("keeps extract, diff, verify, and compare envelopes aligned across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const baseline = makeSnapshot({
         id: "snapshot-baseline-001",
         targetId: "target-quality-001",
@@ -200,7 +208,9 @@ describe("E8 extraction and quality verification", () => {
       );
 
       expect(extract.data.values).toEqual(["Effect", "Scrapling"]);
-      expect(extract).toEqual(JSON.parse(cliExtract.output));
+      expect(normalizeExtractRunResponse(extract)).toEqual(
+        normalizeExtractRunResponse(JSON.parse(cliExtract.output)),
+      );
       expect(Schema.decodeUnknownSync(SnapshotDiffEnvelopeSchema)(diff)).toEqual(
         Schema.decodeUnknownSync(SnapshotDiffEnvelopeSchema)(JSON.parse(cliDiff.output)),
       );
@@ -217,6 +227,7 @@ describe("E8 extraction and quality verification", () => {
 
   it.effect("rejects inconsistent quality evidence across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const baselineCorpus = yield* Effect.promise(() => runDefaultBaselineCorpus());
       const comparison = yield* runIncumbentComparison({
         id: "comparison-e8-quality-invalid",

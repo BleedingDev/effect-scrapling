@@ -87,12 +87,15 @@ describe("E8 SDK consumer example", () => {
 
   it("keeps the example on the public E8 package import path only", async () => {
     const source = await Bun.file(EXAMPLE_PATH).text();
+    const e8PublicModule = await import("effect-scrapling/e8");
     const importSpecifiers = [...source.matchAll(/from\s+"([^"]+)"/g)].flatMap((match) => {
       const specifier = match[1];
       return specifier === undefined ? [] : [specifier];
     });
 
     expect(importSpecifiers).toEqual(["effect", "effect-scrapling/e8"]);
+    expect("provideSdkRuntime" in e8PublicModule).toBe(false);
+    expect("provideSdkEnvironment" in e8PublicModule).toBe(false);
     expect(source.includes("../src/")).toBeFalse();
     expect(source.includes("../scripts/")).toBeFalse();
     expect(source.includes("../libs/")).toBeFalse();

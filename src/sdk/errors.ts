@@ -18,4 +18,15 @@ export class ExtractionError extends Data.TaggedError("ExtractionError")<{
 export class BrowserError extends Data.TaggedError("BrowserError")<{
   readonly message: string;
   readonly details?: string;
+  readonly warnings?: ReadonlyArray<string>;
+}> {}
+
+export class AccessQuarantinedError extends Data.TaggedError("AccessQuarantinedError")<{
+  readonly message: string;
+  readonly details?: string;
+}> {}
+
+export class AccessResourceError extends Data.TaggedError("AccessResourceError")<{
+  readonly message: string;
+  readonly details?: string;
 }> {}

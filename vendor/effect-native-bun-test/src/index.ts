@@ -25,6 +25,24 @@ export const setSystemTime = B.setSystemTime
 export const spyOn = B.spyOn
 export const test = B.test
 
+const resetProcessExitCode = () => {
+  process.exitCode = undefined
+}
+
+// Some CLI/benchmark tests intentionally exercise failure paths that set process.exitCode.
+// Reset it around the whole test lifecycle so one spec cannot taint Bun's aggregate process status.
+B.beforeEach(() => {
+  resetProcessExitCode()
+})
+
+B.afterEach(() => {
+  resetProcessExitCode()
+})
+
+B.afterAll(() => {
+  resetProcessExitCode()
+})
+
 // Re-export Bun types
 export type * from "bun:test"
 

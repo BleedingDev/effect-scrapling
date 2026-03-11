@@ -24,10 +24,23 @@ import {
   runWorkspaceDoctor,
   showWorkspaceConfig,
 } from "../../src/e8.ts";
+import { provideSdkRuntime } from "../../src/sdk/runtime-layer.ts";
 import { executeCli } from "../../src/standalone.ts";
 import { runE8BenchmarkCli } from "./e8-benchmark-export.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
+const VOLATILE_ENVELOPE_KEYS = new Set([
+  "durationMs",
+  "responseHeadersDurationMs",
+  "bodyReadDurationMs",
+  "routeRegistrationDurationMs",
+  "gotoDurationMs",
+  "loadStateDurationMs",
+  "domReadDurationMs",
+  "headerReadDurationMs",
+  "egressLeaseId",
+  "identityLeaseId",
+]);
 
 const E8ParityCaseSchema = Schema.Struct({
   caseId: NonEmptyStringSchema,
@@ -48,6 +61,22 @@ export const E8ParityArtifactSchema = Schema.Struct({
   mismatches: Schema.Array(NonEmptyStringSchema),
   cases: Schema.Array(E8ParityCaseSchema),
 });
+
+function normalizeEnvelope<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeEnvelope(entry)) as T;
+  }
+
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  const normalizedEntries = Object.entries(value)
+    .filter(([key]) => !VOLATILE_ENVELOPE_KEYS.has(key))
+    .map(([key, entry]) => [key, normalizeEnvelope(entry)]);
+
+  return Object.fromEntries(normalizedEntries) as T;
+}
 
 function mockHtmlFetch(body: string) {
   return async (input: string | URL | Request) => {
@@ -155,26 +184,6 @@ function makeSnapshot(input: {
     qualityScore: 0.96,
     createdAt: "2026-03-09T10:00:00.000Z",
   };
-}
-
-function normalizeEnvelope(payload: unknown) {
-  if (typeof payload !== "object" || payload === null) {
-    return payload;
-  }
-
-  const normalized = structuredClone(payload);
-  const command = Reflect.get(normalized, "command");
-  const data = Reflect.get(normalized, "data");
-
-  if (command === "access preview" && typeof data === "object" && data !== null) {
-    Reflect.set(data, "durationMs", 1);
-  }
-
-  if (command === "extract run" && typeof data === "object" && data !== null) {
-    Reflect.set(data, "durationMs", 1);
-  }
-
-  return normalized;
 }
 
 async function createParityCase(input: {
@@ -309,13 +318,13 @@ export async function runE8ParityDryRunSuite() {
     await createParityCase({
       caseId: "workspace-doctor",
       command: "workspace doctor",
-      sdk: () => Effect.runPromise(runWorkspaceDoctor()),
+      sdk: () => Effect.runPromise(provideSdkRuntime(runWorkspaceDoctor())),
       cli: () => executeCli(["workspace", "doctor"]).then((result) => JSON.parse(result.output)),
     }),
     await createParityCase({
       caseId: "workspace-config-show",
       command: "workspace config show",
-      sdk: () => Effect.runPromise(showWorkspaceConfig()),
+      sdk: () => Effect.runPromise(provideSdkRuntime(showWorkspaceConfig())),
       cli: () =>
         executeCli(["workspace", "config", "show"]).then((result) => JSON.parse(result.output)),
     }),

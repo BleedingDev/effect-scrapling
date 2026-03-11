@@ -31,6 +31,11 @@ export {
   runE9ScraplingParity,
 } from "./e9-scrapling-parity.ts";
 export {
+  E9BenchmarkSuiteArtifactSchema,
+  mergeE9BenchmarkArtifacts,
+  runE9BenchmarkSuite,
+} from "./e9-benchmark-suite.ts";
+export {
   E9HighFrictionCanaryArtifactSchema,
   runE9HighFrictionCanary,
 } from "./e9-high-friction-canary.ts";

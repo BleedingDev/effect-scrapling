@@ -6,6 +6,7 @@ import {
   TargetListEnvelopeSchema,
   WorkspaceConfigShowEnvelopeSchema,
   WorkspaceDoctorEnvelopeSchema,
+  withE8Runtime,
   runArtifactExportOperation,
   runBenchmarkOperation,
   runTargetImportOperation,
@@ -48,49 +49,51 @@ function makeTarget(input: {
 }
 
 export function runE8SdkConsumerExample() {
-  return Effect.gen(function* () {
-    const targets = [
-      makeTarget({
-        id: "target-sdk-consumer-product-001",
-        tenantId: "tenant-main",
-        domain: "shop.example.com",
-        kind: "productPage",
-        priority: 20,
-      }),
-      makeTarget({
-        id: "target-sdk-consumer-listing-001",
-        tenantId: "tenant-main",
-        domain: "shop.example.com",
-        kind: "productListing",
-        priority: 10,
-      }),
-    ];
-    const doctor = yield* runWorkspaceDoctor();
-    const config = yield* showWorkspaceConfig();
-    const targetImport = yield* runTargetImportOperation({ targets });
-    const targetList = yield* runTargetListOperation({
-      targets,
-      filters: {
-        domain: "shop.example.com",
-      },
-    });
-    const benchmarkRun = yield* runBenchmarkOperation();
-    const artifactExport = yield* runArtifactExportOperation();
+  return withE8Runtime(
+    Effect.gen(function* () {
+      const targets = [
+        makeTarget({
+          id: "target-sdk-consumer-product-001",
+          tenantId: "tenant-main",
+          domain: "shop.example.com",
+          kind: "productPage",
+          priority: 20,
+        }),
+        makeTarget({
+          id: "target-sdk-consumer-listing-001",
+          tenantId: "tenant-main",
+          domain: "shop.example.com",
+          kind: "productListing",
+          priority: 10,
+        }),
+      ];
+      const doctor = yield* runWorkspaceDoctor();
+      const config = yield* showWorkspaceConfig();
+      const targetImport = yield* runTargetImportOperation({ targets });
+      const targetList = yield* runTargetListOperation({
+        targets,
+        filters: {
+          domain: "shop.example.com",
+        },
+      });
+      const benchmarkRun = yield* runBenchmarkOperation();
+      const artifactExport = yield* runArtifactExportOperation();
 
-    return {
-      importPath: "effect-scrapling/e8" as const,
-      prerequisites: e8SdkConsumerPrerequisites,
-      pitfalls: e8SdkConsumerPitfalls,
-      payload: {
-        doctor: Schema.encodeSync(WorkspaceDoctorEnvelopeSchema)(doctor),
-        config: Schema.encodeSync(WorkspaceConfigShowEnvelopeSchema)(config),
-        targetImport: Schema.encodeSync(TargetImportEnvelopeSchema)(targetImport),
-        targetList: Schema.encodeSync(TargetListEnvelopeSchema)(targetList),
-        benchmarkRun: Schema.encodeSync(E8BenchmarkRunEnvelopeSchema)(benchmarkRun),
-        artifactExport: Schema.encodeSync(E8ArtifactExportEnvelopeSchema)(artifactExport),
-      },
-    };
-  });
+      return {
+        importPath: "effect-scrapling/e8" as const,
+        prerequisites: e8SdkConsumerPrerequisites,
+        pitfalls: e8SdkConsumerPitfalls,
+        payload: {
+          doctor: Schema.encodeSync(WorkspaceDoctorEnvelopeSchema)(doctor),
+          config: Schema.encodeSync(WorkspaceConfigShowEnvelopeSchema)(config),
+          targetImport: Schema.encodeSync(TargetImportEnvelopeSchema)(targetImport),
+          targetList: Schema.encodeSync(TargetListEnvelopeSchema)(targetList),
+          benchmarkRun: Schema.encodeSync(E8BenchmarkRunEnvelopeSchema)(benchmarkRun),
+          artifactExport: Schema.encodeSync(E8ArtifactExportEnvelopeSchema)(artifactExport),
+        },
+      };
+    }),
+  );
 }
 
 if (import.meta.main) {

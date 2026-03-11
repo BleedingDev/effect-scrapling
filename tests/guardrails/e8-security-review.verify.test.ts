@@ -10,6 +10,7 @@ import {
   runWorkflowResumeOperation,
   runWorkflowRunOperation,
 } from "effect-scrapling/e8";
+import { resetAccessHealthGatewayForTests } from "../../src/sdk/access-health-gateway.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 
 const E8ControlPlaneFailureSchema = Schema.Struct({
@@ -72,6 +73,7 @@ describe("E8 security review verification", () => {
     "rejects unsafe preview URLs before the public E8 control plane performs network I/O",
     () =>
       Effect.gen(function* () {
+        yield* resetAccessHealthGatewayForTests();
         let fetchCallCount = 0;
         const fetchClient = async (input: string | URL | Request) => {
           fetchCallCount += 1;
@@ -112,6 +114,7 @@ describe("E8 security review verification", () => {
     "rejects forged workflow checkpoints whose lineage no longer matches the compiled plan",
     () =>
       Effect.gen(function* () {
+        yield* resetAccessHealthGatewayForTests();
         const compiled = yield* runCrawlCompileOperation({
           createdAt: "2026-03-09T13:00:00.000Z",
           entries: [
@@ -146,8 +149,9 @@ describe("E8 security review verification", () => {
 
   it.effect("sanitizes rendered link targets before they leave the public E8 preview surface", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       yield* resetBrowserPoolForTests();
-      mock.module("playwright", () => ({
+      mock.module("patchright", () => ({
         chromium: {
           launch: async () => ({
             newContext: async () => ({
@@ -164,6 +168,8 @@ describe("E8 security review verification", () => {
                     <body>
                       <a href="/checkout?step=payment#frag">Checkout</a>
                       <a href="https://user:secret@example.com/admin#frag">Admin</a>
+                      <a href="https://example.com/account?token=super-secret">Token</a>
+                      <a href="http://127.0.0.1/internal">Loopback</a>
                       <a href="javascript:alert('x')">Ignore</a>
                       <a href="mailto:ops@example.com">Mail</a>
                       <a href="https://example.com/admin">Dedup</a>
@@ -189,9 +195,12 @@ describe("E8 security review verification", () => {
       try {
         const result = yield* runRenderPreviewOperation({
           url: "https://example.com/reports/view",
-          browser: {
-            waitUntil: "networkidle",
-            timeoutMs: 300,
+          execution: {
+            providerId: "browser-basic",
+            browser: {
+              waitUntil: "networkidle",
+              timeoutMs: 300,
+            },
           },
         });
         const renderedDom = result.data.artifacts[1];
@@ -199,6 +208,7 @@ describe("E8 security review verification", () => {
         expect(renderedDom.kind).toBe("renderedDom");
         expect(renderedDom.linkTargets).toEqual([
           "https://example.com/checkout?step=payment",
+          "https://example.com/account?token=%5BREDACTED%5D",
           "https://example.com/admin",
         ]);
       } finally {
@@ -212,6 +222,7 @@ describe("E8 security review verification", () => {
     "sanitizes absolute benchmark export paths before they leave the public E8 artifact surface",
     () =>
       Effect.gen(function* () {
+        yield* resetAccessHealthGatewayForTests();
         const baselineExport = yield* runArtifactExportOperation();
         const baselineArtifact = Schema.decodeUnknownSync(E8ArtifactExportEnvelopeSchema)(
           baselineExport,

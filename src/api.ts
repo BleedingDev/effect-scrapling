@@ -1,28 +1,18 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
-import { runWorkspaceDoctor } from "./e8.ts";
 import { normalizePayload } from "./api-request-payload.ts";
 import {
+  isAccessQuarantinedError,
+  isAccessResourceError,
   isBrowserError,
   isExtractionError,
   isInvalidInputError,
   isNetworkError,
 } from "./sdk/error-guards.ts";
-import {
-  InvalidInputError,
-  type BrowserError,
-  type ExtractionError,
-  type NetworkError,
-} from "./sdk/errors.ts";
-import {
-  accessPreview,
-  extractRun,
-  FetchService,
-  FetchServiceLive,
-  type FetchClient,
-  renderPreview,
-} from "./sdk/scraper.ts";
+import { InvalidInputError } from "./sdk/errors.ts";
+import { createEngine, type AccessEngine, type CreateAccessEngineOptions } from "./sdk/engine.ts";
+import { type FetchClient } from "./sdk/scraper.ts";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), {
@@ -53,6 +43,30 @@ function toErrorResponse(error: unknown): Response {
         details: error.details ?? null,
       },
       502,
+    );
+  }
+
+  if (isAccessResourceError(error)) {
+    return json(
+      {
+        ok: false,
+        code: "AccessResourceError",
+        message: error.message,
+        details: error.details ?? null,
+      },
+      503,
+    );
+  }
+
+  if (isAccessQuarantinedError(error)) {
+    return json(
+      {
+        ok: false,
+        code: "AccessQuarantinedError",
+        message: error.message,
+        details: error.details ?? null,
+      },
+      429,
     );
   }
 
@@ -123,44 +137,87 @@ function knownRoutes(): string[] {
   ];
 }
 
-function provideFetchService<A, E>(
-  effect: Effect.Effect<A, E, FetchService>,
-  fetchClient?: FetchClient,
-): Effect.Effect<A, E, never> {
-  if (fetchClient) {
-    return effect.pipe(
-      Effect.provideService(FetchService, {
-        fetch: fetchClient,
-      }),
-    );
-  }
+let sharedApiEnginePromise: Promise<AccessEngine> | undefined;
+export type ApiHostEngineOptions = Omit<CreateAccessEngineOptions, "fetchClient">;
 
-  return effect.pipe(Effect.provide(FetchServiceLive));
+function hasCustomEngineAssembly(options: ApiHostEngineOptions | undefined) {
+  return options !== undefined && Object.keys(options).length > 0;
 }
 
-async function runRouteEffect<A>(
+function getSharedApiEngine() {
+  sharedApiEnginePromise ??= Effect.runPromise(createEngine());
+  return sharedApiEnginePromise;
+}
+
+async function withAccessEngine<A>(
+  run: (engine: AccessEngine) => Effect.Effect<A, unknown, never>,
+  fetchClient?: FetchClient,
+  engineOptions?: ApiHostEngineOptions,
+): Promise<A> {
+  if (fetchClient === undefined && !hasCustomEngineAssembly(engineOptions)) {
+    return runEffect(run(await getSharedApiEngine()));
+  }
+
+  const engine = await Effect.runPromise(
+    createEngine({
+      ...engineOptions,
+      ...(fetchClient === undefined ? {} : { fetchClient }),
+    }),
+  );
+  try {
+    return await runEffect(run(engine));
+  } finally {
+    await Effect.runPromise(engine.close);
+  }
+}
+
+async function runRouteEffect(
   req: Request,
   kind: "access" | "extract" | "render",
-  runner: (
-    payload: unknown,
-  ) => Effect.Effect<
-    A,
-    InvalidInputError | NetworkError | BrowserError | ExtractionError,
-    FetchService
-  >,
   fetchClient?: FetchClient,
+  engineOptions?: ApiHostEngineOptions,
 ): Promise<Response> {
   try {
     const rawPayload = await readBody(req);
     const payload = normalizePayload(kind, rawPayload);
-    const response = await runEffect(provideFetchService(runner(payload), fetchClient));
+    const response =
+      kind === "access"
+        ? await withAccessEngine(
+            (engine) => engine.accessPreview(payload),
+            fetchClient,
+            engineOptions,
+          )
+        : kind === "render"
+          ? await withAccessEngine(
+              (engine) => engine.renderPreview(payload),
+              fetchClient,
+              engineOptions,
+            )
+          : await withAccessEngine(
+              (engine) => engine.extractRun(payload),
+              fetchClient,
+              engineOptions,
+            );
     return json(response);
   } catch (error) {
     return toErrorResponse(error);
   }
 }
 
-export async function handleApiRequest(req: Request, fetchClient?: FetchClient): Promise<Response> {
+export function createApiRequestHandler(
+  options: {
+    readonly fetchClient?: FetchClient | undefined;
+    readonly engine?: ApiHostEngineOptions | undefined;
+  } = {},
+) {
+  return (req: Request) => handleApiRequest(req, options.fetchClient, options.engine);
+}
+
+export async function handleApiRequest(
+  req: Request,
+  fetchClient?: FetchClient,
+  engineOptions?: ApiHostEngineOptions,
+): Promise<Response> {
   const url = new URL(req.url);
 
   if (req.method === "GET" && url.pathname === "/health") {
@@ -172,19 +229,19 @@ export async function handleApiRequest(req: Request, fetchClient?: FetchClient):
   }
 
   if (req.method === "GET" && url.pathname === "/doctor") {
-    return json(await runEffect(runWorkspaceDoctor()));
+    return json(await withAccessEngine((engine) => engine.runDoctor(), fetchClient, engineOptions));
   }
 
   if (req.method === "POST" && url.pathname === "/access/preview") {
-    return runRouteEffect(req, "access", accessPreview, fetchClient);
+    return runRouteEffect(req, "access", fetchClient, engineOptions);
   }
 
   if (req.method === "POST" && url.pathname === "/render/preview") {
-    return runRouteEffect(req, "render", renderPreview, fetchClient);
+    return runRouteEffect(req, "render", fetchClient, engineOptions);
   }
 
   if (req.method === "POST" && url.pathname === "/extract/run") {
-    return runRouteEffect(req, "extract", extractRun, fetchClient);
+    return runRouteEffect(req, "extract", fetchClient, engineOptions);
   }
 
   return json(

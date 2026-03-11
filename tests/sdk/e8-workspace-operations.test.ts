@@ -1,5 +1,7 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
+import { BrowserRuntime } from "../../src/sdk/browser-pool.ts";
+import { provideSdkRuntime } from "../../src/sdk/runtime-layer.ts";
 import {
   WorkspaceConfigShowEnvelopeSchema,
   WorkspaceDoctorEnvelopeSchema,
@@ -12,7 +14,7 @@ import { executeCli } from "../../src/standalone.ts";
 describe("E8 workspace operations", () => {
   it.effect("keeps the doctor envelope identical across SDK, CLI, and API", () =>
     Effect.gen(function* () {
-      const sdkPayload = yield* runWorkspaceDoctor();
+      const sdkPayload = yield* provideSdkRuntime(runWorkspaceDoctor());
       const cliResult = yield* Effect.promise(() => executeCli(["workspace", "doctor"]));
       const apiPayload = yield* Effect.promise(async () =>
         handleApiRequest(new Request("http://localhost/doctor")).then((response) =>
@@ -35,7 +37,7 @@ describe("E8 workspace operations", () => {
 
   it.effect("shows deterministic workspace config through the public E8 SDK and CLI", () =>
     Effect.gen(function* () {
-      const sdkPayload = yield* showWorkspaceConfig();
+      const sdkPayload = yield* provideSdkRuntime(showWorkspaceConfig());
       const cliResult = yield* Effect.promise(() => executeCli(["workspace", "config", "show"]));
 
       const decodedSdk = Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)(sdkPayload);
@@ -50,15 +52,42 @@ describe("E8 workspace operations", () => {
         version: "0.0.1",
       });
       expect(decodedSdk.data.browserPool).toEqual({
-        maxContexts: 2,
-        maxPages: 2,
-        maxQueue: 8,
+        maxContexts: 4,
+        maxPages: 4,
+        maxQueue: 16,
       });
       expect(decodedSdk.data.sourceOrder).toEqual(["defaults", "sitePack", "targetProfile", "run"]);
       expect(decodedSdk.data.runConfigDefaults.entryUrl).toBe(
         "https://example.com/workspace/default",
       );
       expect(decodedSdk.data.runConfigDefaults.checkpointInterval).toBe(3);
+    }),
+  );
+
+  it.effect("reads workspace browser-pool config from the injected BrowserRuntime service", () =>
+    Effect.gen(function* () {
+      const payload = yield* showWorkspaceConfig().pipe(
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 7,
+            maxPages: 11,
+            maxQueue: 13,
+          }),
+          withPage: () => Effect.die(new Error("withPage should not run in config show")),
+          getSnapshot: () => Effect.die(new Error("getSnapshot should not run in config show")),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        provideSdkRuntime,
+      );
+
+      const decoded = Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)(payload);
+      expect(decoded.data.browserPool).toEqual({
+        maxContexts: 7,
+        maxPages: 11,
+        maxQueue: 13,
+      });
     }),
   );
 });

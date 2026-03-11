@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect } from "effect";
+import { provideSdkEnvironment } from "../../src/sdk/runtime-layer.ts";
 import {
   accessPreview,
   extractRun,
@@ -26,6 +27,7 @@ describe("E0 security review verification", () => {
         Effect.provideService(FetchService, {
           fetch: fetchClient,
         }),
+        provideSdkEnvironment,
         Effect.orDie,
       );
 
@@ -64,6 +66,7 @@ describe("E0 security review verification", () => {
         Effect.provideService(FetchService, {
           fetch: fetchClient,
         }),
+        provideSdkEnvironment,
         Effect.orDie,
       );
 
@@ -77,7 +80,7 @@ describe("E0 security review verification", () => {
       const continuedUrls: string[] = [];
       const abortedUrls: string[] = [];
 
-      mock.module("playwright", () => ({
+      mock.module("patchright", () => ({
         chromium: {
           launch: async () => ({
             newContext: async () => ({
@@ -139,13 +142,16 @@ describe("E0 security review verification", () => {
 
       const failureDetails = yield* accessPreview({
         url: "https://example.com/browser-start",
-        mode: "browser",
+        execution: {
+          providerId: "browser-basic",
+        },
       }).pipe(
         Effect.flatMap(() => Effect.die(new Error("Expected BrowserError failure"))),
         Effect.catchTag("BrowserError", ({ details }) => Effect.succeed(details)),
         Effect.provideService(FetchService, {
           fetch: globalThis.fetch,
         }),
+        provideSdkEnvironment,
         Effect.orDie,
         Effect.ensuring(Effect.sync(() => mock.restore())),
       );
@@ -174,6 +180,7 @@ describe("E0 security review verification", () => {
         Effect.provideService(FetchService, {
           fetch: fetchClient,
         }),
+        provideSdkEnvironment,
         Effect.orDie,
       );
 
@@ -213,6 +220,7 @@ describe("E0 security review verification", () => {
         Effect.provideService(FetchService, {
           fetch: fetchClient,
         }),
+        provideSdkEnvironment,
         Effect.orDie,
       );
 

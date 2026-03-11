@@ -1,34 +1,35 @@
 #!/usr/bin/env bun
 
 import { Cause, Effect, Exit, Option } from "effect";
+import { normalizeCliPayload } from "./api-request-payload.ts";
 import {
-  runAccessPreviewOperation,
   runCrawlCompileOperation,
-  runExtractRunOperation,
   runPackCreateOperation,
   runPackInspectOperation,
   runPackPromoteOperation,
   runPackValidateOperation,
   runQualityCompareOperation,
   runQualityVerifyOperation,
-  runRenderPreviewOperation,
   runSnapshotDiffOperation,
   runTargetImportOperation,
   runTargetListOperation,
   runWorkflowInspectOperation,
   runWorkflowResumeOperation,
   runWorkflowRunOperation,
-  runWorkspaceDoctor,
   showWorkspaceConfig,
 } from "./e8.ts";
 import {
+  isAccessQuarantinedError,
+  isAccessResourceError,
   isBrowserError,
   isExtractionError,
   isInvalidInputError,
   isNetworkError,
 } from "./sdk/error-guards.ts";
+import { createSdkEngine, type CreateSdkEngineOptions, type SdkEngine } from "./sdk/engine.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
 import { type FetchClient } from "./sdk/scraper.ts";
+import { provideSdkEnvironment } from "./sdk/runtime-layer.ts";
 
 type ParsedArgs = {
   readonly positionals: string[];
@@ -47,9 +48,9 @@ Usage:
   effect-scrapling pack inspect --input '<json>'
   effect-scrapling pack validate --input '<json>'
   effect-scrapling pack promote --input '<json>'
-  effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
-  effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--user-agent "<ua>"] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
-  effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--user-agent "<ua>"] [--mode <http|browser>] [--wait-until <load|domcontentloaded|networkidle|commit>] [--wait-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--provider <browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling crawl compile --input '<json>'
   effect-scrapling workflow run --input '<json>'
   effect-scrapling workflow resume --input '<json>'
@@ -62,10 +63,10 @@ Examples:
   effect-scrapling workspace doctor
   effect-scrapling workspace config show
   effect-scrapling access preview --url "https://example.com"
-  effect-scrapling access preview --url "https://example.com" --mode browser --wait-until networkidle --wait-ms 300
-  effect-scrapling render preview --url "https://example.com" --wait-until networkidle --wait-ms 300
+  effect-scrapling access preview --url "https://example.com" --provider browser-stealth --browser-wait-until domcontentloaded --browser-timeout-ms 300
+  effect-scrapling render preview --url "https://example.com" --provider browser-basic --browser-wait-until load --browser-timeout-ms 300
   effect-scrapling extract run --url "https://example.com" --selector "h1"
-  effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --mode browser --wait-until load
+  effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --provider browser-basic --browser-wait-until load
 `;
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -141,24 +142,6 @@ function parseNonEmptyString(
   return trimmed;
 }
 
-function parseFlagOrValue(
-  name: string,
-  value: string | boolean | undefined,
-): string | boolean | undefined {
-  if (value === undefined || typeof value === "boolean") {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    throw new InvalidInputError({
-      message: `Option --${name} cannot be empty`,
-    });
-  }
-
-  return trimmed;
-}
-
 function parseJsonInput(options: Record<string, string | boolean>, name = "input"): unknown {
   const input = parseNonEmptyString(name, getOption(options, name));
   if (input === undefined) {
@@ -175,6 +158,24 @@ function parseJsonInput(options: Record<string, string | boolean>, name = "input
       details: String(error),
     });
   }
+}
+
+function assertAllowedOptions(
+  options: Record<string, string | boolean>,
+  allowedOptions: ReadonlyArray<string>,
+  commandPath: ReadonlyArray<string>,
+): void {
+  const unsupportedOptions = Object.keys(options).filter(
+    (option) => !allowedOptions.includes(option),
+  );
+  if (unsupportedOptions.length === 0) {
+    return;
+  }
+
+  throw new InvalidInputError({
+    message: `Unsupported option for ${commandPath.join(" ")}`,
+    details: `Unsupported flags: ${unsupportedOptions.map((option) => `--${option}`).join(", ")}`,
+  });
 }
 
 function assertNoExtraAction(action: string | undefined, commandPath: ReadonlyArray<string>): void {
@@ -202,10 +203,30 @@ function encodeCliJson(payload: unknown): string {
   return JSON.stringify(payload, null, 2);
 }
 
+async function withAccessEngine<A>(
+  run: (engine: SdkEngine) => Effect.Effect<A, unknown, never>,
+  fetchClient?: FetchClient,
+  engineOptions?: Omit<CreateSdkEngineOptions, "fetchClient">,
+): Promise<A> {
+  const engine = await Effect.runPromise(
+    createSdkEngine({
+      ...engineOptions,
+      ...(fetchClient === undefined ? {} : { fetchClient }),
+    }),
+  );
+  try {
+    return await runEffect(run(engine));
+  } finally {
+    await Effect.runPromise(engine.close);
+  }
+}
+
 export type CliExecutionResult = {
   readonly exitCode: number;
   readonly output: string;
 };
+
+export type CliHostEngineOptions = Omit<CreateSdkEngineOptions, "fetchClient">;
 
 function toCliErrorResult(error: unknown): CliExecutionResult {
   if (isInvalidInputError(error)) {
@@ -226,6 +247,30 @@ function toCliErrorResult(error: unknown): CliExecutionResult {
       output: encodeCliJson({
         ok: false,
         code: "NetworkError",
+        message: error.message,
+        details: error.details ?? null,
+      }),
+    };
+  }
+
+  if (isAccessResourceError(error)) {
+    return {
+      exitCode: 1,
+      output: encodeCliJson({
+        ok: false,
+        code: "AccessResourceError",
+        message: error.message,
+        details: error.details ?? null,
+      }),
+    };
+  }
+
+  if (isAccessQuarantinedError(error)) {
+    return {
+      exitCode: 1,
+      output: encodeCliJson({
+        ok: false,
+        code: "AccessQuarantinedError",
         message: error.message,
         details: error.details ?? null,
       }),
@@ -269,6 +314,7 @@ function toCliErrorResult(error: unknown): CliExecutionResult {
 export async function executeCli(
   args: string[],
   fetchClient?: FetchClient,
+  engineOptions?: CliHostEngineOptions,
 ): Promise<CliExecutionResult> {
   const parsed = parseArgs(args);
   const [command, subcommand, action] = parsed.positionals;
@@ -279,12 +325,16 @@ export async function executeCli(
     }
 
     if (command === "doctor" || (command === "workspace" && subcommand === "doctor")) {
-      const doctor = await runEffect(runWorkspaceDoctor());
+      const doctor = await withAccessEngine(
+        (engine) => engine.runDoctor(),
+        fetchClient,
+        engineOptions,
+      );
       return { exitCode: doctor.ok ? 0 : 1, output: encodeCliJson(doctor) };
     }
 
     if (command === "workspace" && subcommand === "config" && action === "show") {
-      const config = await runEffect(showWorkspaceConfig());
+      const config = await runEffect(provideSdkEnvironment(showWorkspaceConfig()));
       return { exitCode: 0, output: encodeCliJson(config) };
     }
 
@@ -326,85 +376,60 @@ export async function executeCli(
 
     if (command === "access" && subcommand === "preview") {
       assertNoExtraAction(action, ["access", "preview"]);
-      const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
-      const timeoutMs = parseNonEmptyString(
-        "timeout-ms",
-        getOption(parsed.options, "timeout-ms", "timeoutMs"),
+      assertAllowedOptions(
+        parsed.options,
+        [
+          "url",
+          "timeout-ms",
+          "mode",
+          "provider",
+          "egress-profile",
+          "egress-config",
+          "identity-profile",
+          "identity-config",
+          "http-user-agent",
+          "browser-runtime-profile",
+          "browser-wait-until",
+          "browser-timeout-ms",
+          "browser-user-agent",
+        ],
+        ["access", "preview"],
       );
-      const userAgent = parseNonEmptyString(
-        "user-agent",
-        getOption(parsed.options, "user-agent", "userAgent"),
+      const payload = normalizeCliPayload("access", parsed.options);
+      const result = await withAccessEngine(
+        (engine) => engine.accessPreview(payload),
+        fetchClient,
+        engineOptions,
       );
-      const mode = parseNonEmptyString("mode", getOption(parsed.options, "mode"));
-      const waitUntil = parseNonEmptyString(
-        "wait-until",
-        getOption(parsed.options, "wait-until", "waitUntil"),
-      );
-      const waitMs = parseNonEmptyString(
-        "wait-ms",
-        getOption(parsed.options, "wait-ms", "waitMs", "browser-timeout-ms", "browserTimeoutMs"),
-      );
-      const browserUserAgent = parseNonEmptyString(
-        "browser-user-agent",
-        getOption(parsed.options, "browser-user-agent", "browserUserAgent"),
-      );
-      if (url === undefined) {
-        throw new InvalidInputError({ message: "Missing required option: --url" });
-      }
-
-      const payload: Record<string, unknown> = { url };
-      if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
-      if (userAgent !== undefined) payload.userAgent = userAgent;
-      if (mode !== undefined) payload.mode = mode;
-
-      const browser: Record<string, unknown> = {};
-      if (waitUntil !== undefined) browser.waitUntil = waitUntil;
-      if (waitMs !== undefined) browser.timeoutMs = waitMs;
-      if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
-      if (Object.keys(browser).length > 0) payload.browser = browser;
-
-      const result = await runEffect(runAccessPreviewOperation(payload, fetchClient));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "render" && subcommand === "preview") {
       assertNoExtraAction(action, ["render", "preview"]);
-      const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
-      const timeoutMs = parseNonEmptyString(
-        "timeout-ms",
-        getOption(parsed.options, "timeout-ms", "timeoutMs"),
+      assertAllowedOptions(
+        parsed.options,
+        [
+          "url",
+          "timeout-ms",
+          "mode",
+          "provider",
+          "egress-profile",
+          "egress-config",
+          "identity-profile",
+          "identity-config",
+          "browser-runtime-profile",
+          "browser-wait-until",
+          "browser-timeout-ms",
+          "browser-user-agent",
+        ],
+        ["render", "preview"],
       );
-      const userAgent = parseNonEmptyString(
-        "user-agent",
-        getOption(parsed.options, "user-agent", "userAgent"),
+      const payload = normalizeCliPayload("render", parsed.options);
+      const result = await withAccessEngine(
+        (engine) => engine.renderPreview(payload),
+        fetchClient,
+        engineOptions,
       );
-      const waitUntil = parseNonEmptyString(
-        "wait-until",
-        getOption(parsed.options, "wait-until", "waitUntil"),
-      );
-      const waitMs = parseNonEmptyString(
-        "wait-ms",
-        getOption(parsed.options, "wait-ms", "waitMs", "browser-timeout-ms", "browserTimeoutMs"),
-      );
-      const browserUserAgent = parseNonEmptyString(
-        "browser-user-agent",
-        getOption(parsed.options, "browser-user-agent", "browserUserAgent"),
-      );
-      if (url === undefined) {
-        throw new InvalidInputError({ message: "Missing required option: --url" });
-      }
-
-      const payload: Record<string, unknown> = { url };
-      if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
-      if (userAgent !== undefined) payload.userAgent = userAgent;
-
-      const browser: Record<string, unknown> = {};
-      if (waitUntil !== undefined) browser.waitUntil = waitUntil;
-      if (waitMs !== undefined) browser.timeoutMs = waitMs;
-      if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
-      if (Object.keys(browser).length > 0) payload.browser = browser;
-
-      const result = await runEffect(runRenderPreviewOperation(payload, fetchClient));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
@@ -418,52 +443,35 @@ export async function executeCli(
           details: "Command scrape does not accept additional positional arguments",
         });
       }
-      const url = parseNonEmptyString("url", getOption(parsed.options, "url"));
-      const selector = parseNonEmptyString("selector", getOption(parsed.options, "selector"));
-      const attr = parseNonEmptyString("attr", getOption(parsed.options, "attr"));
-      const all = parseFlagOrValue("all", getOption(parsed.options, "all"));
-      const limit = parseNonEmptyString("limit", getOption(parsed.options, "limit"));
-      const timeoutMs = parseNonEmptyString(
-        "timeout-ms",
-        getOption(parsed.options, "timeout-ms", "timeoutMs"),
+      assertAllowedOptions(
+        parsed.options,
+        [
+          "url",
+          "selector",
+          "attr",
+          "all",
+          "limit",
+          "timeout-ms",
+          "mode",
+          "provider",
+          "egress-profile",
+          "egress-config",
+          "identity-profile",
+          "identity-config",
+          "http-user-agent",
+          "browser-runtime-profile",
+          "browser-wait-until",
+          "browser-timeout-ms",
+          "browser-user-agent",
+        ],
+        command === "extract" ? ["extract", "run"] : ["scrape"],
       );
-      const userAgent = parseNonEmptyString(
-        "user-agent",
-        getOption(parsed.options, "user-agent", "userAgent"),
+      const payload = normalizeCliPayload("extract", parsed.options);
+      const result = await withAccessEngine(
+        (engine) => engine.extractRun(payload),
+        fetchClient,
+        engineOptions,
       );
-      const mode = parseNonEmptyString("mode", getOption(parsed.options, "mode"));
-      const waitUntil = parseNonEmptyString(
-        "wait-until",
-        getOption(parsed.options, "wait-until", "waitUntil"),
-      );
-      const waitMs = parseNonEmptyString(
-        "wait-ms",
-        getOption(parsed.options, "wait-ms", "waitMs", "browser-timeout-ms", "browserTimeoutMs"),
-      );
-      const browserUserAgent = parseNonEmptyString(
-        "browser-user-agent",
-        getOption(parsed.options, "browser-user-agent", "browserUserAgent"),
-      );
-      if (url === undefined) {
-        throw new InvalidInputError({ message: "Missing required option: --url" });
-      }
-
-      const payload: Record<string, unknown> = { url };
-      if (selector !== undefined) payload.selector = selector;
-      if (attr !== undefined) payload.attr = attr;
-      if (all !== undefined) payload.all = all;
-      if (limit !== undefined) payload.limit = limit;
-      if (timeoutMs !== undefined) payload.timeoutMs = timeoutMs;
-      if (userAgent !== undefined) payload.userAgent = userAgent;
-      if (mode !== undefined) payload.mode = mode;
-
-      const browser: Record<string, unknown> = {};
-      if (waitUntil !== undefined) browser.waitUntil = waitUntil;
-      if (waitMs !== undefined) browser.timeoutMs = waitMs;
-      if (browserUserAgent !== undefined) browser.userAgent = browserUserAgent;
-      if (Object.keys(browser).length > 0) payload.browser = browser;
-
-      const result = await runEffect(runExtractRunOperation(payload, fetchClient));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
@@ -516,6 +524,17 @@ export async function executeCli(
   } catch (error) {
     return toCliErrorResult(error);
   }
+}
+
+export function createCliHost(
+  options: {
+    readonly fetchClient?: FetchClient | undefined;
+    readonly engine?: CliHostEngineOptions | undefined;
+  } = {},
+) {
+  return {
+    execute: (args: string[]) => executeCli(args, options.fetchClient, options.engine),
+  } as const;
 }
 
 if (import.meta.main) {

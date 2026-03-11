@@ -1,0 +1,10 @@
+export const BUILTIN_DIRECT_EGRESS_PLUGIN_ID = "builtin-direct-egress";
+export const BUILTIN_LEASED_EGRESS_PLUGIN_ID = "builtin-leased-egress";
+export const BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID = "builtin-wireguard-egress";
+export const BUILTIN_HTTP_CONNECT_EGRESS_PLUGIN_ID = "builtin-http-connect-egress";
+export const BUILTIN_SOCKS5_EGRESS_PLUGIN_ID = "builtin-socks5-egress";
+export const BUILTIN_TOR_EGRESS_PLUGIN_ID = "builtin-tor-egress";
+export const BUILTIN_POOL_SERVER_EGRESS_PLUGIN_ID = "builtin-pool-server-egress";
+export const BUILTIN_DEFAULT_IDENTITY_PLUGIN_ID = "builtin-default-identity";
+export const BUILTIN_STEALTH_IDENTITY_PLUGIN_ID = "builtin-stealth-identity";
+export const BUILTIN_LEASED_IDENTITY_PLUGIN_ID = "builtin-leased-identity";

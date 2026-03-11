@@ -7,23 +7,26 @@ import {
   runWorkspaceDoctor,
   showWorkspaceConfig,
 } from "effect-scrapling/e8";
+import { provideSdkRuntime } from "../../src/sdk/runtime-layer.ts";
 import { executeCli } from "../../src/standalone.ts";
 
 describe("E8 shared command handler core verification", () => {
   it.effect("routes doctor and config-show through one deterministic shared E8 core", () =>
-    Effect.gen(function* () {
-      const doctorFromCore = yield* executeWorkspaceCommand("doctor");
-      const doctorDirect = yield* runWorkspaceDoctor();
-      const configFromCore = yield* executeWorkspaceCommand("config-show");
-      const configDirect = yield* showWorkspaceConfig();
+    provideSdkRuntime(
+      Effect.gen(function* () {
+        const doctorFromCore = yield* executeWorkspaceCommand("doctor");
+        const doctorDirect = yield* runWorkspaceDoctor();
+        const configFromCore = yield* executeWorkspaceCommand("config-show");
+        const configDirect = yield* showWorkspaceConfig();
 
-      expect(Schema.decodeUnknownSync(WorkspaceDoctorEnvelopeSchema)(doctorFromCore)).toEqual(
-        Schema.decodeUnknownSync(WorkspaceDoctorEnvelopeSchema)(doctorDirect),
-      );
-      expect(Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)(configFromCore)).toEqual(
-        Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)(configDirect),
-      );
-    }),
+        expect(Schema.decodeUnknownSync(WorkspaceDoctorEnvelopeSchema)(doctorFromCore)).toEqual(
+          Schema.decodeUnknownSync(WorkspaceDoctorEnvelopeSchema)(doctorDirect),
+        );
+        expect(Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)(configFromCore)).toEqual(
+          Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)(configDirect),
+        );
+      }),
+    ),
   );
 
   it("rejects unsupported workspace subcommands through the CLI boundary", async () => {

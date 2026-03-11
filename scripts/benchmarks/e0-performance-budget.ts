@@ -3,13 +3,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { Effect } from "effect";
-import {
-  accessPreview,
-  extractRun,
-  FetchService,
-  runDoctor,
-  type FetchClient,
-} from "effect-scrapling/sdk";
+import { createEngine, type FetchClient } from "effect-scrapling/sdk";
 
 const DEFAULT_SAMPLE_SIZE = 12;
 const DEFAULT_WARMUP_ITERATIONS = 3;
@@ -251,60 +245,66 @@ function buildArtifact(
 async function main(): Promise<void> {
   const options = parseOptions(process.argv.slice(2));
   const heapStart = process.memoryUsage().heapUsed;
-
-  const accessPreviewMetrics = await measureEffect(
-    options.sampleSize,
-    options.warmupIterations,
-    () =>
-      accessPreview({
-        url: "https://bench.example/preview",
-      }).pipe(
-        Effect.provideService(FetchService, {
-          fetch: mockFetch,
-        }),
-        Effect.orDie,
-      ),
+  const engine = await Effect.runPromise(
+    createEngine({
+      fetchClient: mockFetch,
+    }),
   );
 
-  const extractRunMetrics = await measureEffect(options.sampleSize, options.warmupIterations, () =>
-    extractRun({
-      url: "https://bench.example/extract",
-      selector: "h1",
-    }).pipe(
-      Effect.provideService(FetchService, {
-        fetch: mockFetch,
-      }),
-      Effect.orDie,
-    ),
-  );
+  try {
+    const accessPreviewMetrics = await measureEffect(
+      options.sampleSize,
+      options.warmupIterations,
+      () =>
+        engine
+          .accessPreview({
+            url: "https://bench.example/preview",
+          })
+          .pipe(Effect.orDie),
+    );
 
-  const runDoctorMetrics = await measureEffect(options.sampleSize, options.warmupIterations, () =>
-    runDoctor(),
-  );
+    const extractRunMetrics = await measureEffect(
+      options.sampleSize,
+      options.warmupIterations,
+      () =>
+        engine
+          .extractRun({
+            url: "https://bench.example/extract",
+            selector: "h1",
+          })
+          .pipe(Effect.orDie),
+    );
 
-  const heapEnd = process.memoryUsage().heapUsed;
-  const heapDeltaKiB = roundToThree(Math.max(0, heapEnd - heapStart) / 1024);
-  const baseline = await readBaseline(options.baselinePath);
-  const artifact = buildArtifact(
-    options,
-    {
-      accessPreview: accessPreviewMetrics,
-      extractRun: extractRunMetrics,
-      runDoctor: runDoctorMetrics,
-      heapDeltaKiB,
-    },
-    baseline,
-  );
+    const runDoctorMetrics = await measureEffect(options.sampleSize, options.warmupIterations, () =>
+      engine.runDoctor().pipe(Effect.orDie),
+    );
 
-  if (options.artifactPath) {
-    await mkdir(dirname(options.artifactPath), { recursive: true });
-    await writeFile(options.artifactPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
-  }
+    const heapEnd = process.memoryUsage().heapUsed;
+    const heapDeltaKiB = roundToThree(Math.max(0, heapEnd - heapStart) / 1024);
+    const baseline = await readBaseline(options.baselinePath);
+    const artifact = buildArtifact(
+      options,
+      {
+        accessPreview: accessPreviewMetrics,
+        extractRun: extractRunMetrics,
+        runDoctor: runDoctorMetrics,
+        heapDeltaKiB,
+      },
+      baseline,
+    );
 
-  console.log(JSON.stringify(artifact, null, 2));
+    if (options.artifactPath) {
+      await mkdir(dirname(options.artifactPath), { recursive: true });
+      await writeFile(options.artifactPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
+    }
 
-  if (artifact.status === "fail") {
-    process.exit(1);
+    console.log(JSON.stringify(artifact, null, 2));
+
+    if (artifact.status === "fail") {
+      process.exit(1);
+    }
+  } finally {
+    await Effect.runPromise(engine.close);
   }
 }
 

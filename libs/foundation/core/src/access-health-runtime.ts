@@ -33,6 +33,31 @@ export class ProviderHealthSubject extends Schema.Class<ProviderHealthSubject>(
   providerId: CanonicalIdentifierSchema,
 }) {}
 
+export class EgressHealthSubject extends Schema.Class<EgressHealthSubject>("EgressHealthSubject")({
+  kind: Schema.Literal("egress"),
+  poolId: CanonicalIdentifierSchema,
+  routePolicyId: CanonicalIdentifierSchema,
+  egressKey: CanonicalIdentifierSchema,
+}) {}
+
+export class EgressProfileHealthSubject extends Schema.Class<EgressProfileHealthSubject>(
+  "EgressProfileHealthSubject",
+)({
+  kind: Schema.Literal("egress-profile"),
+  poolId: CanonicalIdentifierSchema,
+  routePolicyId: CanonicalIdentifierSchema,
+  profileId: CanonicalIdentifierSchema,
+}) {}
+
+export class EgressPluginHealthSubject extends Schema.Class<EgressPluginHealthSubject>(
+  "EgressPluginHealthSubject",
+)({
+  kind: Schema.Literal("egress-plugin"),
+  poolId: CanonicalIdentifierSchema,
+  routePolicyId: CanonicalIdentifierSchema,
+  pluginId: CanonicalIdentifierSchema,
+}) {}
+
 export class IdentityHealthSubject extends Schema.Class<IdentityHealthSubject>(
   "IdentityHealthSubject",
 )({
@@ -42,10 +67,33 @@ export class IdentityHealthSubject extends Schema.Class<IdentityHealthSubject>(
   identityKey: CanonicalIdentifierSchema,
 }) {}
 
+export class IdentityProfileHealthSubject extends Schema.Class<IdentityProfileHealthSubject>(
+  "IdentityProfileHealthSubject",
+)({
+  kind: Schema.Literal("identity-profile"),
+  tenantId: CanonicalIdentifierSchema,
+  domain: CanonicalDomainSchema,
+  profileId: CanonicalIdentifierSchema,
+}) {}
+
+export class IdentityPluginHealthSubject extends Schema.Class<IdentityPluginHealthSubject>(
+  "IdentityPluginHealthSubject",
+)({
+  kind: Schema.Literal("identity-plugin"),
+  tenantId: CanonicalIdentifierSchema,
+  domain: CanonicalDomainSchema,
+  pluginId: CanonicalIdentifierSchema,
+}) {}
+
 export const AccessHealthSubjectSchema = Schema.Union([
   DomainHealthSubject,
   ProviderHealthSubject,
+  EgressHealthSubject,
+  EgressProfileHealthSubject,
+  EgressPluginHealthSubject,
   IdentityHealthSubject,
+  IdentityProfileHealthSubject,
+  IdentityPluginHealthSubject,
 ]);
 
 export class AccessHealthPolicy extends Schema.Class<AccessHealthPolicy>("AccessHealthPolicy")({
@@ -53,6 +101,8 @@ export class AccessHealthPolicy extends Schema.Class<AccessHealthPolicy>("Access
   recoveryThreshold: ThresholdSchema,
   quarantineMs: TimeoutMsSchema,
 }) {}
+
+export const AccessHealthPolicySchema = AccessHealthPolicy;
 
 export class AccessHealthSnapshot extends Schema.Class<AccessHealthSnapshot>(
   "AccessHealthSnapshot",
@@ -81,7 +131,8 @@ export class AccessPathQuarantined extends Data.TaggedError("AccessPathQuarantin
   readonly quarantinedUntil: string;
 }> {}
 
-type AccessHealthSubject = Schema.Schema.Type<typeof AccessHealthSubjectSchema>;
+export type AccessHealthSubject = Schema.Schema.Type<typeof AccessHealthSubjectSchema>;
+export type AccessHealthSubjectKey = string;
 type AccessHealthState = {
   readonly subject: AccessHealthSubject;
   readonly successCount: number;
@@ -122,8 +173,38 @@ function subjectKey(subject: AccessHealthSubject) {
     case "provider": {
       return JSON.stringify([subject.kind, subject.providerId]);
     }
+    case "egress": {
+      return JSON.stringify([
+        subject.kind,
+        subject.poolId,
+        subject.routePolicyId,
+        subject.egressKey,
+      ]);
+    }
+    case "egress-profile": {
+      return JSON.stringify([
+        subject.kind,
+        subject.poolId,
+        subject.routePolicyId,
+        subject.profileId,
+      ]);
+    }
+    case "egress-plugin": {
+      return JSON.stringify([
+        subject.kind,
+        subject.poolId,
+        subject.routePolicyId,
+        subject.pluginId,
+      ]);
+    }
     case "identity": {
       return JSON.stringify([subject.kind, subject.tenantId, subject.domain, subject.identityKey]);
+    }
+    case "identity-profile": {
+      return JSON.stringify([subject.kind, subject.tenantId, subject.domain, subject.profileId]);
+    }
+    case "identity-plugin": {
+      return JSON.stringify([subject.kind, subject.tenantId, subject.domain, subject.pluginId]);
     }
   }
 }
@@ -210,11 +291,18 @@ export function makeInMemoryAccessHealthRuntime(now: () => Date = () => new Date
       const subject = yield* decodeAccessHealthSubject(subjectInput);
       const policy = yield* decodeAccessHealthPolicy(policyInput);
       const currentNow = now();
+      const previousSnapshot = yield* inspect(subject);
+      const wasPreviouslyQuarantined =
+        previousSnapshot.quarantinedUntil !== null &&
+        Date.parse(previousSnapshot.quarantinedUntil) > currentNow.valueOf();
       const snapshot = yield* mutate(subject, (current) => {
         const failureCount = current.failureCount + 1;
         const failureStreak = current.failureStreak + 1;
+        const isAlreadyQuarantined =
+          current.quarantinedUntil !== null &&
+          Date.parse(current.quarantinedUntil) > currentNow.valueOf();
         const quarantinedUntil =
-          failureStreak >= policy.failureThreshold
+          !isAlreadyQuarantined && failureStreak >= policy.failureThreshold
             ? new Date(currentNow.valueOf() + policy.quarantineMs).toISOString()
             : current.quarantinedUntil;
 
@@ -228,7 +316,11 @@ export function makeInMemoryAccessHealthRuntime(now: () => Date = () => new Date
       });
 
       yield* recordEvent("failure", snapshot, reason, currentNow);
-      if (snapshot.quarantinedUntil !== null) {
+      if (
+        !wasPreviouslyQuarantined &&
+        snapshot.quarantinedUntil !== null &&
+        Date.parse(snapshot.quarantinedUntil) > currentNow.valueOf()
+      ) {
         yield* recordEvent("quarantined", snapshot, reason, currentNow);
       }
       return snapshot;

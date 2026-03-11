@@ -2,10 +2,12 @@ import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
 import { runAccessPreviewOperation, runRenderPreviewOperation } from "effect-scrapling/e8";
+import { resetAccessHealthGatewayForTests } from "../../src/sdk/access-health-gateway.ts";
 import { executeCli } from "../../src/standalone.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import { AccessPreviewResponseSchema, RenderPreviewResponseSchema } from "../../src/sdk/schemas.ts";
 import { InvalidInputError } from "../../src/sdk/errors.ts";
+import { stripVolatileAccessTelemetry } from "./test-envelope-normalizers.ts";
 
 function mockHtmlFetch(body: string) {
   return async (input: string | URL | Request) => {
@@ -24,6 +26,7 @@ function mockHtmlFetch(body: string) {
 describe("E8 preview verification", () => {
   it.effect("keeps access and render preview outputs aligned across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       yield* resetBrowserPoolForTests();
       const fetchClient = mockHtmlFetch(
         "<html><head><title>Effect Scrapling</title></head><body><main>Preview</main></body></html>",
@@ -36,7 +39,7 @@ describe("E8 preview verification", () => {
         executeCli(["access", "preview", "--url", "https://example.com/e8-preview"], fetchClient),
       );
 
-      mock.module("playwright", () => ({
+      mock.module("patchright", () => ({
         chromium: {
           launch: async () => ({
             newContext: async () => ({
@@ -68,9 +71,11 @@ describe("E8 preview verification", () => {
       try {
         const renderSdk = yield* runRenderPreviewOperation({
           url: "https://example.com/e8-preview",
-          browser: {
-            waitUntil: "networkidle",
-            timeoutMs: 300,
+          execution: {
+            browser: {
+              waitUntil: "networkidle",
+              timeoutMs: 300,
+            },
           },
         });
         const renderCli = yield* Effect.promise(() =>
@@ -79,18 +84,30 @@ describe("E8 preview verification", () => {
             "preview",
             "--url",
             "https://example.com/e8-preview",
-            "--wait-until",
+            "--browser-wait-until",
             "networkidle",
-            "--wait-ms",
+            "--browser-timeout-ms",
             "300",
           ]),
         );
 
-        expect(Schema.decodeUnknownSync(AccessPreviewResponseSchema)(accessSdk)).toEqual(
-          Schema.decodeUnknownSync(AccessPreviewResponseSchema)(JSON.parse(accessCli.output)),
+        expect(
+          stripVolatileAccessTelemetry(
+            Schema.decodeUnknownSync(AccessPreviewResponseSchema)(accessSdk),
+          ),
+        ).toEqual(
+          stripVolatileAccessTelemetry(
+            Schema.decodeUnknownSync(AccessPreviewResponseSchema)(JSON.parse(accessCli.output)),
+          ),
         );
-        expect(Schema.decodeUnknownSync(RenderPreviewResponseSchema)(renderSdk)).toEqual(
-          Schema.decodeUnknownSync(RenderPreviewResponseSchema)(JSON.parse(renderCli.output)),
+        expect(
+          stripVolatileAccessTelemetry(
+            Schema.decodeUnknownSync(RenderPreviewResponseSchema)(renderSdk),
+          ),
+        ).toEqual(
+          stripVolatileAccessTelemetry(
+            Schema.decodeUnknownSync(RenderPreviewResponseSchema)(JSON.parse(renderCli.output)),
+          ),
         );
         expect(renderSdk.data.status.ok).toBe(true);
         expect(renderSdk.data.artifacts.map(({ kind }) => kind)).toEqual([
@@ -107,11 +124,14 @@ describe("E8 preview verification", () => {
 
   it.effect("rejects malformed preview payloads deterministically across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const renderSdkError = yield* Effect.flip(
         runRenderPreviewOperation({
           url: "https://example.com/e8-preview",
-          browser: {
-            waitUntil: "later",
+          execution: {
+            browser: {
+              waitUntil: "later",
+            },
           },
         }),
       );
@@ -121,7 +141,7 @@ describe("E8 preview verification", () => {
           "preview",
           "--url",
           "https://example.com/e8-preview",
-          "--wait-until",
+          "--browser-wait-until",
           "later",
         ]),
       );

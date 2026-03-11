@@ -1,13 +1,5 @@
-export {
-  E8ArtifactExportEnvelopeSchema,
-  E8ArtifactExportSchema,
-  E8BenchmarkBundleSchema,
-  E8BenchmarkRunEnvelopeSchema,
-  E8BenchmarkRunMetadataSchema,
-  runArtifactExportOperation,
-  runBenchmarkOperation,
-} from "./e8-benchmark-surface.ts";
-export {
+import { type Effect } from "effect";
+import {
   BrowserPoolLimitsSchema,
   WorkspaceCommandNameSchema,
   WorkspaceConfigShowDataSchema,
@@ -22,7 +14,16 @@ export {
   showWorkspaceConfig,
   type WorkspaceCommandName,
 } from "./e8-command-core.ts";
-export {
+import {
+  E8ArtifactExportEnvelopeSchema,
+  E8ArtifactExportSchema,
+  E8BenchmarkBundleSchema,
+  E8BenchmarkRunEnvelopeSchema,
+  E8BenchmarkRunMetadataSchema,
+  runArtifactExportOperation,
+  runBenchmarkOperation,
+} from "./e8-benchmark-surface.ts";
+import {
   CrawlCompileEnvelopeSchema,
   PackCreateEnvelopeSchema,
   PackInspectEnvelopeSchema,
@@ -53,3 +54,63 @@ export {
   runWorkflowResumeOperation,
   runWorkflowRunOperation,
 } from "./e8-control-plane.ts";
+import { provideSdkRuntime } from "./sdk/runtime-layer.ts";
+
+export {
+  E8ArtifactExportEnvelopeSchema,
+  E8ArtifactExportSchema,
+  E8BenchmarkBundleSchema,
+  E8BenchmarkRunEnvelopeSchema,
+  E8BenchmarkRunMetadataSchema,
+  runArtifactExportOperation,
+  runBenchmarkOperation,
+  BrowserPoolLimitsSchema,
+  WorkspaceCommandNameSchema,
+  WorkspaceConfigShowDataSchema,
+  WorkspaceConfigShowEnvelopeSchema,
+  WorkspaceDoctorCheckSchema,
+  WorkspaceDoctorDataSchema,
+  WorkspaceDoctorEnvelopeSchema,
+  WorkspacePackageInfoSchema,
+  WorkspaceRuntimeSchema,
+  executeWorkspaceCommand,
+  runWorkspaceDoctor,
+  showWorkspaceConfig,
+  CrawlCompileEnvelopeSchema,
+  PackCreateEnvelopeSchema,
+  PackInspectEnvelopeSchema,
+  PackPromoteEnvelopeSchema,
+  PackValidateEnvelopeSchema,
+  QualityCompareEnvelopeSchema,
+  QualityVerifyEnvelopeSchema,
+  SnapshotDiffEnvelopeSchema,
+  TargetImportEnvelopeSchema,
+  TargetListEnvelopeSchema,
+  WorkflowInspectEnvelopeSchema,
+  WorkflowResumeEnvelopeSchema,
+  WorkflowRunEnvelopeSchema,
+  runAccessPreviewOperation,
+  runCrawlCompileOperation,
+  runExtractRunOperation,
+  runPackCreateOperation,
+  runPackInspectOperation,
+  runPackPromoteOperation,
+  runPackValidateOperation,
+  runQualityCompareOperation,
+  runQualityVerifyOperation,
+  runRenderPreviewOperation,
+  runSnapshotDiffOperation,
+  runTargetImportOperation,
+  runTargetListOperation,
+  runWorkflowInspectOperation,
+  runWorkflowResumeOperation,
+  runWorkflowRunOperation,
+};
+
+export type { WorkspaceCommandName };
+
+export function withE8Runtime<A, E, R>(
+  effect: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, Exclude<R, import("./sdk/runtime-layer.ts").SdkRuntimeServices>> {
+  return provideSdkRuntime(effect);
+}

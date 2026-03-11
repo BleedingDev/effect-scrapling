@@ -1,0 +1,682 @@
+{
+  "benchmark": "e9-benchmark-suite",
+  "benchmarkId": "e9-benchmark-suite",
+  "generatedAt": "2026-03-09T22:00:00.000Z",
+  "corpus": {
+    "sourceArtifactPath": "docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
+    "selectedPageCount": 640,
+    "selectedSiteCount": 21,
+    "highFrictionPageCount": 392,
+    "pageTypeCounts": {
+      "product": 117,
+      "listing": 363,
+      "search": 16,
+      "offer": 7,
+      "unknown": 137
+    }
+  },
+  "profiles": {
+    "available": [
+      {
+        "profile": "effect-http",
+        "available": true
+      },
+      {
+        "profile": "native-fetch",
+        "available": true
+      },
+      {
+        "profile": "effect-browser",
+        "available": true
+      },
+      {
+        "profile": "playwright-browser",
+        "available": true
+      },
+      {
+        "profile": "scrapling-parser",
+        "available": true
+      }
+    ],
+    "unavailable": [
+      {
+        "profile": "crawlee-http",
+        "available": false,
+        "reason": "Crawlee is not installed in this benchmark environment."
+      },
+      {
+        "profile": "crawlee-playwright",
+        "available": false,
+        "reason": "Crawlee is not installed in this benchmark environment."
+      },
+      {
+        "profile": "scrapy-http",
+        "available": false,
+        "reason": "Scrapy is not installed in this benchmark environment."
+      },
+      {
+        "profile": "selenium-browser",
+        "available": false,
+        "reason": "Selenium is not installed in this benchmark environment."
+      },
+      {
+        "profile": "effect-browser-stealth",
+        "available": false,
+        "reason": "A dedicated stealth-evasion runtime is not implemented yet; current E9 evidence only proves browser escalation and bypass qualification."
+      }
+    ]
+  },
+  "httpCorpus": {
+    "phase": "live-http-corpus",
+    "pageCount": 640,
+    "attempts": [],
+    "sweeps": []
+  },
+  "browserCorpus": {
+    "phase": "live-browser-corpus",
+    "pageCount": 640,
+    "attempts": [],
+    "sweeps": []
+  },
+  "scraplingParity": {
+    "totalWallMs": 828.329,
+    "artifact": {
+      "benchmark": "e9-scrapling-parity",
+      "comparisonId": "comparison-e9-scrapling-parity",
+      "generatedAt": "2026-03-08T22:15:00.000Z",
+      "caseCount": 10,
+      "measurementMode": "fixture-corpus-postcapture",
+      "scraplingRuntime": {
+        "scraplingVersion": "0.4.1",
+        "parserAvailable": true,
+        "fetcherAvailable": false,
+        "fetcherDiagnostic": "Fetcher runtime requires undeclared optional dependencies in this benchmark environment."
+      },
+      "summary": {
+        "ours": {
+          "measurementMode": "fixture-corpus-postcapture",
+          "fetchSuccessRate": 1,
+          "extractionCompleteness": 1,
+          "bypassSuccessRate": 1
+        },
+        "scrapling": {
+          "measurementMode": "fixture-corpus-postcapture",
+          "fetchSuccessRate": 1,
+          "extractionCompleteness": 1,
+          "bypassSuccessRate": 1
+        },
+        "equalOrBetter": {
+          "fetchSuccess": true,
+          "extractionCompleteness": true,
+          "bypassSuccess": true
+        }
+      },
+      "cases": [
+        {
+          "caseId": "case-e9-alza-tesla-s300w",
+          "retailer": "alza",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "alza/availability/primary",
+            "alza/price/primary",
+            "alza/product-identifier/primary",
+            "alza/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-alza-tesla-fan-f500",
+          "retailer": "alza",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "alza/availability/primary",
+            "alza/price/primary",
+            "alza/product-identifier/primary",
+            "alza/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-alza-tesla-heater-h300",
+          "retailer": "alza",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "alza/availability/primary",
+            "alza/price/primary",
+            "alza/product-identifier/primary",
+            "alza/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-alza-tesla-humidifier-h100",
+          "retailer": "alza",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "alza/availability/primary",
+            "alza/price/primary",
+            "alza/product-identifier/primary",
+            "alza/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-datart-tesla-s200b",
+          "retailer": "datart",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "datart/availability/primary",
+            "datart/price/primary",
+            "datart/product-identifier/primary",
+            "datart/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-datart-tesla-ar300",
+          "retailer": "datart",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "datart/availability/primary",
+            "datart/price/primary",
+            "datart/product-identifier/primary",
+            "datart/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-datart-tesla-dehumidifier-d400",
+          "retailer": "datart",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "datart/availability/primary",
+            "datart/price/primary",
+            "datart/product-identifier/primary",
+            "datart/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-tsbohemia-tesla-te300",
+          "retailer": "tsbohemia",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "tsbohemia/availability/primary",
+            "tsbohemia/price/primary",
+            "tsbohemia/product-identifier/primary",
+            "tsbohemia/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-tsbohemia-tesla-te310",
+          "retailer": "tsbohemia",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "tsbohemia/availability/primary",
+            "tsbohemia/price/primary",
+            "tsbohemia/product-identifier/primary",
+            "tsbohemia/title/primary"
+          ]
+        },
+        {
+          "caseId": "case-e9-tsbohemia-tesla-te320",
+          "retailer": "tsbohemia",
+          "ourCompleteness": 1,
+          "scraplingCompleteness": 1,
+          "ourFetchSuccess": true,
+          "scraplingFetchSuccess": true,
+          "ourBypassSuccess": true,
+          "scraplingBypassSuccess": true,
+          "valueAgreement": true,
+          "matchedSelectors": [
+            "tsbohemia/availability/primary",
+            "tsbohemia/price/primary",
+            "tsbohemia/product-identifier/primary",
+            "tsbohemia/title/primary"
+          ]
+        }
+      ],
+      "status": "pass"
+    }
+  },
+  "highFrictionCanary": {
+    "totalWallMs": 41.905,
+    "artifact": {
+      "benchmark": "e9-high-friction-canary",
+      "suiteId": "suite-e9-high-friction-canary",
+      "generatedAt": "2026-03-08T22:25:00.000Z",
+      "status": "pass",
+      "summary": {
+        "scenarioCount": 10,
+        "browserEscalationRate": 1,
+        "bypassSuccessRate": 1,
+        "policyViolationCount": 0,
+        "promotionVerdict": "promote"
+      },
+      "results": [
+        {
+          "caseId": "case-e9-alza-tesla-fan-f500",
+          "retailer": "alza",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-alza-tesla-heater-h300",
+          "retailer": "alza",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-alza-tesla-humidifier-h100",
+          "retailer": "alza",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-alza-tesla-s300w",
+          "retailer": "alza",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-datart-tesla-ar300",
+          "retailer": "datart",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-datart-tesla-dehumidifier-d400",
+          "retailer": "datart",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-datart-tesla-s200b",
+          "retailer": "datart",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-tsbohemia-tesla-te300",
+          "retailer": "tsbohemia",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-tsbohemia-tesla-te310",
+          "retailer": "tsbohemia",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        },
+        {
+          "caseId": "case-e9-tsbohemia-tesla-te320",
+          "retailer": "tsbohemia",
+          "provider": "browser",
+          "action": "active",
+          "status": "pass",
+          "requiresBypass": true,
+          "bypassQualified": true,
+          "policyCompliant": true
+        }
+      ],
+      "liveCanary": {
+        "benchmark": "e7-live-canary",
+        "suiteId": "suite-e9-high-friction-canary",
+        "generatedAt": "2026-03-08T22:25:00.000Z",
+        "status": "pass",
+        "summary": {
+          "scenarioCount": 10,
+          "passedScenarioCount": 10,
+          "failedScenarioIds": [],
+          "verdict": "promote"
+        },
+        "results": [
+          {
+            "scenarioId": "scenario-case-e9-alza-tesla-fan-f500",
+            "authorizationId": "auth-case-e9-alza-tesla-fan-f500",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-alza-tesla-heater-h300",
+            "authorizationId": "auth-case-e9-alza-tesla-heater-h300",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-alza-tesla-humidifier-h100",
+            "authorizationId": "auth-case-e9-alza-tesla-humidifier-h100",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-alza-tesla-s300w",
+            "authorizationId": "auth-case-e9-alza-tesla-s300w",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-datart-tesla-ar300",
+            "authorizationId": "auth-case-e9-datart-tesla-ar300",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-datart-tesla-dehumidifier-d400",
+            "authorizationId": "auth-case-e9-datart-tesla-dehumidifier-d400",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-datart-tesla-s200b",
+            "authorizationId": "auth-case-e9-datart-tesla-s200b",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-tsbohemia-tesla-te300",
+            "authorizationId": "auth-case-e9-tsbohemia-tesla-te300",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-tsbohemia-tesla-te310",
+            "authorizationId": "auth-case-e9-tsbohemia-tesla-te310",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          },
+          {
+            "scenarioId": "scenario-case-e9-tsbohemia-tesla-te320",
+            "authorizationId": "auth-case-e9-tsbohemia-tesla-te320",
+            "provider": "browser",
+            "action": "active",
+            "failedStages": [],
+            "status": "pass",
+            "plannerRationale": [
+              {
+                "key": "mode",
+                "message": "Access mode resolved to hybrid."
+              },
+              {
+                "key": "rendering",
+                "message": "Rendering policy resolved to onDemand."
+              },
+              {
+                "key": "budget",
+                "message": "Concurrency budget resolved to 2/8."
+              },
+              {
+                "key": "capture-path",
+                "message": "Capture step selected browser provider. Hybrid mode escalated to browser after 2 recent access failure(s), latest provider_unavailable."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "status": "pass"
+}

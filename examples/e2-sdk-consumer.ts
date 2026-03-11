@@ -1,9 +1,9 @@
 import { Effect, Schema } from "effect";
 import {
-  extractRun,
   ExtractRunRequestSchema,
   ExtractRunResponseSchema,
-  FetchService,
+  createEngine,
+  type AccessEngine,
   type FetchClient,
 } from "effect-scrapling/sdk";
 
@@ -93,17 +93,6 @@ const failOnFetch: FetchClient = async () => {
   throw new Error("Invalid input examples must fail before any fetch happens.");
 };
 
-function provideFetch<A, E>(
-  effect: Effect.Effect<A, E, FetchService>,
-  fetchClient: FetchClient = mockFetch,
-): Effect.Effect<A, E, never> {
-  return effect.pipe(
-    Effect.provideService(FetchService, {
-      fetch: fetchClient,
-    }),
-  );
-}
-
 function createExtractRequest() {
   return Schema.decodeUnknownSync(ExtractRunRequestSchema)({
     url: EXAMPLE_URL,
@@ -112,11 +101,12 @@ function createExtractRequest() {
   });
 }
 
-function captureInvalidInputExample() {
-  return provideFetch(
-    extractRun({
+function captureInvalidInputExample(engine: AccessEngine) {
+  return engine
+    .extractRun({
       selector: '[data-field="price"]',
-    }).pipe(
+    })
+    .pipe(
       Effect.flatMap(() =>
         Effect.die(new Error('Expected InvalidInputError for extractRun without a "url" field')),
       ),
@@ -127,17 +117,17 @@ function captureInvalidInputExample() {
           details,
         }),
       ),
-    ),
-    failOnFetch,
-  ).pipe(Effect.orDie);
+      Effect.orDie,
+    );
 }
 
-function captureInvalidSelectorExample() {
-  return provideFetch(
-    extractRun({
+function captureInvalidSelectorExample(engine: AccessEngine) {
+  return engine
+    .extractRun({
       url: EXAMPLE_URL,
       selector: "[",
-    }).pipe(
+    })
+    .pipe(
       Effect.flatMap(() =>
         Effect.die(new Error('Expected ExtractionError for invalid selector "["')),
       ),
@@ -148,35 +138,49 @@ function captureInvalidSelectorExample() {
           details,
         }),
       ),
-    ),
-  ).pipe(Effect.orDie);
+      Effect.orDie,
+    );
 }
 
 export function runE2SdkConsumerExample() {
-  return Effect.gen(function* () {
-    const request = createExtractRequest();
-    const payload = yield* Effect.all({
-      response: provideFetch(extractRun(request)).pipe(Effect.orDie),
-      noMatchWarning: provideFetch(
-        extractRun({
-          url: EXAMPLE_URL,
-          selector: '[data-field="inventory"]',
-        }),
-      ).pipe(Effect.orDie),
-      invalidInputError: captureInvalidInputExample(),
-      invalidSelectorError: captureInvalidSelectorExample(),
-    });
+  return Effect.acquireUseRelease(
+    createEngine({
+      fetchClient: mockFetch,
+    }),
+    (engine) =>
+      Effect.gen(function* () {
+        const request = createExtractRequest();
+        const invalidInputError = yield* Effect.acquireUseRelease(
+          createEngine({
+            fetchClient: failOnFetch,
+          }),
+          (failEngine) => captureInvalidInputExample(failEngine),
+          (failEngine) => failEngine.close,
+        );
+        const response = yield* engine.extractRun(request).pipe(Effect.orDie);
+        const noMatchWarning = yield* engine
+          .extractRun({
+            url: EXAMPLE_URL,
+            selector: '[data-field="inventory"]',
+          })
+          .pipe(Effect.orDie);
+        const invalidSelectorError = yield* captureInvalidSelectorExample(engine);
 
-    return Schema.decodeUnknownSync(E2SdkConsumerExampleResultSchema)({
-      importPath: "effect-scrapling/sdk",
-      prerequisites: e2SdkConsumerPrerequisites,
-      pitfalls: e2SdkConsumerPitfalls,
-      payload: {
-        request,
-        ...payload,
-      },
-    });
-  });
+        return Schema.decodeUnknownSync(E2SdkConsumerExampleResultSchema)({
+          importPath: "effect-scrapling/sdk",
+          prerequisites: e2SdkConsumerPrerequisites,
+          pitfalls: e2SdkConsumerPitfalls,
+          payload: {
+            request,
+            response,
+            noMatchWarning,
+            invalidInputError,
+            invalidSelectorError,
+          },
+        });
+      }),
+    (engine) => engine.close,
+  ) as Effect.Effect<E2SdkConsumerExampleResult, never, never>;
 }
 
 if (import.meta.main) {

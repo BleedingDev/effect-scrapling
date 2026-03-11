@@ -38,14 +38,8 @@ import { decidePackPromotion } from "@effect-scrapling/foundation-core/reflectio
 import { compareSnapshots } from "@effect-scrapling/foundation-core/snapshot-diff-engine";
 import { formatUnknownError } from "./sdk/error-guards.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
-import {
-  accessPreview,
-  extractRun,
-  FetchService,
-  FetchServiceLive,
-  renderPreview,
-  type FetchClient,
-} from "./sdk/scraper.ts";
+import { type FetchClient } from "./sdk/scraper.ts";
+import { createEngine } from "./sdk/engine.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const PositiveIntSchema = Schema.Int.check(Schema.isGreaterThan(0));
@@ -380,21 +374,6 @@ function decodeOrFail<A>(
     try: () => Schema.decodeUnknownSync(schema)(input),
     catch: (cause) => invalidInput(message, cause),
   });
-}
-
-function withFetchService<A, E>(
-  effect: Effect.Effect<A, E, FetchService>,
-  fetchClient?: FetchClient,
-) {
-  if (fetchClient) {
-    return effect.pipe(
-      Effect.provideService(FetchService, {
-        fetch: fetchClient,
-      }),
-    );
-  }
-
-  return effect.pipe(Effect.provide(FetchServiceLive));
 }
 
 function buildRunStats(
@@ -764,14 +743,22 @@ export const runAccessPreviewOperation = Effect.fn("E8.runAccessPreviewOperation
   input: unknown,
   fetchClient?: FetchClient,
 ) {
-  return yield* withFetchService(accessPreview(input), fetchClient);
+  return yield* Effect.acquireUseRelease(
+    fetchClient === undefined ? createEngine() : createEngine({ fetchClient }),
+    (engine) => engine.accessPreview(input),
+    (engine) => engine.close,
+  );
 });
 
 export const runRenderPreviewOperation = Effect.fn("E8.runRenderPreviewOperation")(function* (
   input: unknown,
   fetchClient?: FetchClient,
 ) {
-  return yield* withFetchService(renderPreview(input), fetchClient);
+  return yield* Effect.acquireUseRelease(
+    fetchClient === undefined ? createEngine() : createEngine({ fetchClient }),
+    (engine) => engine.renderPreview(input),
+    (engine) => engine.close,
+  );
 });
 
 export const runCrawlCompileOperation = Effect.fn("E8.runCrawlCompileOperation")(function* (
@@ -926,7 +913,11 @@ export const runExtractRunOperation = Effect.fn("E8.runExtractRunOperation")(fun
   input: unknown,
   fetchClient?: FetchClient,
 ) {
-  return yield* withFetchService(extractRun(input), fetchClient);
+  return yield* Effect.acquireUseRelease(
+    fetchClient === undefined ? createEngine() : createEngine({ fetchClient }),
+    (engine) => engine.extractRun(input),
+    (engine) => engine.close,
+  );
 });
 
 export const runSnapshotDiffOperation = Effect.fn("E8.runSnapshotDiffOperation")(function* (

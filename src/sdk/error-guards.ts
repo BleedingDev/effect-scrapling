@@ -1,5 +1,12 @@
 import { Predicate } from "effect";
-import type { BrowserError, ExtractionError, InvalidInputError, NetworkError } from "./errors.ts";
+import type {
+  AccessQuarantinedError,
+  AccessResourceError,
+  BrowserError,
+  ExtractionError,
+  InvalidInputError,
+  NetworkError,
+} from "./errors.ts";
 
 type ErrorShape = {
   readonly message: string;
@@ -40,4 +47,12 @@ export function isExtractionError(error: unknown): error is ExtractionError {
 
 export function isBrowserError(error: unknown): error is BrowserError {
   return Predicate.isTagged("BrowserError")(error) && hasMessageAndOptionalDetails(error);
+}
+
+export function isAccessResourceError(error: unknown): error is AccessResourceError {
+  return Predicate.isTagged("AccessResourceError")(error) && hasMessageAndOptionalDetails(error);
+}
+
+export function isAccessQuarantinedError(error: unknown): error is AccessQuarantinedError {
+  return Predicate.isTagged("AccessQuarantinedError")(error) && hasMessageAndOptionalDetails(error);
 }

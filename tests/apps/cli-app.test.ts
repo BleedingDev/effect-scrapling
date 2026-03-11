@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
-import { executeCli } from "../../src/standalone.ts";
+import { createCliHost, executeCli } from "../../src/standalone.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
+import { defineAccessModule } from "../../src/sdk/engine.ts";
 import { RenderPreviewResponseSchema } from "../../src/sdk/schemas.ts";
 import type { FetchClient } from "../../src/sdk/scraper.ts";
 
@@ -24,6 +25,54 @@ function resetSdkBrowserPool() {
   return Effect.runPromise(resetBrowserPoolForTests());
 }
 
+function makeSyntheticBrowserModule() {
+  return defineAccessModule({
+    id: "cli-host-synthetic-browser-module",
+    providers: {
+      "synthetic-browser": {
+        id: "synthetic-browser",
+        capabilities: {
+          mode: "browser",
+          rendersDom: true,
+        },
+        execute: ({ url, context }) =>
+          Effect.succeed({
+            url,
+            finalUrl: url,
+            status: 200,
+            contentType: "text/html; charset=utf-8",
+            contentLength: 44,
+            html: "<html><body><h1>CLI Host Browser</h1></body></html>",
+            durationMs: 2,
+            execution: {
+              providerId: context.providerId,
+              mode: context.mode,
+              egressProfileId: context.egress.profileId,
+              egressPluginId: context.egress.pluginId,
+              egressRouteKind: context.egress.routeKind,
+              egressRouteKey: context.egress.routeKey,
+              egressPoolId: context.egress.poolId,
+              egressRoutePolicyId: context.egress.routePolicyId,
+              egressKey: context.egress.egressKey,
+              identityProfileId: context.identity.profileId,
+              identityPluginId: context.identity.pluginId,
+              identityTenantId: context.identity.tenantId,
+              identityKey: context.identity.identityKey,
+              browserRuntimeProfileId: context.browser?.runtimeProfileId,
+              browserPoolKey: context.browser?.poolKey,
+            },
+            timings: {
+              requestCount: 1,
+              redirectCount: 0,
+              blockedRequestCount: 0,
+            },
+            warnings: [],
+          }),
+      },
+    },
+  });
+}
+
 describe("cli app", () => {
   it("executes access preview with shared schema decoding instead of manual flag parsing", async () => {
     const result = await executeCli(
@@ -34,7 +83,7 @@ describe("cli app", () => {
         "https://example.com/articles/effect-scrapling",
         "--timeout-ms",
         "1500",
-        "--user-agent",
+        "--http-user-agent",
         "effect-scrapling-test-agent",
       ],
       mockHtmlFetch("<html><head><title>Effect Scrapling</title></head></html>"),
@@ -44,6 +93,58 @@ describe("cli app", () => {
     expect(result.exitCode).toBe(0);
     expect(payload.command).toBe("access preview");
     expect(payload.data.finalUrl).toBe("https://example.com/articles/effect-scrapling");
+  });
+
+  it("supports leased profile modules and nested JSON config through canonical CLI flags", async () => {
+    const result = await executeCli(
+      [
+        "access",
+        "preview",
+        "--url",
+        "https://example.com/articles/effect-scrapling",
+        "--egress-profile",
+        "leased-direct",
+        "--egress-config",
+        '{"ttlMs":1000,"maxPoolLeases":1}',
+        "--identity-profile",
+        "leased-default",
+        "--identity-config",
+        '{"ttlMs":1000,"maxActiveLeases":1}',
+      ],
+      mockHtmlFetch("<html><head><title>Effect Scrapling</title></head></html>"),
+    );
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.command).toBe("access preview");
+    expect(payload.data.execution).toMatchObject({
+      egressProfileId: "leased-direct",
+      egressPluginId: "builtin-leased-egress",
+      identityProfileId: "leased-default",
+      identityPluginId: "builtin-leased-identity",
+    });
+  });
+
+  it("assembles host-specific modules for CLI preview commands", async () => {
+    const host = createCliHost({
+      engine: {
+        modules: [makeSyntheticBrowserModule()],
+      },
+    });
+    const result = await host.execute([
+      "access",
+      "preview",
+      "--url",
+      "https://example.com/browser-only",
+      "--provider",
+      "synthetic-browser",
+    ]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.command).toBe("access preview");
+    expect(payload.data.execution.providerId).toBe("synthetic-browser");
+    expect(payload.data.finalUrl).toBe("https://example.com/browser-only");
   });
 
   it("runs doctor through the CLI boundary with the expected JSON envelope", async () => {
@@ -77,9 +178,9 @@ describe("cli app", () => {
     expect(payload.ok).toBe(true);
     expect(payload.data.package.name).toBe("effect-scrapling");
     expect(payload.data.browserPool).toEqual({
-      maxContexts: 2,
-      maxPages: 2,
-      maxQueue: 8,
+      maxContexts: 4,
+      maxPages: 4,
+      maxQueue: 16,
     });
     expect(payload.data.sourceOrder).toEqual(["defaults", "sitePack", "targetProfile", "run"]);
     expect(payload.data.runConfigDefaults.mode).toBe("http");
@@ -119,7 +220,7 @@ describe("cli app", () => {
     expect(payload.details).toContain("private or reserved");
   });
 
-  it("normalizes browser-mode aliases through the CLI boundary", async () => {
+  it("executes browser access preview through the CLI boundary with the explicit execution flags", async () => {
     await resetSdkBrowserPool();
     const seenOptions: {
       readonly userAgent: string;
@@ -127,7 +228,7 @@ describe("cli app", () => {
       readonly timeout: number;
     }[] = [];
 
-    mock.module("playwright", () => ({
+    mock.module("patchright", () => ({
       chromium: {
         launch: async () => ({
           newContext: async (options: { readonly userAgent: string }) => {
@@ -178,11 +279,11 @@ describe("cli app", () => {
         "https://example.com/articles/effect-scrapling",
         "--mode",
         "browser",
-        "--waitUntil",
+        "--browser-wait-until",
         "commit",
-        "--browserTimeoutMs",
+        "--browser-timeout-ms",
         "450",
-        "--browserUserAgent",
+        "--browser-user-agent",
         "CLI Browser",
       ]);
       const payload = JSON.parse(result.output);
@@ -205,7 +306,7 @@ describe("cli app", () => {
 
   it("maps BrowserError failures to the CLI error envelope", async () => {
     await resetSdkBrowserPool();
-    mock.module("playwright", () => ({
+    mock.module("patchright", () => ({
       chromium: {
         launch: async () => {
           throw new Error("browser boot failed");
@@ -219,8 +320,8 @@ describe("cli app", () => {
         "preview",
         "--url",
         "https://example.com/articles/effect-scrapling",
-        "--mode",
-        "browser",
+        "--provider",
+        "browser-basic",
       ]);
       const payload = JSON.parse(result.output);
 
@@ -235,7 +336,7 @@ describe("cli app", () => {
 
   it("executes render preview through the CLI boundary with a typed artifact bundle", async () => {
     await resetSdkBrowserPool();
-    mock.module("playwright", () => ({
+    mock.module("patchright", () => ({
       chromium: {
         launch: async () => ({
           newContext: async (_options: { readonly userAgent: string }) => ({
@@ -266,11 +367,11 @@ describe("cli app", () => {
         "preview",
         "--url",
         "https://example.com/products/sku-123",
-        "--waitUntil",
+        "--browser-wait-until",
         "commit",
-        "--browserTimeoutMs",
+        "--browser-timeout-ms",
         "450",
-        "--browserUserAgent",
+        "--browser-user-agent",
         "CLI Browser",
       ]);
       const payload = JSON.parse(result.output);
@@ -278,7 +379,7 @@ describe("cli app", () => {
 
       expect(result.exitCode).toBe(0);
       expect(preview.command).toBe("render preview");
-      expect(preview.data.mode).toBe("browser");
+      expect(preview.data.execution.mode).toBe("browser");
       expect(preview.data.status).toEqual({
         code: 200,
         ok: true,
@@ -298,7 +399,7 @@ describe("cli app", () => {
 
   it("maps render-preview BrowserError failures to the CLI error envelope", async () => {
     await resetSdkBrowserPool();
-    mock.module("playwright", () => ({
+    mock.module("patchright", () => ({
       chromium: {
         launch: async () => {
           throw new Error("browser boot failed");
@@ -371,6 +472,39 @@ describe("cli app", () => {
     expect(result.exitCode).toBe(2);
     expect(payload.code).toBe("InvalidInputError");
     expect(payload.message).toContain("Invalid extract run payload");
+  });
+
+  it("rejects legacy execution aliases instead of silently accepting them", async () => {
+    const result = await executeCli([
+      "render",
+      "preview",
+      "--url",
+      "https://example.com/products/sku-123",
+      "--waitUntil",
+      "commit",
+    ]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(2);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toContain("Unsupported option for render preview");
+    expect(payload.details).toContain("--waitUntil");
+  });
+
+  it("rejects malformed JSON config flags before execution starts", async () => {
+    const result = await executeCli([
+      "access",
+      "preview",
+      "--url",
+      "https://example.com/products/sku-123",
+      "--egress-config",
+      "not-json",
+    ]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(2);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toBe("Option --egress-config must be valid JSON");
   });
 
   it("reports unknown commands with actionable guidance", async () => {

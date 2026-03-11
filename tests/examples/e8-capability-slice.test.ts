@@ -1,7 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, setDefaultTimeout } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
+import { resetAccessHealthGatewayForTests } from "../../src/sdk/access-health-gateway.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
+import { provideSdkRuntime } from "../../src/sdk/runtime-layer.ts";
 import {
   E8CapabilitySliceEvidenceSchema,
   runE8CapabilitySlice,
@@ -63,8 +65,9 @@ function stableProjection(encoded: CapabilityEvidence) {
 describe("examples/e8-capability-slice", () => {
   it.effect("executes the E8 end-to-end capability slice with typed linked evidence", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       yield* resetBrowserPoolForTests();
-      const evidence = yield* runE8CapabilitySlice();
+      const evidence = yield* provideSdkRuntime(runE8CapabilitySlice());
       const encoded = evidence;
 
       expect(encoded.evidencePath.importedTargetIds).toEqual([
@@ -112,8 +115,9 @@ describe("examples/e8-capability-slice", () => {
   it("runs standalone and emits schema-valid deterministic evidence JSON", async () => {
     const expected = await Effect.runPromise(
       Effect.gen(function* () {
+        yield* resetAccessHealthGatewayForTests();
         yield* resetBrowserPoolForTests();
-        return yield* runE8CapabilitySlice();
+        return yield* provideSdkRuntime(runE8CapabilitySlice());
       }),
     );
     const result = Bun.spawnSync({

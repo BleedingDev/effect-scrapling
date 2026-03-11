@@ -1,9 +1,7 @@
 import { Effect } from "effect";
 import {
-  accessPreview,
-  extractRun,
-  FetchService,
   type AccessPreviewResponse,
+  createEngine,
   type ExtractRunResponse,
   type FetchClient,
 } from "effect-scrapling/sdk";
@@ -74,49 +72,38 @@ const mockFetch: FetchClient = async (input, _init) => {
   return response;
 };
 
-function provideMockFetch<A, E>(
-  effect: Effect.Effect<A, E, FetchService>,
-): Effect.Effect<A, E, never> {
-  return effect.pipe(
-    Effect.provideService(FetchService, {
-      fetch: mockFetch,
-    }),
-  );
-}
-
 export function runConsumerExample(): Effect.Effect<ConsumerExampleResult, never, never> {
-  const previewEffect: Effect.Effect<AccessPreviewResponse, never, never> = provideMockFetch(
-    accessPreview({
-      url: "https://consumer.example/articles/effect-scrapling",
+  return Effect.acquireUseRelease(
+    createEngine({
+      fetchClient: mockFetch,
     }),
-  ).pipe(Effect.orDie);
-
-  const extractEffect: Effect.Effect<ExtractRunResponse, never, never> = provideMockFetch(
-    extractRun({
-      url: "https://consumer.example/articles/effect-scrapling",
-      selector: "h1",
-    }),
-  ).pipe(Effect.orDie);
-
-  const expectedErrorEffect: Effect.Effect<ConsumerExampleResult["expectedError"], never, never> =
-    provideMockFetch(
-      accessPreview({}).pipe(
-        Effect.flatMap(() => Effect.die(new Error("Expected InvalidInputError failure"))),
-        Effect.catchTag("InvalidInputError", ({ message, details }) =>
-          Effect.succeed({
-            tag: "InvalidInputError" as const,
-            message,
-            details,
-          }),
+    (engine) =>
+      Effect.all({
+        preview: engine
+          .accessPreview({
+            url: "https://consumer.example/articles/effect-scrapling",
+          })
+          .pipe(Effect.orDie) as Effect.Effect<AccessPreviewResponse, never, never>,
+        extract: engine
+          .extractRun({
+            url: "https://consumer.example/articles/effect-scrapling",
+            selector: "h1",
+          })
+          .pipe(Effect.orDie) as Effect.Effect<ExtractRunResponse, never, never>,
+        expectedError: engine.accessPreview({}).pipe(
+          Effect.flatMap(() => Effect.die(new Error("Expected InvalidInputError failure"))),
+          Effect.catchTag("InvalidInputError", ({ message, details }) =>
+            Effect.succeed({
+              tag: "InvalidInputError" as const,
+              message,
+              details,
+            }),
+          ),
+          Effect.orDie,
         ),
-      ),
-    ).pipe(Effect.orDie);
-
-  return Effect.all({
-    preview: previewEffect,
-    extract: extractEffect,
-    expectedError: expectedErrorEffect,
-  });
+      }),
+    (engine) => engine.close,
+  );
 }
 
 if (import.meta.main) {

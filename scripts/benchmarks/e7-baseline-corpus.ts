@@ -254,8 +254,7 @@ export async function runBaselineCorpusCli(
   args: readonly string[],
   dependencies: BaselineCorpusCliDependencies = {},
 ) {
-  const setExitCode =
-    dependencies.setExitCode ?? ((code: number) => void (process.exitCode = code));
+  const setExitCode = dependencies.setExitCode ?? ((_code: number) => undefined);
   const writeLine = dependencies.writeLine ?? ((line: string) => console.log(line));
 
   try {

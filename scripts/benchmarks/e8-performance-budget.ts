@@ -10,6 +10,7 @@ import {
   showWorkspaceConfig,
 } from "../../src/e8.ts";
 import { runE8CapabilitySlice } from "../../examples/e8-capability-slice.ts";
+import { provideSdkRuntime } from "../../src/sdk/runtime-layer.ts";
 
 const PositiveIntSchema = Schema.Int.check(Schema.isGreaterThan(0));
 const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
@@ -252,7 +253,7 @@ async function readBaseline(path: string | undefined) {
 }
 
 export async function runWorkspaceDoctorObservation() {
-  const envelope = await Effect.runPromise(runWorkspaceDoctor());
+  const envelope = await Effect.runPromise(provideSdkRuntime(runWorkspaceDoctor()));
   return `${envelope.command}|${envelope.data.checks
     .map(({ name, ok }) => `${name}:${ok ? "ok" : "fail"}`)
     .sort()
@@ -260,7 +261,7 @@ export async function runWorkspaceDoctorObservation() {
 }
 
 export async function runWorkspaceConfigObservation() {
-  const envelope = await Effect.runPromise(showWorkspaceConfig());
+  const envelope = await Effect.runPromise(provideSdkRuntime(showWorkspaceConfig()));
   return JSON.stringify({
     command: envelope.command,
     browserPool: envelope.data.browserPool,
@@ -270,7 +271,7 @@ export async function runWorkspaceConfigObservation() {
 }
 
 export async function runCapabilitySliceObservation() {
-  const evidence = await Effect.runPromise(runE8CapabilitySlice());
+  const evidence = await Effect.runPromise(provideSdkRuntime(runE8CapabilitySlice()));
   return [
     evidence.evidencePath.importedTargetIds.join(">"),
     evidence.evidencePath.listedTargetIds.join(">"),
@@ -495,19 +496,19 @@ export async function runBenchmark(args: readonly string[]) {
       options.sampleSize,
       options.warmupIterations,
       DEFAULT_PROFILE.workspaceRunsPerSample,
-      () => Effect.runPromise(runWorkspaceDoctor()),
+      () => Effect.runPromise(provideSdkRuntime(runWorkspaceDoctor())),
     ),
     workspaceConfig: await measureEffect(
       options.sampleSize,
       options.warmupIterations,
       DEFAULT_PROFILE.workspaceRunsPerSample,
-      () => Effect.runPromise(showWorkspaceConfig()),
+      () => Effect.runPromise(provideSdkRuntime(showWorkspaceConfig())),
     ),
     capabilitySlice: await measureEffect(
       options.sampleSize,
       options.warmupIterations,
       DEFAULT_PROFILE.capabilitySliceRunsPerSample,
-      () => Effect.runPromise(runE8CapabilitySlice()),
+      () => Effect.runPromise(provideSdkRuntime(runE8CapabilitySlice())),
     ),
     benchmarkRun: await measureEffect(
       options.sampleSize,

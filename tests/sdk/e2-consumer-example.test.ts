@@ -21,8 +21,8 @@ describe("E2 SDK consumer example", () => {
         expect(result.importPath).toBe("effect-scrapling/sdk");
         expect(result.payload.request.url).toBe("https://consumer.example/products/sku-42");
         expect(result.payload.request.selector).toBe('[data-field="price"]');
-        expect(result.payload.request.mode).toBe("http");
         expect(result.payload.request.timeoutMs).toBe(600);
+        expect(result.payload.request.execution).toBeUndefined();
 
         expect(result.payload.response.command).toBe("extract run");
         expect(result.payload.response.data.values).toEqual(["$21.49"]);

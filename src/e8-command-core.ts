@@ -4,7 +4,7 @@ import {
   RunExecutionConfigSchema,
   resolveRunExecutionConfig,
 } from "@effect-scrapling/foundation-core";
-import { readBrowserPoolLimits } from "./sdk/browser-pool.ts";
+import { BrowserRuntime } from "./sdk/browser-pool.ts";
 import { runDoctor } from "./sdk/scraper.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
@@ -104,6 +104,7 @@ export const runWorkspaceDoctor = Effect.fn("E8.runWorkspaceDoctor")(function* (
 export const showWorkspaceConfig = Effect.fn("E8.showWorkspaceConfig")(function* () {
   const report = yield* runDoctor();
   const runConfigDefaults = resolveRunExecutionConfig(WORKSPACE_CONFIG_CASCADE);
+  const browserRuntime = yield* BrowserRuntime;
 
   return Schema.decodeUnknownSync(WorkspaceConfigShowEnvelopeSchema)({
     ok: true,
@@ -111,7 +112,7 @@ export const showWorkspaceConfig = Effect.fn("E8.showWorkspaceConfig")(function*
     data: {
       package: WORKSPACE_PACKAGE_INFO,
       runtime: report.runtime,
-      browserPool: readBrowserPoolLimits(),
+      browserPool: browserRuntime.readPoolLimits(),
       sourceOrder: WORKSPACE_CONFIG_SOURCE_ORDER,
       runConfigDefaults,
     },

@@ -1,5 +1,22 @@
 export { buildWorkspaceBanner } from "./workspace-banner.ts";
 export {
+  AccessHealthEvent,
+  AccessHealthPolicy,
+  AccessHealthSnapshot,
+  AccessHealthSubjectSchema,
+  AccessPathQuarantined,
+  DomainHealthSubject,
+  EgressHealthSubject,
+  EgressPluginHealthSubject,
+  EgressProfileHealthSubject,
+  IdentityHealthSubject,
+  IdentityPluginHealthSubject,
+  IdentityProfileHealthSubject,
+  ProviderHealthSubject,
+  type AccessHealthSubject,
+  makeInMemoryAccessHealthRuntime,
+} from "./access-health-runtime.ts";
+export {
   AccessModeSchema,
   AccessPolicySchema,
   RenderingPolicySchema,
@@ -44,6 +61,26 @@ export {
   type EgressLeaseEncoded,
   type IdentityLeaseEncoded,
 } from "./budget-lease-artifact.ts";
+export {
+  EgressLeaseAcquireRequest,
+  EgressLeaseLifecycleEvent,
+  EgressLeaseRecord,
+  EgressLeaseRenewalRequest,
+  EgressLeaseScope,
+  EgressLeaseScopeSnapshot,
+  EgressLeaseUnavailable,
+  makeInMemoryEgressLeaseManager,
+} from "./egress-lease-runtime.ts";
+export {
+  IdentityLeaseAcquireRequest,
+  IdentityLeaseLifecycleEvent,
+  IdentityLeaseRecord,
+  IdentityLeaseRenewalRequest,
+  IdentityLeaseScope,
+  IdentityLeaseScopeSnapshot,
+  IdentityLeaseUnavailable,
+  makeInMemoryIdentityLeaseManager,
+} from "./identity-lease-runtime.ts";
 export {
   PackPromotionDecision,
   PackPromotionDecisionSchema,
@@ -278,6 +315,13 @@ export {
   runPromptTemplate,
   runPromptTemplateWithProvider,
 } from "./prompt-template-runtime.ts";
+export {
+  containsUnsanitizedSecretMaterial,
+  sanitizeHeaderEntries,
+  sanitizeInlineSecrets,
+  sanitizeUrlForExport,
+  summarizeHtmlForRedactedExport,
+} from "./secret-sanitization.ts";
 export {
   QualityReportArtifact,
   QualityReportArtifactSchema,

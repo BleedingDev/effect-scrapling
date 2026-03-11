@@ -1,8 +1,14 @@
 import { describe, expect, it } from "@effect-native/bun-test";
-import { classifyE9DiscoveryUrl, classifyE9PageType } from "../../src/e9-commerce-benchmark.ts";
 import {
+  classifyE9DiscoveryUrl,
+  classifyE9PageType,
+  type E9CommerceDiscoveryProgressEvent,
+} from "../../src/e9-commerce-benchmark.ts";
+import {
+  formatE9CommerceDiscoveryProgressEvent,
   parseOptions,
   runDefaultE9CommerceDiscovery,
+  runE9CommerceDiscoveryCli,
 } from "../../scripts/benchmarks/e9-commerce-discovery.ts";
 
 describe("e9 commerce discovery benchmark", () => {
@@ -59,6 +65,191 @@ describe("e9 commerce discovery benchmark", () => {
     expect(artifact.targetPageCount).toBe(2);
     expect(artifact.sites).toHaveLength(1);
     expect(artifact.sites[0]?.siteId).toBe("example-site");
+  });
+
+  it("emits live progress while discovering sites", async () => {
+    const path = "tmp/e9-commerce-discovery-progress-sites.json";
+    await Bun.write(
+      path,
+      JSON.stringify([
+        {
+          siteId: "example-site",
+          domain: "example.com",
+          displayName: "Example",
+          kind: "retailer",
+          seedUrls: ["https://example.com/"],
+          sitemapUrls: ["https://example.com/sitemap.xml"],
+        },
+      ]),
+    );
+    const progressEvents = new Array<E9CommerceDiscoveryProgressEvent>();
+
+    await runDefaultE9CommerceDiscovery(
+      {
+        targetPagesPerSite: 1,
+        siteCatalogPath: path,
+        siteConcurrency: 2,
+        httpOnly: true,
+      },
+      {
+        onProgress: (event) => {
+          progressEvents.push(event);
+        },
+      },
+    );
+
+    expect(progressEvents[0]).toMatchObject({
+      kind: "suite-start",
+      totalSites: 1,
+      targetPagesPerSite: 1,
+      httpOnly: true,
+    });
+    expect(
+      progressEvents.some(
+        (event) =>
+          event.kind === "site-start" && event.siteOrdinal === 1 && event.siteId === "example-site",
+      ),
+    ).toBe(true);
+    expect(
+      progressEvents.some(
+        (event) =>
+          event.kind === "site-complete" &&
+          event.completedSites === 1 &&
+          event.totalSites === 1 &&
+          event.siteId === "example-site",
+      ),
+    ).toBe(true);
+    expect(progressEvents.at(-1)).toMatchObject({
+      kind: "suite-complete",
+      totalSites: 1,
+    });
+
+    const lines = progressEvents.map((event) => formatE9CommerceDiscoveryProgressEvent(event));
+    expect(
+      lines.some((line) => line.includes("[progress:e9-commerce-discovery] site complete")),
+    ).toBe(true);
+    expect(lines.some((line) => line.includes('input_site="1/1"'))).toBe(true);
+    expect(lines.some((line) => line.includes('completed_sites="1/1"'))).toBe(true);
+  });
+
+  it("swallows discovery progress sink failures", async () => {
+    const path = "tmp/e9-commerce-discovery-progress-failure-sites.json";
+    await Bun.write(
+      path,
+      JSON.stringify([
+        {
+          siteId: "example-site",
+          domain: "example.com",
+          displayName: "Example",
+          kind: "retailer",
+          seedUrls: ["https://example.com/"],
+          sitemapUrls: ["https://example.com/sitemap.xml"],
+        },
+      ]),
+    );
+
+    const artifact = await runDefaultE9CommerceDiscovery(
+      {
+        targetPagesPerSite: 1,
+        siteCatalogPath: path,
+        siteConcurrency: 1,
+        httpOnly: true,
+      },
+      {
+        onProgress: () => {
+          throw new Error("sink failed");
+        },
+      },
+    );
+
+    expect(artifact.benchmark).toBe("e9-commerce-discovery");
+    expect(artifact.targetSiteCount).toBe(1);
+  });
+
+  it("writes discovery progress separately from the final CLI artifact", async () => {
+    const outputLines = new Array<string>();
+    const progressLines = new Array<string>();
+
+    await runE9CommerceDiscoveryCli(["--artifact", "tmp/e9-commerce-discovery-cli.json"], {
+      writeLine: (line) => {
+        outputLines.push(line);
+      },
+      writeProgressLine: (line) => {
+        progressLines.push(line);
+      },
+      runDiscovery: async (_options, dependencies) => {
+        dependencies?.onProgress?.({
+          kind: "suite-start",
+          generatedAt: "2026-03-09T22:00:00.000Z",
+          totalSites: 1,
+          targetPagesPerSite: 2,
+          siteConcurrency: 1,
+          httpOnly: true,
+          siteCatalogPath: "tmp/sites.json",
+        });
+
+        return {
+          benchmark: "e9-commerce-discovery",
+          generatedAt: "2026-03-09T22:00:00.000Z",
+          targetSiteCount: 1,
+          targetPagesPerSite: 2,
+          targetPageCount: 2,
+          selectedPageCount: 1,
+          selectionCoverage: 0.5,
+          sites: [
+            {
+              siteId: "example-site",
+              domain: "example.com",
+              kind: "retailer",
+              state: "partial",
+              homepageHttp: {
+                url: "https://example.com/",
+                mode: "http",
+                statusCode: 200,
+                durationMs: 10,
+                finalUrl: "https://example.com/",
+                ok: true,
+                contentType: "text/html",
+                htmlBytes: 512,
+                title: "Example",
+                challengeSignals: [],
+              },
+              homepageBrowser: {
+                url: "https://example.com/",
+                mode: "browser",
+                ok: false,
+                durationMs: 0,
+                challengeSignals: [],
+                error: "skipped",
+              },
+              sitemapCount: 1,
+              discoveredUrlCount: 2,
+              selectedPageCount: 1,
+              selectedProductCount: 1,
+              selectedListingCount: 0,
+              selectedSearchCount: 0,
+              selectedOfferCount: 0,
+              pages: [
+                {
+                  url: "https://example.com/p/1",
+                  source: "seed",
+                  pageType: "product",
+                  selected: true,
+                  title: "Example Product",
+                  hasJsonLdProduct: true,
+                  challengeSignals: [],
+                },
+              ],
+            },
+          ],
+        };
+      },
+    });
+
+    expect(progressLines).toHaveLength(1);
+    expect(progressLines[0]).toContain("[progress:e9-commerce-discovery] suite start");
+    expect(outputLines).toHaveLength(1);
+    expect(() => JSON.parse(outputLines[0] ?? "")).not.toThrow();
   });
 
   it("classifies site-specific URLs before generic fallback", () => {

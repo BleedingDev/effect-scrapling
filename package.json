@@ -1,14 +1,13 @@
 {
   "name": "effect-scrapling",
-  "private": false,
-  "type": "module",
   "version": "0.0.1",
+  "private": false,
+  "description": "EffectTS + Bun scraping SDK, API, and CLI",
   "workspaces": [
     "libs/foundation/core",
     "tools/ci",
     "vendor/effect-native-bun-test"
   ],
-  "description": "EffectTS + Bun scraping SDK, API, and CLI",
   "files": [
     "dist",
     "docs/artifacts",
@@ -19,15 +18,13 @@
     "package.json",
     "README.md"
   ],
+  "type": "module",
   "exports": {
     "./e5": "./src/e5.ts",
     "./e9": "./src/e9.ts",
     "./e8": "./src/e8.ts",
     "./e7": "./src/e7.ts",
-    "./sdk": "./src/sdk/index.ts"
-  },
-  "engines": {
-    "bun": ">=1.3.10"
+    "./sdk": "./src/sdk/public.ts"
   },
   "scripts": {
     "nx": "bunx --bun nx",
@@ -67,6 +64,13 @@
     "benchmark:e9-commerce-corpus-freeze-expanded": "bun run scripts/benchmarks/e9-commerce-corpus-freeze.ts --source-artifact docs/artifacts/e9-commerce-discovery-expanded-artifact.json --artifact docs/artifacts/e9-commerce-corpus-freeze-expanded-artifact.json --target-pages 640 --minimum-sites 20",
     "benchmark:e9-commerce-discovery-corpus": "bun run scripts/benchmarks/e9-commerce-discovery.ts --artifact docs/artifacts/e9-commerce-discovery-corpus-artifact.json --site-catalog tests/fixtures/e9-commerce-benchmark-corpus-sites.json --pages-per-site 40 --site-concurrency 8 --http-only",
     "benchmark:e9-commerce-corpus-freeze-corpus": "bun run scripts/benchmarks/e9-commerce-corpus-freeze.ts --source-artifact docs/artifacts/e9-commerce-discovery-corpus-artifact.json --artifact docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json --target-pages 640 --minimum-sites 20",
+    "benchmark:e9-benchmark-suite": "bun run scripts/benchmarks/e9-benchmark-suite.ts --preset full-corpus --artifact docs/artifacts/e9-benchmark-suite-artifact.json --corpus docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
+    "benchmark:e9-benchmark-suite-live": "FORCE_COLOR=1 bun run scripts/benchmarks/e9-benchmark-suite.ts --preset full-corpus --artifact docs/artifacts/e9-benchmark-suite-artifact.json --corpus docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
+    "benchmark:e9-benchmark-suite-fast-regression": "bun run scripts/benchmarks/e9-benchmark-suite.ts --preset fast-regression --artifact docs/artifacts/e9-benchmark-suite-fast-regression-artifact.json --corpus docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
+    "benchmark:e9-benchmark-suite-fast-regression-live": "FORCE_COLOR=1 bun run scripts/benchmarks/e9-benchmark-suite.ts --preset fast-regression --artifact docs/artifacts/e9-benchmark-suite-fast-regression-artifact.json --corpus docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
+    "benchmark:e9-benchmark-suite-scale-study": "bun run scripts/benchmarks/e9-benchmark-suite.ts --preset scale-study --artifact docs/artifacts/e9-benchmark-suite-scale-study-artifact.json --corpus docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
+    "benchmark:e9-benchmark-suite-full-corpus": "bun run scripts/benchmarks/e9-benchmark-suite.ts --preset full-corpus --artifact docs/artifacts/e9-benchmark-suite-full-corpus-artifact.json --corpus docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
+    "benchmark:e9-benchmark-suite-competitor-calibration": "bun run scripts/benchmarks/e9-benchmark-suite.ts --preset competitor-calibration --artifact docs/artifacts/e9-benchmark-suite-competitor-calibration-artifact.json --corpus docs/artifacts/e9-commerce-corpus-freeze-corpus-artifact.json",
     "benchmark:e9-high-friction-canary": "bun run scripts/benchmarks/e9-high-friction-canary.ts --artifact docs/artifacts/e9-high-friction-canary-artifact.json",
     "benchmark:e9-launch-readiness": "bun run scripts/benchmarks/e9-launch-readiness.ts --artifact docs/artifacts/e9-launch-readiness-artifact.json",
     "benchmark:e9-rollback-drill": "bun run scripts/benchmarks/e9-rollback-drill.ts --artifact docs/artifacts/e9-rollback-drill-artifact.json",
@@ -87,6 +91,7 @@
     "check:e9-reference-packs": "bun test tests/sdk/e9-reference-packs.test.ts tests/scripts/e9-reference-pack-validation.test.ts && bun run benchmark:e9-reference-pack-validation",
     "check:e9-commerce-discovery": "bun test tests/scripts/e9-commerce-discovery.test.ts && bun run benchmark:e9-commerce-discovery",
     "check:e9-commerce-corpus-freeze": "bun test tests/scripts/e9-commerce-corpus-freeze.test.ts && bun run benchmark:e9-commerce-discovery && bun run benchmark:e9-commerce-corpus-freeze",
+    "check:e9-benchmark-suite": "bun test tests/scripts/e9-benchmark-suite.test.ts",
     "check:e9-scrapling-parity": "bun test tests/scripts/e9-scrapling-parity.test.ts && bun run benchmark:e9-scrapling-parity",
     "check:e9-high-friction-canary": "bun test tests/scripts/e9-high-friction-canary.test.ts && bun run benchmark:e9-high-friction-canary",
     "check:e9-launch-readiness": "bun test tests/scripts/e9-launch-readiness.test.ts && bun run benchmark:e9-launch-readiness",
@@ -173,9 +178,9 @@
     "check": "bun run lint:check && bun run check:governance && bun run check:lockstep-version && bun run check:effect-v4-policy && bun run check:strict-ts-posture && bun run typecheck && bun run test && bun run check:publint && bun run build",
     "check:e0-performance-budget": "bun run benchmark:e0-performance-budget",
     "check:e0-capability-slice": "TARGET_BRANCH=\"${TARGET_BRANCH:-origin/master}\" && NX_BASE=\"${NX_BASE:-$(git rev-parse \"$TARGET_BRANCH\")}\" && NX_HEAD=\"${NX_HEAD:-$(git rev-parse HEAD)}\" && bun run scripts/preflight-bootstrap.ts && bun run scripts/bootstrap-doctor.ts && bun run nx:show-projects && bun run nx:graph && bun run nx:lint && bun run nx:typecheck && bun run nx:build && bun run nx affected -t lint --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t test --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t typecheck --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun run nx affected -t build --base=\"$NX_BASE\" --head=\"$NX_HEAD\" --parallel=1 && bun test tests/guardrails/e0-security-review.verify.test.ts && bun run check:e0-performance-budget && bun test tests/sdk/consumer-example.test.ts && bun run check",
-    "browser:install": "bunx --bun playwright install chromium",
-    "browser:install:ci": "bunx --bun playwright install --with-deps chromium",
-    "check:playwright": "bunx --bun playwright --version",
+    "browser:install": "bunx --bun patchright install chromium",
+    "browser:install:ci": "bunx --bun patchright install --with-deps chromium",
+    "check:patchright": "bunx --bun patchright --version",
     "check:semver": "bun run scripts/validate-version.ts",
     "check:publint": "bunx --bun publint .",
     "check:release": "bun run check:semver && bun run check:publint",
@@ -186,7 +191,7 @@
     "@effect-scrapling/foundation-core": "0.0.1",
     "cheerio": "^1.2.0",
     "effect": "^4.0.0-beta.27",
-    "playwright": "^1.52.0"
+    "patchright": "^1.58.2"
   },
   "devDependencies": {
     "@effect-native/bun-test": "workspace:*",
@@ -201,5 +206,8 @@
     "oxlint": "^1.49.0",
     "typescript": "5.9.3",
     "ultracite": "^7.2.4"
+  },
+  "engines": {
+    "bun": ">=1.3.10"
   }
 }

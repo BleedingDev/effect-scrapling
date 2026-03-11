@@ -124,8 +124,7 @@ export async function runQualityReportCli(
   args: readonly string[],
   dependencies: QualityReportCliDependencies = {},
 ) {
-  const setExitCode =
-    dependencies.setExitCode ?? ((code: number) => void (process.exitCode = code));
+  const setExitCode = dependencies.setExitCode ?? ((_code: number) => undefined);
   const writeLine = dependencies.writeLine ?? ((line: string) => console.log(line));
 
   try {

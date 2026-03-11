@@ -1,6 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
+import { performance } from "node:perf_hooks";
 import { Effect, Schema } from "effect";
+import { detectAccessWall } from "./sdk/access-wall-detection.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const PositiveIntSchema = Schema.Int.check(Schema.isGreaterThan(0));
@@ -88,21 +90,72 @@ export const E9CommerceDiscoveryArtifactSchema = Schema.Struct({
 });
 
 type BenchmarkSite = Schema.Schema.Type<typeof BenchmarkSiteSchema>;
-type SiteDiscoverySummary = Schema.Schema.Type<typeof SiteDiscoverySummarySchema>;
+export type E9CommerceDiscoveryProgressEvent =
+  | {
+      readonly kind: "suite-start";
+      readonly generatedAt: string;
+      readonly totalSites: number;
+      readonly targetPagesPerSite: number;
+      readonly siteConcurrency: number;
+      readonly httpOnly: boolean;
+      readonly siteCatalogPath: string;
+    }
+  | {
+      readonly kind: "site-start";
+      readonly generatedAt: string;
+      readonly siteOrdinal: number;
+      readonly totalSites: number;
+      readonly siteId: string;
+      readonly domain: string;
+      readonly targetPagesPerSite: number;
+      readonly httpOnly: boolean;
+    }
+  | {
+      readonly kind: "site-complete";
+      readonly generatedAt: string;
+      readonly siteOrdinal: number;
+      readonly completedSites: number;
+      readonly totalSites: number;
+      readonly siteId: string;
+      readonly domain: string;
+      readonly state: Schema.Schema.Type<typeof SiteBenchmarkStateSchema>;
+      readonly discoveredUrlCount: number;
+      readonly selectedPageCount: number;
+      readonly elapsedMs: number;
+      readonly etaMs: number;
+      readonly homepageHttpOk: boolean;
+      readonly homepageBrowserOk: boolean;
+    }
+  | {
+      readonly kind: "suite-complete";
+      readonly generatedAt: string;
+      readonly totalSites: number;
+      readonly selectedPageCount: number;
+      readonly selectionCoverage: number;
+      readonly totalWallMs: number;
+      readonly degradedSiteCount: number;
+      readonly unreachableSiteCount: number;
+    };
+
+type E9CommerceDiscoveryProgressListener = (event: E9CommerceDiscoveryProgressEvent) => void;
+
+function emitProgress(
+  listener: E9CommerceDiscoveryProgressListener | undefined,
+  event: E9CommerceDiscoveryProgressEvent,
+) {
+  if (listener === undefined) {
+    return;
+  }
+
+  try {
+    listener(event);
+  } catch {
+    // Discovery progress is best-effort and must not abort the benchmark.
+  }
+}
 
 const XML_CONTENT_TYPES = ["application/xml", "text/xml"];
 const HTML_CONTENT_TYPES = ["text/html", "application/xhtml+xml"];
-const CHALLENGE_PATTERNS = [
-  /cloudflare/iu,
-  /captcha/iu,
-  /robot check/iu,
-  /access denied/iu,
-  /attention required/iu,
-  /forbidden/iu,
-  /verify you are human/iu,
-  /ověř/iu,
-  /bot/iu,
-] as const;
 const EXCLUDED_URL_PATTERNS = [
   "/blog",
   "/magazin",
@@ -596,9 +649,21 @@ function decodeTitle(html: string) {
   return match?.[1]?.replace(/\s+/gu, " ").trim() || undefined;
 }
 
-function collectChallengeSignals(input: string) {
-  const haystack = input.slice(0, 12_000);
-  return CHALLENGE_PATTERNS.flatMap((pattern) => (pattern.test(haystack) ? [pattern.source] : []));
+function collectChallengeSignals(input: {
+  readonly statusCode?: number | undefined;
+  readonly requestedUrl?: string | undefined;
+  readonly finalUrl?: string | undefined;
+  readonly title?: string | undefined;
+  readonly text?: string | undefined;
+}) {
+  const analysis = detectAccessWall({
+    statusCode: input.statusCode,
+    requestedUrl: input.requestedUrl,
+    finalUrl: input.finalUrl,
+    title: input.title,
+    text: input.text?.slice(0, 12_000),
+  });
+  return analysis.likelyAccessWall ? analysis.signals : [];
 }
 
 function isSameDomain(url: URL, domain: string) {
@@ -788,15 +853,15 @@ async function fetchHtml(url: string, headers?: HeadersInit) {
 }
 
 async function fetchHtmlWithBrowser(url: string): Promise<HtmlFetchResult> {
-  const playwrightModuleName = "playwright";
+  const patchrightModuleName = "patchright";
   try {
-    const loaded = await import(playwrightModuleName);
+    const loaded = await import(patchrightModuleName);
     const chromium = Reflect.get(loaded, "chromium");
     if (typeof chromium !== "object" || chromium === null) {
       return {
         ok: false,
         durationMs: 0,
-        error: "Playwright chromium export is unavailable.",
+        error: "Patchright chromium export is unavailable.",
       };
     }
 
@@ -805,7 +870,7 @@ async function fetchHtmlWithBrowser(url: string): Promise<HtmlFetchResult> {
       return {
         ok: false,
         durationMs: 0,
-        error: "Playwright chromium.launch is unavailable.",
+        error: "Patchright chromium.launch is unavailable.",
       };
     }
 
@@ -1068,15 +1133,26 @@ function buildFetchPlan(
 async function mapWithConcurrency<Input, Output>(
   entries: ReadonlyArray<Input>,
   concurrency: number,
-  mapEntry: (entry: Input) => Promise<Output>,
+  mapEntry: (entry: Input, index: number) => Promise<Output>,
 ) {
-  const outputs = new Array<Output>();
+  const outputs = Array.from({ length: entries.length }) as Output[];
+  let index = 0;
+  const workerCount = Math.max(1, Math.min(concurrency, entries.length));
 
-  for (let index = 0; index < entries.length; index += concurrency) {
-    const batch = entries.slice(index, index + concurrency);
-    const batchOutputs = await Promise.all(batch.map((entry) => mapEntry(entry)));
-    outputs.push(...batchOutputs);
-  }
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (index < entries.length) {
+        const nextIndex = index;
+        index += 1;
+        const entry = entries[nextIndex];
+        if (entry === undefined) {
+          continue;
+        }
+
+        outputs[nextIndex] = await mapEntry(entry, nextIndex);
+      }
+    }),
+  );
 
   return outputs;
 }
@@ -1116,7 +1192,13 @@ async function buildDiscoveryPages(
       selected: false,
       title: decodeTitle(result.html),
       hasJsonLdProduct,
-      challengeSignals: collectChallengeSignals(result.html),
+      challengeSignals: collectChallengeSignals({
+        statusCode: result.statusCode,
+        requestedUrl: url,
+        finalUrl: result.finalUrl,
+        title: decodeTitle(result.html),
+        text: result.html,
+      }),
     });
   });
   const pages = httpResults.flatMap((page) => (page === undefined ? [] : [page]));
@@ -1153,7 +1235,13 @@ async function buildDiscoveryPages(
         selected: false,
         title: result.title ?? decodeTitle(result.html),
         hasJsonLdProduct,
-        challengeSignals: collectChallengeSignals(result.html),
+        challengeSignals: collectChallengeSignals({
+          statusCode: result.statusCode,
+          requestedUrl: url,
+          finalUrl: result.finalUrl,
+          title: result.title ?? decodeTitle(result.html),
+          text: result.html,
+        }),
       });
     });
 
@@ -1234,8 +1322,14 @@ async function buildSiteSummary(
         ? decodeTitle(homepageHttpFetch.html)
         : undefined,
     challengeSignals:
-      homepageHttpFetch.ok && "html" in homepageHttpFetch
-        ? collectChallengeSignals(homepageHttpFetch.html)
+      "html" in homepageHttpFetch
+        ? collectChallengeSignals({
+            statusCode: homepageHttpFetch.statusCode,
+            requestedUrl: homepageUrl,
+            finalUrl: homepageHttpFetch.finalUrl,
+            title: decodeTitle(homepageHttpFetch.html),
+            text: homepageHttpFetch.html,
+          })
         : [],
     error: "error" in homepageHttpFetch ? homepageHttpFetch.error : undefined,
   });
@@ -1253,9 +1347,13 @@ async function buildSiteSummary(
         contentType: homepageBrowserFetch.contentType,
         htmlBytes: homepageBrowserFetch.htmlBytes,
         title: homepageBrowserFetch.title,
-        challengeSignals: collectChallengeSignals(
-          `${homepageBrowserFetch.title ?? ""}\n${homepageBrowserFetch.html}`,
-        ),
+        challengeSignals: collectChallengeSignals({
+          statusCode: homepageBrowserFetch.statusCode,
+          requestedUrl: homepageUrl,
+          finalUrl: homepageBrowserFetch.finalUrl,
+          title: homepageBrowserFetch.title,
+          text: homepageBrowserFetch.html,
+        }),
       })
     : Schema.decodeUnknownSync(ProbeResultSchema)({
         url: homepageUrl,
@@ -1321,6 +1419,7 @@ export async function runE9CommerceDiscoveryBenchmark(
     readonly siteCatalogPath?: string;
     readonly siteConcurrency?: number;
     readonly httpOnly?: boolean;
+    readonly onProgress?: E9CommerceDiscoveryProgressListener;
   } = {},
 ) {
   const targetPagesPerSite = options.targetPagesPerSite ?? 32;
@@ -1333,20 +1432,59 @@ export async function runE9CommerceDiscoveryBenchmark(
       : Schema.decodeUnknownSync(Schema.Array(BenchmarkSiteSchema))(
           JSON.parse(await readFile(options.siteCatalogPath, "utf8")),
         );
-  const sites = new Array<SiteDiscoverySummary>();
+  const suiteStartedAt = performance.now();
+  let completedSites = 0;
+  const siteCatalogPath = options.siteCatalogPath ?? "default-site-catalog";
+  emitProgress(options.onProgress, {
+    kind: "suite-start",
+    generatedAt,
+    totalSites: siteCatalog.length,
+    targetPagesPerSite,
+    siteConcurrency,
+    httpOnly,
+    siteCatalogPath,
+  });
 
-  for (let index = 0; index < siteCatalog.length; index += siteConcurrency) {
-    const batch = siteCatalog.slice(index, index + siteConcurrency);
-    const batchResults = await Promise.all(
-      batch.map((site) => buildSiteSummary(site, targetPagesPerSite, httpOnly)),
-    );
-    sites.push(...batchResults);
-  }
+  const sites = await mapWithConcurrency(siteCatalog, siteConcurrency, async (site, index) => {
+    emitProgress(options.onProgress, {
+      kind: "site-start",
+      generatedAt,
+      siteOrdinal: index + 1,
+      totalSites: siteCatalog.length,
+      siteId: site.siteId,
+      domain: site.domain,
+      targetPagesPerSite,
+      httpOnly,
+    });
+    const siteSummary = await buildSiteSummary(site, targetPagesPerSite, httpOnly);
+    completedSites += 1;
+    const elapsedMs = performance.now() - suiteStartedAt;
+    const etaMs =
+      completedSites >= siteCatalog.length || completedSites === 0
+        ? 0
+        : (elapsedMs / completedSites) * (siteCatalog.length - completedSites);
+    emitProgress(options.onProgress, {
+      kind: "site-complete",
+      generatedAt,
+      siteOrdinal: index + 1,
+      completedSites,
+      totalSites: siteCatalog.length,
+      siteId: site.siteId,
+      domain: site.domain,
+      state: siteSummary.state,
+      discoveredUrlCount: siteSummary.discoveredUrlCount,
+      selectedPageCount: siteSummary.selectedPageCount,
+      elapsedMs: Math.round(elapsedMs * 1_000) / 1_000,
+      etaMs: Math.round(etaMs * 1_000) / 1_000,
+      homepageHttpOk: siteSummary.homepageHttp.ok,
+      homepageBrowserOk: siteSummary.homepageBrowser.ok,
+    });
+    return siteSummary;
+  });
 
   const selectedPageCount = sites.reduce((total, site) => total + site.selectedPageCount, 0);
   const targetPageCount = siteCatalog.length * targetPagesPerSite;
-
-  return Schema.decodeUnknownSync(E9CommerceDiscoveryArtifactSchema)({
+  const artifact = Schema.decodeUnknownSync(E9CommerceDiscoveryArtifactSchema)({
     benchmark: "e9-commerce-discovery",
     generatedAt,
     targetSiteCount: siteCatalog.length,
@@ -1356,6 +1494,17 @@ export async function runE9CommerceDiscoveryBenchmark(
     selectionCoverage: targetPageCount === 0 ? 0 : selectedPageCount / targetPageCount,
     sites,
   });
+  emitProgress(options.onProgress, {
+    kind: "suite-complete",
+    generatedAt,
+    totalSites: siteCatalog.length,
+    selectedPageCount: artifact.selectedPageCount,
+    selectionCoverage: artifact.selectionCoverage,
+    totalWallMs: Math.round((performance.now() - suiteStartedAt) * 1_000) / 1_000,
+    degradedSiteCount: artifact.sites.filter(({ state }) => state === "degraded").length,
+    unreachableSiteCount: artifact.sites.filter(({ state }) => state === "unreachable").length,
+  });
+  return artifact;
 }
 
 export const runE9CommerceDiscoveryBenchmarkEffect = Effect.fn(
@@ -1366,6 +1515,8 @@ export const runE9CommerceDiscoveryBenchmarkEffect = Effect.fn(
     readonly generatedAt?: string;
     readonly siteCatalogPath?: string;
     readonly siteConcurrency?: number;
+    readonly httpOnly?: boolean;
+    readonly onProgress?: E9CommerceDiscoveryProgressListener;
   } = {},
 ) {
   return yield* Effect.promise(() => runE9CommerceDiscoveryBenchmark(options));

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { mkdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, rm } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 import { Effect, Schema } from "effect";
@@ -29,8 +29,11 @@ const UnitIntervalSchema = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
 );
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_GENERATED_AT = "2026-03-08T22:15:00.000Z";
-const DEFAULT_ENV_DIR = resolve(REPO_ROOT, "tmp/e9-scrapling-selector-env");
+const DEFAULT_ENV_DIR = resolve(REPO_ROOT, "tmp", `e9-scrapling-selector-env-${process.pid}`);
 const PYTHON_SCRIPT_PATH = resolve(REPO_ROOT, "scripts/python/e9_scrapling_selector.py");
+const ENVIRONMENT_LOCK_SUFFIX = ".lock";
+const ENVIRONMENT_LOCK_TIMEOUT_MS = 60_000;
+const ENVIRONMENT_LOCK_POLL_MS = 100;
 
 const E9ParityCaseExtractionSchema = Schema.Struct({
   caseId: CanonicalIdentifierSchema,
@@ -234,8 +237,71 @@ async function runCommand(
   );
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((resolvePromise) => {
+    setTimeout(resolvePromise, ms);
+  });
+}
+
+async function withEnvironmentLock<T>(envDir: string, effect: () => Promise<T>) {
+  const lockDir = `${envDir}${ENVIRONMENT_LOCK_SUFFIX}`;
+  const deadline = Date.now() + ENVIRONMENT_LOCK_TIMEOUT_MS;
+
+  await mkdir(dirname(lockDir), { recursive: true });
+
+  while (true) {
+    try {
+      await mkdir(lockDir);
+      break;
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        Reflect.get(error, "code") === "EEXIST"
+      ) {
+        if (Date.now() >= deadline) {
+          throw new Error(`Timed out waiting for Scrapling environment lock at ${lockDir}.`);
+        }
+        await sleep(ENVIRONMENT_LOCK_POLL_MS);
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  try {
+    return await effect();
+  } finally {
+    await rm(lockDir, { recursive: true, force: true });
+  }
+}
+
+async function resolveEnvPythonPath(envDir: string) {
+  const candidates = [resolve(envDir, "bin/python"), resolve(envDir, "bin/python3")] as const;
+
+  for (const candidate of candidates) {
+    try {
+      await runCommand(candidate, ["-c", "print('ok')"]);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
+  return candidates[0];
+}
+
 async function ensureScraplingSelectorEnvironment(envDir: string) {
-  const pythonPath = resolve(envDir, "bin/python");
+  let pythonPath = await resolveEnvPythonPath(envDir);
+  const resolvePurelib = async () =>
+    (
+      await runCommand(pythonPath, [
+        "-c",
+        "import sysconfig; print(sysconfig.get_paths()['purelib'])",
+      ])
+    ).stdout.trim();
   const probe = async () => {
     const result = await runCommand(pythonPath, [
       "-c",
@@ -243,28 +309,57 @@ async function ensureScraplingSelectorEnvironment(envDir: string) {
         "import json",
         "import scrapling",
         "result = {'scraplingVersion': scrapling.__version__, 'parserAvailable': True, 'fetcherAvailable': True}",
+        "try:\n from scrapling import Selector  # noqa: F401",
+        "except Exception as error:\n result['parserAvailable'] = False\n result['fetcherDiagnostic'] = f'{type(error).__name__}: {error}'",
         "try:\n from scrapling import Fetcher  # noqa: F401",
         "except Exception as error:\n result['fetcherAvailable'] = False\n result['fetcherDiagnostic'] = f'{type(error).__name__}: {error}'",
         "print(json.dumps(result))",
       ].join("\n"),
     ]);
-    return Schema.decodeUnknownSync(E9ScraplingRuntimeSchema)(JSON.parse(result.stdout));
+    const runtime = Schema.decodeUnknownSync(E9ScraplingRuntimeSchema)(JSON.parse(result.stdout));
+    if (!runtime.parserAvailable) {
+      throw new Error(runtime.fetcherDiagnostic ?? "Scrapling selector runtime unavailable.");
+    }
+    return runtime;
   };
 
-  try {
-    return {
-      pythonPath,
-      runtime: await probe(),
-    };
-  } catch {
-    await mkdir(envDir, { recursive: true });
-    await runCommand("python3", ["-m", "venv", envDir]);
-    await runCommand(pythonPath, ["-m", "pip", "install", "-q", "scrapling==0.4.1"]);
-    return {
-      pythonPath,
-      runtime: await probe(),
-    };
-  }
+  return withEnvironmentLock(envDir, async () => {
+    try {
+      return {
+        pythonPath,
+        runtime: await probe(),
+      };
+    } catch {
+      try {
+        return {
+          pythonPath,
+          runtime: await probe(),
+        };
+      } catch {
+        await mkdir(dirname(envDir), { recursive: true });
+        await rm(envDir, { recursive: true, force: true });
+        await runCommand("python3", ["-m", "venv", "--without-pip", envDir]);
+        pythonPath = await resolveEnvPythonPath(envDir);
+        const purelib = await resolvePurelib();
+        await runCommand("python3", [
+          "-m",
+          "pip",
+          "install",
+          "-q",
+          "--disable-pip-version-check",
+          "--upgrade",
+          "--target",
+          purelib,
+          "scrapling==0.4.1",
+          "orjson",
+        ]);
+        return {
+          pythonPath,
+          runtime: await probe(),
+        };
+      }
+    }
+  });
 }
 
 async function selectWithScrapling(

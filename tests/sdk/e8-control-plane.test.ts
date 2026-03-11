@@ -32,10 +32,13 @@ import {
   runWorkflowResumeOperation,
   runWorkflowRunOperation,
 } from "effect-scrapling/e8";
+import { resetAccessHealthGatewayForTests } from "../../src/sdk/access-health-gateway.ts";
 import { executeCli } from "../../src/standalone.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import { InvalidInputError } from "../../src/sdk/errors.ts";
+import { type ExtractRunResponse } from "../../src/sdk/schemas.ts";
 import { runDefaultBaselineCorpus } from "../../scripts/benchmarks/e7-baseline-corpus.ts";
+import { stripVolatileAccessTelemetry } from "./test-envelope-normalizers.ts";
 
 function makeTarget(input: {
   readonly id: string;
@@ -100,6 +103,10 @@ function makePackDefinition(state: "draft" | "shadow" | "active") {
   };
 }
 
+function normalizeExtractRunResponse(response: ExtractRunResponse): ExtractRunResponse {
+  return stripVolatileAccessTelemetry(response);
+}
+
 function makeAccessPolicy() {
   return {
     id: "policy-default",
@@ -160,6 +167,7 @@ function mockHtmlFetch(body: string) {
 describe("E8 control plane", () => {
   it.effect("keeps target import and list deterministic across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const targets = [
         makeTarget({
           id: "target-shop-002",
@@ -238,6 +246,7 @@ describe("E8 control plane", () => {
 
   it.effect("rejects empty target imports across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const sdkExit = yield* Effect.flip(runTargetImportOperation({ targets: [] }));
       const cliResult = yield* Effect.promise(() =>
         executeCli(["target", "import", "--input", JSON.stringify({ targets: [] })]),
@@ -257,6 +266,7 @@ describe("E8 control plane", () => {
 
   it.effect("keeps target ordering deterministic for mixed-case identifiers", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const targets = [
         makeTarget({
           id: "target-zed",
@@ -282,6 +292,7 @@ describe("E8 control plane", () => {
 
   it.effect("exposes pack create inspect validate and promote through the shared E8 surface", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const shadowDefinition = makePackDefinition("shadow");
       const activeDefinition = makePackDefinition("active");
       const packValidateInput = {
@@ -394,6 +405,7 @@ describe("E8 control plane", () => {
 
   it.effect("exports access preview and render preview through the public E8 SDK surface", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       yield* resetBrowserPoolForTests();
       const access = yield* runAccessPreviewOperation(
         { url: "https://example.com/e8-preview" },
@@ -402,7 +414,7 @@ describe("E8 control plane", () => {
         ),
       );
 
-      mock.module("playwright", () => ({
+      mock.module("patchright", () => ({
         chromium: {
           launch: async () => ({
             newContext: async () => ({
@@ -434,9 +446,11 @@ describe("E8 control plane", () => {
       try {
         const render = yield* runRenderPreviewOperation({
           url: "https://example.com/e8-preview",
-          browser: {
-            waitUntil: "networkidle",
-            timeoutMs: 300,
+          execution: {
+            browser: {
+              waitUntil: "networkidle",
+              timeoutMs: 300,
+            },
           },
         });
 
@@ -453,6 +467,7 @@ describe("E8 control plane", () => {
 
   it.effect("keeps crawl compile and workflow run resume inspect stable across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const compileInput = {
         createdAt: "2026-03-09T13:00:00.000Z",
         entries: [
@@ -633,6 +648,7 @@ describe("E8 control plane", () => {
 
   it.effect("emits consistent extraction diff verify and compare payloads across SDK and CLI", () =>
     Effect.gen(function* () {
+      yield* resetAccessHealthGatewayForTests();
       const extractInput = {
         url: "https://example.com/e8-extract",
         selector: "h1",
@@ -751,7 +767,9 @@ describe("E8 control plane", () => {
 
       expect(extract.command).toBe("extract run");
       expect(extract.data.values).toEqual(["Effect", "Scrapling"]);
-      expect(extract).toEqual(JSON.parse(cliExtract.output));
+      expect(normalizeExtractRunResponse(extract)).toEqual(
+        normalizeExtractRunResponse(JSON.parse(cliExtract.output)),
+      );
       expect(Schema.decodeUnknownSync(SnapshotDiffEnvelopeSchema)(diff)).toEqual(
         Schema.decodeUnknownSync(SnapshotDiffEnvelopeSchema)(JSON.parse(cliDiff.output)),
       );
