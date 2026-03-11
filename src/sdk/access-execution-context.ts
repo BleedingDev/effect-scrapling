@@ -106,6 +106,7 @@ export function materializeExecutionContext(input: {
     egress: input.egress,
     transportBinding: resolveTransportBinding({
       binding: input.egress.transportBinding,
+      routeKind: input.egress.routeKind,
       routeConfig: input.egress.routeConfig,
     }),
     identity: input.identity,

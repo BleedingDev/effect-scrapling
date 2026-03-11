@@ -831,6 +831,11 @@ describe("scraper guardrails", () => {
                 routePolicyId: "vpn-policy",
                 routeKind: "wireguard",
                 routeKey: "wg://prague-1",
+                routeConfig: {
+                  kind: "wireguard",
+                  endpoint: "wg://prague-1",
+                  proxyUrl: "socks5://127.0.0.1:9050",
+                },
                 requestHeaders: {
                   "x-egress-route": "wg://prague-1",
                 },
@@ -879,6 +884,11 @@ describe("scraper guardrails", () => {
                     routePolicyId: "vpn-policy",
                     routeKind: "wireguard",
                     routeKey: "wg://prague-1",
+                    routeConfig: {
+                      kind: "wireguard",
+                      endpoint: "wg://prague-1",
+                      proxyUrl: "socks5://127.0.0.1:9050",
+                    },
                     requestHeaders: {
                       "x-egress-route": "wg://prague-1",
                     },
@@ -903,6 +913,16 @@ describe("scraper guardrails", () => {
               acquire: ({ plan }) =>
                 Effect.succeed({
                   ...plan.egress,
+                  transportBinding: {
+                    kind: "wireguard",
+                    routeKind: "wireguard",
+                    endpoint: "wg://prague-1",
+                    proxyUrl: "socks5://127.0.0.1:9050",
+                    diagnostics: {
+                      routeKind: "wireguard",
+                      routeConfigKind: "wireguard",
+                    },
+                  },
                   egressKey: plan.egress.routeKey,
                   release: Effect.void,
                 }),

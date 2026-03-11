@@ -3,7 +3,41 @@
 - Status: Accepted
 - Date: 2026-03-12
 - Decision Owners: effect-scrapling maintainers
-- Implementation Status: Planned, not yet implemented
+- Implementation Status: Implemented in the current SDK runtime; follow-up
+  optimization work remains open
+
+## Implementation Snapshot
+
+The current repository already ships the architectural seam introduced by this
+ADR in the SDK runtime:
+
+- canonical linking and program specialization via
+  [`src/sdk/canonical-access-ir.ts`](../../src/sdk/canonical-access-ir.ts) and
+  [`src/sdk/access-program-linker.ts`](../../src/sdk/access-program-linker.ts)
+- resource-lifecycle ownership through
+  [`src/sdk/access-resource-kernel.ts`](../../src/sdk/access-resource-kernel.ts)
+- one public authoring model with a narrowed SDK facade in
+  [`src/sdk/public.ts`](../../src/sdk/public.ts) and
+  [`src/sdk/engine.ts`](../../src/sdk/engine.ts)
+- host-specific assembly through shared CLI/API/SDK boundaries in
+  [`src/standalone.ts`](../../src/standalone.ts),
+  [`src/api.ts`](../../src/api.ts), and
+  [`src/sdk/runtime-layer.ts`](../../src/sdk/runtime-layer.ts)
+- activated transport bindings for proxy and WireGuard-backed execution in
+  [`src/sdk/access-transport-binding.ts`](../../src/sdk/access-transport-binding.ts)
+  and
+  [`src/sdk/access-allocation-plugin-runtime.ts`](../../src/sdk/access-allocation-plugin-runtime.ts)
+
+What remains open is not the foundational redesign itself, but follow-up work
+on top of it, for example:
+
+- reducing the still-broad internal/public export surface in
+  [`src/sdk/index.ts`](../../src/sdk/index.ts)
+- pushing more selection semantics out of provider-centric runtime structures
+- adding more aggressive prelinked or cached specialization layers above the
+  linker
+- broadening transport realizers beyond the current proxy-capable execution
+  backends
 
 ## Context
 

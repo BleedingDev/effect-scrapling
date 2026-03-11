@@ -8,9 +8,9 @@ import { toExecutionMetadata } from "./access-execution-metadata.ts";
 import { type AccessExecutionContext } from "./access-execution-context.ts";
 import {
   describeUnsupportedProxyExecution,
+  resolveTransportBinding,
   toBrowserTransportProxyConfig,
   toFetchTransportProxyConfig,
-  transportBindingFromRouteConfig,
 } from "./access-transport-binding.ts";
 import { BrowserRuntime, type PatchrightPage } from "./browser-pool.ts";
 import {
@@ -199,10 +199,11 @@ function executeHttpProvider(
 ): Effect.Effect<AccessExecutionResult, NetworkError, FetchService> {
   return Effect.gen(function* () {
     const fetchService = yield* FetchService;
-    const transportBinding =
-      context.transportBinding ??
-      context.egress.transportBinding ??
-      transportBindingFromRouteConfig(context.egress.routeConfig);
+    const transportBinding = resolveTransportBinding({
+      binding: context.transportBinding ?? context.egress.transportBinding,
+      routeKind: context.egress.routeKind,
+      routeConfig: context.egress.routeConfig,
+    });
     const proxy = toFetchTransportProxyConfig(transportBinding);
     const unsupportedTransportDetails = describeUnsupportedProxyExecution(transportBinding, url);
     if (unsupportedTransportDetails !== undefined) {
@@ -323,10 +324,11 @@ function executeBrowserProvider(
       | "header-read"
       | undefined;
     let runtimeWarnings: ReadonlyArray<string> = [];
-    const transportBinding =
-      context.transportBinding ??
-      context.egress.transportBinding ??
-      transportBindingFromRouteConfig(context.egress.routeConfig);
+    const transportBinding = resolveTransportBinding({
+      binding: context.transportBinding ?? context.egress.transportBinding,
+      routeKind: context.egress.routeKind,
+      routeConfig: context.egress.routeConfig,
+    });
     const unsupportedTransportDetails = describeUnsupportedProxyExecution(transportBinding, url);
     if (unsupportedTransportDetails !== undefined) {
       return yield* Effect.fail(

@@ -73,4 +73,51 @@ describe("sdk access transport binding", () => {
     });
     expect(toFetchTransportProxyConfig(resolved)).toBe("socks5://127.0.0.1:9050");
   });
+
+  it("keeps wireguard route kinds fail-closed even when no routeConfig is present", () => {
+    expect(
+      resolveTransportBinding({
+        routeKind: "wireguard",
+      }),
+    ).toEqual({
+      kind: "wireguard",
+      routeKind: "wireguard",
+      diagnostics: {
+        routeKind: "wireguard",
+        routeConfigKind: "wireguard",
+      },
+    });
+  });
+
+  it("hydrates partial wireguard bindings from routeConfig bridge metadata", () => {
+    expect(
+      resolveTransportBinding({
+        binding: {
+          kind: "wireguard",
+          routeKind: "wireguard",
+          endpoint: "wg://edge-a",
+          diagnostics: {
+            routeKind: "wireguard",
+          },
+        },
+        routeKind: "wireguard",
+        routeConfig: {
+          kind: "wireguard",
+          endpoint: "wg://legacy-edge-a",
+          proxyUrl: "socks5://127.0.0.1:9050",
+          bypass: "localhost",
+        },
+      }),
+    ).toEqual({
+      kind: "wireguard",
+      routeKind: "wireguard",
+      endpoint: "wg://edge-a",
+      proxyUrl: "socks5://127.0.0.1:9050",
+      bypass: "localhost",
+      diagnostics: {
+        routeKind: "wireguard",
+        routeConfigKind: "wireguard",
+      },
+    });
+  });
 });

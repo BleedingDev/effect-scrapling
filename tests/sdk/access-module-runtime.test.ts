@@ -8,6 +8,12 @@ import {
   makeStaticEgressPlugin,
   makeStaticIdentityPlugin,
 } from "../../src/sdk/access-allocation-plugin-runtime.ts";
+import { makeAccessCoreRuntimeModule } from "../../src/sdk/access-builtin-modules.ts";
+import {
+  DEFAULT_LEASED_EGRESS_PROFILE_ID,
+  DEFAULT_LEASED_IDENTITY_PROFILE_ID,
+  DEFAULT_LEASED_STEALTH_IDENTITY_PROFILE_ID,
+} from "../../src/sdk/access-profile-runtime.ts";
 
 describe("sdk access module runtime", () => {
   it("rejects mismatched contribution keys and embedded ids", async () => {
@@ -123,5 +129,32 @@ describe("sdk access module runtime", () => {
 
     expect(Object.keys(composition.egressPlugins)).toEqual(["managed-egress-plugin"]);
     expect(Object.keys(composition.identityProfiles)).toEqual(["managed-identity"]);
+  });
+
+  it("emits default leased profiles against injected leased plugin ids", async () => {
+    const customLeasedEgressPluginId = "custom-leased-egress";
+    const customLeasedIdentityPluginId = "custom-leased-identity";
+    const registry = makeStaticAccessModuleRegistry({
+      modules: [
+        makeAccessCoreRuntimeModule({
+          leasedEgressPluginId: customLeasedEgressPluginId,
+          leasedEgressPlugin: makeStaticEgressPlugin(customLeasedEgressPluginId),
+          leasedIdentityPluginId: customLeasedIdentityPluginId,
+          leasedIdentityPlugin: makeStaticIdentityPlugin(customLeasedIdentityPluginId),
+        }),
+      ],
+    });
+
+    const composition = await Effect.runPromise(registry.compose());
+
+    expect(composition.egressProfiles[DEFAULT_LEASED_EGRESS_PROFILE_ID]?.pluginId).toBe(
+      customLeasedEgressPluginId,
+    );
+    expect(composition.identityProfiles[DEFAULT_LEASED_IDENTITY_PROFILE_ID]?.pluginId).toBe(
+      customLeasedIdentityPluginId,
+    );
+    expect(composition.identityProfiles[DEFAULT_LEASED_STEALTH_IDENTITY_PROFILE_ID]?.pluginId).toBe(
+      customLeasedIdentityPluginId,
+    );
   });
 });

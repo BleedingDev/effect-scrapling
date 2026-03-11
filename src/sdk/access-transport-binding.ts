@@ -187,15 +187,54 @@ export function deriveActivatedTransportBinding(input: {
 
 export function resolveTransportBinding(input: {
   readonly binding?: ActivatedTransportBinding | undefined;
+  readonly routeKind?: string | undefined;
   readonly routeConfig?: AccessEgressRouteConfig | undefined;
 }): ActivatedTransportBinding {
-  return (
-    input.binding ??
-    deriveActivatedTransportBinding({
-      routeKind: input.routeConfig?.kind ?? "direct",
-      routeConfig: input.routeConfig,
-    })
-  );
+  const derived = deriveActivatedTransportBinding({
+    routeKind: input.routeKind ?? input.routeConfig?.kind ?? input.binding?.routeKind ?? "direct",
+    routeConfig: input.routeConfig,
+  });
+  if (input.binding === undefined) {
+    return derived;
+  }
+
+  if (input.binding.kind === "wireguard" && derived.kind === "wireguard") {
+    return {
+      ...derived,
+      ...input.binding,
+      ...(input.binding.endpoint === undefined ? {} : { endpoint: input.binding.endpoint }),
+      ...(input.binding.interfaceName === undefined
+        ? {}
+        : { interfaceName: input.binding.interfaceName }),
+      ...(input.binding.exitNodeId === undefined ? {} : { exitNodeId: input.binding.exitNodeId }),
+      ...(input.binding.proxyUrl === undefined ? {} : { proxyUrl: input.binding.proxyUrl }),
+      ...(input.binding.proxyHeaders === undefined
+        ? {}
+        : { proxyHeaders: input.binding.proxyHeaders }),
+      ...(input.binding.bypass === undefined ? {} : { bypass: input.binding.bypass }),
+      diagnostics: {
+        ...derived.diagnostics,
+        ...input.binding.diagnostics,
+      },
+    };
+  }
+
+  if (input.binding.kind === "proxy" && derived.kind === "proxy") {
+    return {
+      ...derived,
+      ...input.binding,
+      ...(input.binding.proxyHeaders === undefined
+        ? {}
+        : { proxyHeaders: input.binding.proxyHeaders }),
+      ...(input.binding.bypass === undefined ? {} : { bypass: input.binding.bypass }),
+      diagnostics: {
+        ...derived.diagnostics,
+        ...input.binding.diagnostics,
+      },
+    };
+  }
+
+  return input.binding;
 }
 
 export function transportBindingFromRouteConfig(

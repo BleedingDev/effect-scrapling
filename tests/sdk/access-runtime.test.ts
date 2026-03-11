@@ -21,6 +21,8 @@ import {
 import { AccessHealthRuntimeLive } from "../../src/sdk/access-health-runtime-service.ts";
 import {
   AccessProfileRegistryLive,
+  DEFAULT_IDENTITY_PROFILE_ID,
+  DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
   DEFAULT_STEALTH_IDENTITY_PROFILE_ID,
 } from "../../src/sdk/access-profile-runtime.ts";
 import { AccessProfileSelectionPolicyLive } from "../../src/sdk/access-profile-policy-runtime.ts";
@@ -390,6 +392,77 @@ describe("sdk access runtime", () => {
       });
     }),
   );
+
+  it("materializes wireguard transport bindings from route kind even without routeConfig metadata", () => {
+    const context = materializeExecutionContext({
+      intent: {
+        targetUrl: "https://example.com/wireguard-metadata-gap",
+        targetDomain: "example.com",
+        providerId: DEFAULT_HTTP_PROVIDER_ID,
+        mode: "http",
+        timeoutMs: 1_000,
+        egress: {
+          allocationMode: "static",
+          pluginId: "builtin-wireguard-egress",
+          profileId: "wireguard",
+          poolId: "wireguard-pool",
+          routePolicyId: "wireguard-route",
+          routeKind: "wireguard",
+          routeKey: "wireguard",
+          requestHeaders: {},
+          warnings: [],
+        },
+        identity: {
+          allocationMode: "static",
+          pluginId: "builtin-default-identity",
+          profileId: DEFAULT_IDENTITY_PROFILE_ID,
+          tenantId: "public",
+          browserRuntimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+          httpUserAgent: "effect-scrapling/0.0.1",
+          browserUserAgent: "browser-agent",
+          warnings: [],
+        },
+        http: {
+          userAgent: "effect-scrapling/0.0.1",
+        },
+        warnings: [],
+      },
+      egress: {
+        allocationMode: "static",
+        pluginId: "builtin-wireguard-egress",
+        profileId: "wireguard",
+        poolId: "wireguard-pool",
+        routePolicyId: "wireguard-route",
+        routeKind: "wireguard",
+        routeKey: "wireguard",
+        egressKey: "wireguard",
+        requestHeaders: {},
+        warnings: [],
+        release: Effect.void,
+      },
+      identity: {
+        allocationMode: "static",
+        pluginId: "builtin-default-identity",
+        profileId: DEFAULT_IDENTITY_PROFILE_ID,
+        tenantId: "public",
+        browserRuntimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+        identityKey: "default",
+        httpUserAgent: "effect-scrapling/0.0.1",
+        browserUserAgent: "browser-agent",
+        warnings: [],
+        release: Effect.void,
+      },
+    });
+
+    expect(context.transportBinding).toEqual({
+      kind: "wireguard",
+      routeKind: "wireguard",
+      diagnostics: {
+        routeKind: "wireguard",
+        routeConfigKind: "wireguard",
+      },
+    });
+  });
 
   it.effect("infers browser mode from browser execution options", () =>
     Effect.gen(function* () {

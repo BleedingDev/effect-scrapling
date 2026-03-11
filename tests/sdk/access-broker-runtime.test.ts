@@ -474,6 +474,165 @@ describe("sdk access broker runtime", () => {
     ),
   );
 
+  it.effect(
+    "broker acquires builtin proxy profiles when routeConfig already supplies the bridge",
+    () =>
+      Effect.gen(function* () {
+        const broker = makeEgressBroker(yield* EgressPluginRegistry);
+        const lease = yield* broker.acquire({
+          url: sharedPlan.targetUrl,
+          plan: {
+            ...sharedPlan,
+            egress: {
+              ...sharedPlan.egress,
+              pluginId: BUILTIN_HTTP_CONNECT_EGRESS_PLUGIN_ID,
+              profileId: "http-connect",
+              poolId: "http-connect-pool",
+              routePolicyId: "http-connect-route",
+              routeKind: "http-connect",
+              routeKey: "http-connect",
+              routeConfig: {
+                kind: "http-connect",
+                proxyUrl: "http://proxy.example.test:8080",
+                proxyHeaders: {
+                  "Proxy-Authorization": "Bearer route-token",
+                },
+              },
+            },
+          },
+        });
+
+        expect(lease.egressKey).toBe("http://proxy.example.test:8080");
+        expect(lease.transportBinding).toEqual({
+          kind: "proxy",
+          routeKind: "http-connect",
+          proxyUrl: "http://proxy.example.test:8080",
+          proxyHeaders: {
+            "Proxy-Authorization": "Bearer route-token",
+          },
+          diagnostics: {
+            routeKind: "http-connect",
+            routeConfigKind: "http-connect",
+          },
+        });
+      }).pipe(
+        Effect.provide(
+          makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
+        ),
+      ),
+  );
+
+  it.effect(
+    "broker acquires builtin wireguard profiles when routeConfig already supplies the bridge",
+    () =>
+      Effect.gen(function* () {
+        const broker = makeEgressBroker(yield* EgressPluginRegistry);
+        const lease = yield* broker.acquire({
+          url: sharedPlan.targetUrl,
+          plan: {
+            ...sharedPlan,
+            egress: {
+              ...sharedPlan.egress,
+              pluginId: BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
+              profileId: "wireguard",
+              poolId: "wireguard-pool",
+              routePolicyId: "wireguard-route",
+              routeKind: "wireguard",
+              routeKey: "wireguard",
+              routeConfig: {
+                kind: "wireguard",
+                endpoint: "wg://edge-a",
+                interfaceName: "wg0",
+                exitNodeId: "exit-a",
+                proxyUrl: "socks5://127.0.0.1:9050",
+                bypass: "localhost",
+              },
+            },
+          },
+        });
+
+        expect(lease.egressKey).toBe("exit-a");
+        expect(lease.transportBinding).toEqual({
+          kind: "wireguard",
+          routeKind: "wireguard",
+          endpoint: "wg://edge-a",
+          interfaceName: "wg0",
+          exitNodeId: "exit-a",
+          proxyUrl: "socks5://127.0.0.1:9050",
+          bypass: "localhost",
+          diagnostics: {
+            routeKind: "wireguard",
+            routeConfigKind: "wireguard",
+          },
+        });
+      }).pipe(
+        Effect.provide(
+          makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
+        ),
+      ),
+  );
+
+  it.effect(
+    "wireguard broker keys stay exit-specific when exits share one local bridge proxy",
+    () =>
+      Effect.gen(function* () {
+        const broker = makeEgressBroker(yield* EgressPluginRegistry);
+        const [firstLease, secondLease] = yield* Effect.all(
+          [
+            broker.acquire({
+              url: `${sharedPlan.targetUrl}?exit=a`,
+              plan: {
+                ...sharedPlan,
+                egress: {
+                  ...sharedPlan.egress,
+                  pluginId: BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
+                  profileId: "wireguard-a",
+                  poolId: "wireguard-pool",
+                  routePolicyId: "wireguard-route",
+                  routeKind: "wireguard",
+                  routeKey: "wireguard-a",
+                  routeConfig: {
+                    kind: "wireguard",
+                    endpoint: "wg://edge-a",
+                    proxyUrl: "socks5://127.0.0.1:9050",
+                  },
+                },
+              },
+            }),
+            broker.acquire({
+              url: `${sharedPlan.targetUrl}?exit=b`,
+              plan: {
+                ...sharedPlan,
+                egress: {
+                  ...sharedPlan.egress,
+                  pluginId: BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
+                  profileId: "wireguard-b",
+                  poolId: "wireguard-pool",
+                  routePolicyId: "wireguard-route",
+                  routeKind: "wireguard",
+                  routeKey: "wireguard-b",
+                  routeConfig: {
+                    kind: "wireguard",
+                    endpoint: "wg://edge-b",
+                    proxyUrl: "socks5://127.0.0.1:9050",
+                  },
+                },
+              },
+            }),
+          ],
+          { concurrency: "unbounded" },
+        );
+
+        expect(firstLease.egressKey).toBe("wg://edge-a");
+        expect(secondLease.egressKey).toBe("wg://edge-b");
+        expect(firstLease.egressKey).not.toBe(secondLease.egressKey);
+      }).pipe(
+        Effect.provide(
+          makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
+        ),
+      ),
+  );
+
   it.effect("plugin registry live layer uses an injected identity lease manager service", () => {
     let acquisitions = 0;
 
