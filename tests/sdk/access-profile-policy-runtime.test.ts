@@ -32,75 +32,73 @@ describe("sdk access profile policy runtime", () => {
     }).pipe(Effect.provide(AccessProfileSelectionPolicyEnvironmentLive)),
   );
 
-  it.effect(
-    "does not auto-select proxy-style builtin egress profiles without explicit config",
-    () =>
-      Effect.gen(function* () {
-        const policy = yield* AccessProfileSelectionPolicy;
-        const profiles = yield* policy.resolveProfiles({
-          url: "https://example.com/products/sku-1b",
-          providerId: "browser-basic",
-        });
+  it.effect("keeps implicit egress selection on configured-usable builtin profiles only", () =>
+    Effect.gen(function* () {
+      const policy = yield* AccessProfileSelectionPolicy;
+      const profiles = yield* policy.resolveProfiles({
+        url: "https://example.com/products/sku-1b",
+        providerId: "browser-basic",
+      });
 
-        expect(profiles.egress.profileId).toBe("wireguard");
-        expect(profiles.egress.pluginId).toBe("builtin-wireguard-egress");
-        expect(profiles.egress.warnings).toContain(
-          'Selection policy chose egress "wireguard" instead of preferred "direct"; access health signals rate the preferred path as less healthy.',
-        );
-      }).pipe(
-        Effect.provide(
-          AccessProfileSelectionPolicyLive.pipe(
-            Layer.provide(
-              Layer.mergeAll(
-                AccessProfileRegistryLive,
-                AccessHealthRuntimeLive,
-                AccessProfileSelectionStrategyLive,
-                Layer.succeed(AccessProfileSelectionHealthSignalsGateway, {
-                  inspect: () =>
-                    Effect.succeed({
-                      egressProfiles: {
-                        direct: {
-                          subject: {
-                            kind: "egress-profile",
-                            poolId: "direct-pool",
-                            routePolicyId: "direct-route",
-                            profileId: "direct",
-                          },
-                          successCount: 0,
-                          failureCount: 4,
-                          successStreak: 0,
-                          failureStreak: 4,
-                          score: 0,
-                          quarantinedUntil: "2099-01-01T00:00:00.000Z",
+      expect(profiles.egress.profileId).toBe("direct");
+      expect(profiles.egress.pluginId).toBe("builtin-direct-egress");
+      expect(profiles.egress.warnings).toContain(
+        'Selected egress profile "direct" is currently quarantined in access health state.',
+      );
+    }).pipe(
+      Effect.provide(
+        AccessProfileSelectionPolicyLive.pipe(
+          Layer.provide(
+            Layer.mergeAll(
+              AccessProfileRegistryLive,
+              AccessHealthRuntimeLive,
+              AccessProfileSelectionStrategyLive,
+              Layer.succeed(AccessProfileSelectionHealthSignalsGateway, {
+                inspect: () =>
+                  Effect.succeed({
+                    egressProfiles: {
+                      direct: {
+                        subject: {
+                          kind: "egress-profile",
+                          poolId: "direct-pool",
+                          routePolicyId: "direct-route",
+                          profileId: "direct",
                         },
-                        "leased-direct": {
-                          subject: {
-                            kind: "egress-profile",
-                            poolId: "leased-direct-pool",
-                            routePolicyId: "leased-direct-route",
-                            profileId: "leased-direct",
-                          },
-                          successCount: 0,
-                          failureCount: 4,
-                          successStreak: 0,
-                          failureStreak: 4,
-                          score: 0,
-                          quarantinedUntil: "2099-01-01T00:00:00.000Z",
-                        },
+                        successCount: 0,
+                        failureCount: 4,
+                        successStreak: 0,
+                        failureStreak: 4,
+                        score: 0,
+                        quarantinedUntil: "2099-01-01T00:00:00.000Z",
                       },
-                      egressPlugins: {},
-                      identityProfiles: {},
-                      identityPlugins: {},
-                      degraded: false,
-                      egressWarnings: [],
-                      identityWarnings: [],
-                    }),
-                }),
-              ),
+                      "leased-direct": {
+                        subject: {
+                          kind: "egress-profile",
+                          poolId: "leased-direct-pool",
+                          routePolicyId: "leased-direct-route",
+                          profileId: "leased-direct",
+                        },
+                        successCount: 0,
+                        failureCount: 4,
+                        successStreak: 0,
+                        failureStreak: 4,
+                        score: 0,
+                        quarantinedUntil: "2099-01-01T00:00:00.000Z",
+                      },
+                    },
+                    egressPlugins: {},
+                    identityProfiles: {},
+                    identityPlugins: {},
+                    degraded: false,
+                    egressWarnings: [],
+                    identityWarnings: [],
+                  }),
+              }),
             ),
           ),
         ),
       ),
+    ),
   );
 
   it.effect("honors injected profile selection strategy overrides", () =>

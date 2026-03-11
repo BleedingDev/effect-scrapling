@@ -277,6 +277,9 @@ export const WireGuardAccessRuntimeModule = {
       },
       requestHeaders: {},
       warnings: [],
+      autoSelectionConstraint: {
+        requiredPluginConfigKeys: ["proxyUrl"],
+      },
     },
   },
 } satisfies AccessRuntimeModule;

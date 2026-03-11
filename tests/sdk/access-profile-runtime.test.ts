@@ -24,6 +24,9 @@ describe("sdk access profile runtime", () => {
       });
       const wireguard = yield* registry.resolveEgressProfile({
         profileId: DEFAULT_WIREGUARD_EGRESS_PROFILE_ID,
+        pluginConfig: {
+          proxyUrl: "socks5://127.0.0.1:9051",
+        },
       });
       const httpConnect = yield* registry.findEgressProfile(DEFAULT_HTTP_CONNECT_EGRESS_PROFILE_ID);
       const socks5 = yield* registry.resolveEgressProfile({
@@ -61,6 +64,9 @@ describe("sdk access profile runtime", () => {
         allocationMode: "static",
         pluginId: "builtin-wireguard-egress",
         profileId: DEFAULT_WIREGUARD_EGRESS_PROFILE_ID,
+        pluginConfig: {
+          proxyUrl: "socks5://127.0.0.1:9051",
+        },
         routeConfig: {
           kind: "wireguard",
         },
@@ -127,6 +133,32 @@ describe("sdk access profile runtime", () => {
       ownerId: "cli-smoke",
     });
     expect(resolvedAgain.pluginConfig).toBeUndefined();
+  });
+
+  it("marks the builtin wireguard profile non-auto-selectable until a proxy bridge is configured", () => {
+    const eligibility = describeResolvedEgressProfileAutoSelectionEligibility({
+      allocationMode: "static",
+      pluginId: "builtin-wireguard-egress",
+      profileId: DEFAULT_WIREGUARD_EGRESS_PROFILE_ID,
+      poolId: "wireguard-pool",
+      routePolicyId: "wireguard-route",
+      routeKind: "wireguard",
+      routeKey: "wireguard",
+      routeConfig: {
+        kind: "wireguard",
+      },
+      requestHeaders: {},
+      warnings: [],
+      autoSelectionConstraint: {
+        requiredPluginConfigKeys: ["proxyUrl"],
+      },
+    });
+
+    expect(eligibility).toEqual({
+      autoSelectable: false,
+      reason:
+        'Egress profile "wireguard" requires explicit plugin config "proxyUrl" before it can be used.',
+    });
   });
 
   it("rejects explicit proxy-style egress profiles without required proxy config", async () => {

@@ -6,13 +6,18 @@ import {
 } from "./access-provider-ids.ts";
 import { toExecutionMetadata } from "./access-execution-metadata.ts";
 import { type AccessExecutionContext } from "./access-execution-context.ts";
+import {
+  describeUnsupportedProxyExecution,
+  toBrowserTransportProxyConfig,
+  toFetchTransportProxyConfig,
+  transportBindingFromRouteConfig,
+} from "./access-transport-binding.ts";
 import { BrowserRuntime, type PatchrightPage } from "./browser-pool.ts";
 import {
   detectAccessWall,
   extractHtmlTitle,
   toAccessWallWarnings,
 } from "./access-wall-detection.ts";
-import { toBrowserLaunchProxyConfig, toBunFetchProxyConfig } from "./egress-route-config.ts";
 import { formatUnknownError } from "./error-guards.ts";
 import { BrowserError, InvalidInputError, NetworkError } from "./errors.ts";
 import { FetchService } from "./fetch-service.ts";
@@ -194,6 +199,21 @@ function executeHttpProvider(
 ): Effect.Effect<AccessExecutionResult, NetworkError, FetchService> {
   return Effect.gen(function* () {
     const fetchService = yield* FetchService;
+    const transportBinding =
+      context.transportBinding ??
+      context.egress.transportBinding ??
+      transportBindingFromRouteConfig(context.egress.routeConfig);
+    const proxy = toFetchTransportProxyConfig(transportBinding);
+    const unsupportedTransportDetails = describeUnsupportedProxyExecution(transportBinding, url);
+    if (unsupportedTransportDetails !== undefined) {
+      return yield* Effect.fail(
+        new NetworkError({
+          message: `Access failed for ${url}`,
+          details: unsupportedTransportDetails,
+        }),
+      );
+    }
+
     return yield* Effect.tryPromise({
       try: async () => {
         const abortController = new AbortController();
@@ -206,7 +226,6 @@ function executeHttpProvider(
         let requestCount = 0;
         let redirectCount = 0;
         let responseHeadersDurationMs = 0;
-        const proxy = toBunFetchProxyConfig(context.egress.routeConfig);
 
         try {
           for (let redirectHop = 0; redirectHop <= MAX_REDIRECTS; redirectHop += 1) {
@@ -304,8 +323,21 @@ function executeBrowserProvider(
       | "header-read"
       | undefined;
     let runtimeWarnings: ReadonlyArray<string> = [];
+    const transportBinding =
+      context.transportBinding ??
+      context.egress.transportBinding ??
+      transportBindingFromRouteConfig(context.egress.routeConfig);
+    const unsupportedTransportDetails = describeUnsupportedProxyExecution(transportBinding, url);
+    if (unsupportedTransportDetails !== undefined) {
+      return yield* Effect.fail(
+        new BrowserError({
+          message: `Browser access failed for ${url}`,
+          details: unsupportedTransportDetails,
+        }),
+      );
+    }
     const proxy = yield* Effect.try({
-      try: () => toBrowserLaunchProxyConfig(context.egress.routeConfig),
+      try: () => toBrowserTransportProxyConfig(transportBinding),
       catch: (error) =>
         new BrowserError({
           message: `Browser access failed for ${url}`,

@@ -1115,6 +1115,166 @@ describe("sdk access provider runtime", () => {
     }),
   );
 
+  it.effect("fails HTTP execution when a wireguard transport does not expose a proxy bridge", () =>
+    Effect.suspend(
+      () =>
+        Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("http-basic");
+          const error = yield* provider
+            .execute({
+              url: "https://example.com/products/sku-wireguard-missing-bridge",
+              context: {
+                targetUrl: "https://example.com/products/sku-wireguard-missing-bridge",
+                targetDomain: "example.com",
+                providerId: "http-basic",
+                mode: "http",
+                timeoutMs: 900,
+                egress: {
+                  allocationMode: "static",
+                  pluginId: "builtin-wireguard-egress",
+                  profileId: "wireguard",
+                  poolId: "wireguard-pool",
+                  routePolicyId: "wireguard-route",
+                  routeKind: "wireguard",
+                  routeKey: "wireguard",
+                  routeConfig: {
+                    kind: "wireguard",
+                    endpoint: "wg://edge-a",
+                  },
+                  egressKey: "wg-edge-a",
+                  requestHeaders: {},
+                  warnings: [],
+                  release: Effect.void,
+                },
+                identity: {
+                  allocationMode: "static",
+                  pluginId: "test-identity",
+                  profileId: "persona-a",
+                  tenantId: "tenant-a",
+                  identityKey: "identity-a",
+                  browserRuntimeProfileId: "patchright-default",
+                  httpUserAgent: "HTTP Agent",
+                  browserUserAgent: "Browser Agent",
+                  warnings: [],
+                  release: Effect.void,
+                },
+                http: {
+                  userAgent: "HTTP Agent",
+                },
+                warnings: [],
+              },
+            })
+            .pipe(Effect.flip);
+
+          expect(error._tag).toBe("NetworkError");
+          expect(error.details).toContain("did not expose a proxy-capable bridge");
+        }).pipe(
+          Effect.provide(AccessProviderRegistryLive),
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>,
+    ),
+  );
+
+  it.effect(
+    "prefers activated wireguard bridge bindings over legacy route metadata for HTTP execution",
+    () =>
+      Effect.suspend(() => {
+        let proxy:
+          | string
+          | {
+              readonly url: string;
+              readonly headers?: HeadersInit | undefined;
+            }
+          | undefined;
+
+        return Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("http-basic");
+          const result = yield* provider.execute({
+            url: "https://example.com/products/sku-wireguard",
+            context: {
+              targetUrl: "https://example.com/products/sku-wireguard",
+              targetDomain: "example.com",
+              providerId: "http-basic",
+              mode: "http",
+              timeoutMs: 900,
+              egress: {
+                allocationMode: "static",
+                pluginId: "builtin-wireguard-egress",
+                profileId: "wireguard",
+                poolId: "wireguard-pool",
+                routePolicyId: "wireguard-route",
+                routeKind: "wireguard",
+                routeKey: "wireguard",
+                routeConfig: {
+                  kind: "wireguard",
+                  endpoint: "wg://legacy-metadata-only",
+                },
+                transportBinding: {
+                  kind: "wireguard",
+                  routeKind: "wireguard",
+                  endpoint: "wg://edge-a",
+                  interfaceName: "wg0",
+                  proxyUrl: "socks5://127.0.0.1:9050",
+                  proxyHeaders: {
+                    "Proxy-Authorization": "Bearer token",
+                  },
+                  diagnostics: {
+                    routeKind: "wireguard",
+                    routeConfigKind: "wireguard",
+                  },
+                },
+                egressKey: "wg-edge-a",
+                requestHeaders: {},
+                warnings: [],
+                release: Effect.void,
+              },
+              identity: {
+                allocationMode: "static",
+                pluginId: "test-identity",
+                profileId: "persona-a",
+                tenantId: "tenant-a",
+                identityKey: "identity-a",
+                browserRuntimeProfileId: "patchright-default",
+                httpUserAgent: "HTTP Agent",
+                browserUserAgent: "Browser Agent",
+                warnings: [],
+                release: Effect.void,
+              },
+              http: {
+                userAgent: "HTTP Agent",
+              },
+              warnings: [],
+            },
+          });
+
+          expect(result.status).toBe(200);
+          expect(proxy).toEqual({
+            url: "socks5://127.0.0.1:9050",
+            headers: {
+              "Proxy-Authorization": "Bearer token",
+            },
+          });
+        }).pipe(
+          Effect.provide(AccessProviderRegistryLive),
+          Effect.provideService(FetchService, {
+            fetch: async (_input, init) => {
+              proxy = init?.proxy;
+              return new Response("<html><body>proxy-ok</body></html>", {
+                status: 200,
+                headers: {
+                  "content-type": "text/html; charset=utf-8",
+                },
+              });
+            },
+          }),
+        ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+      }),
+  );
+
   it.effect(
     "returns browser 429 challenge pages with wall warnings instead of throwing them away",
     () =>
@@ -1325,6 +1485,251 @@ describe("sdk access provider runtime", () => {
               content: async () =>
                 "<html><head><title>Browser Runtime</title></head><body>ok</body></html>",
               url: () => "https://example.com/browser-proxy",
+              waitForLoadState: async () => undefined,
+              route: async () => undefined,
+              close: async () => undefined,
+            }).pipe(Effect.map((value) => ({ value, warnings: [] })));
+          },
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
+  it.effect(
+    "fails browser execution when a wireguard transport does not expose a proxy bridge",
+    () =>
+      Effect.suspend(
+        () =>
+          Effect.gen(function* () {
+            const registry = yield* AccessProviderRegistry;
+            const provider = yield* registry.resolve("browser-basic");
+            const error = yield* provider
+              .execute({
+                url: "https://example.com/browser-wireguard-missing-bridge",
+                context: {
+                  targetUrl: "https://example.com/browser-wireguard-missing-bridge",
+                  targetDomain: "example.com",
+                  providerId: "browser-basic",
+                  mode: "browser",
+                  timeoutMs: 900,
+                  egress: {
+                    allocationMode: "static",
+                    pluginId: "builtin-wireguard-egress",
+                    profileId: "wireguard",
+                    poolId: "wireguard-pool",
+                    routePolicyId: "wireguard-route",
+                    routeKind: "wireguard",
+                    routeKey: "wireguard",
+                    routeConfig: {
+                      kind: "wireguard",
+                      endpoint: "wg://edge-a",
+                    },
+                    egressKey: "wg-edge-a",
+                    requestHeaders: {},
+                    warnings: [],
+                    release: Effect.void,
+                  },
+                  identity: {
+                    allocationMode: "static",
+                    pluginId: "test-identity",
+                    profileId: "persona-a",
+                    tenantId: "tenant-a",
+                    identityKey: "identity-a",
+                    browserRuntimeProfileId: "patchright-default",
+                    browserUserAgent: "Browser Agent",
+                    warnings: [],
+                    release: Effect.void,
+                  },
+                  browser: {
+                    runtimeProfileId: "patchright-default",
+                    waitUntil: "commit",
+                    timeoutMs: 900,
+                    userAgent: "Browser Agent",
+                    poolKey: "browser-basic::patchright-default::wg-edge-a::identity-a",
+                  },
+                  warnings: [],
+                },
+              })
+              .pipe(Effect.flip);
+
+            expect(error._tag).toBe("BrowserError");
+            expect(error.details).toContain("did not expose a proxy-capable bridge");
+          }).pipe(
+            Effect.provide(AccessProviderRegistryLive),
+            Effect.provideService(BrowserRuntime, {
+              readPoolLimits: () => ({
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              }),
+              withPage: (_options, use) =>
+                use({
+                  goto: async () => ({
+                    status: () => 200,
+                    allHeaders: async () => ({
+                      "content-type": "text/html; charset=utf-8",
+                    }),
+                    request: () => ({
+                      url: () => "https://example.com/browser-wireguard-missing-bridge",
+                      redirectedFrom: () => null,
+                    }),
+                  }),
+                  content: async () =>
+                    "<html><head><title>Browser Runtime</title></head><body>ok</body></html>",
+                  url: () => "https://example.com/browser-wireguard-missing-bridge",
+                  waitForLoadState: async () => undefined,
+                  route: async () => undefined,
+                  close: async () => undefined,
+                }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+              getSnapshot: () =>
+                Effect.succeed({
+                  limits: {
+                    maxContexts: 1,
+                    maxPages: 1,
+                    maxQueue: 1,
+                  },
+                  activeContexts: 0,
+                  activePages: 0,
+                  queuedRequests: 0,
+                  maxObservedActiveContexts: 0,
+                  maxObservedActivePages: 0,
+                  maxObservedQueuedRequests: 0,
+                }),
+              setTestConfig: () => Effect.void,
+              close: () => Effect.void,
+              resetForTests: () => Effect.void,
+            }),
+            Effect.provideService(FetchService, {
+              fetch: globalThis.fetch,
+            }),
+          ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>,
+      ),
+  );
+
+  it.effect("passes activated wireguard bridge bindings into the injected browser runtime", () =>
+    Effect.suspend(() => {
+      let proxy:
+        | {
+            readonly server: string;
+            readonly bypass?: string | undefined;
+            readonly username?: string | undefined;
+            readonly password?: string | undefined;
+          }
+        | undefined;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-basic");
+        const result = yield* provider.execute({
+          url: "https://example.com/browser-wireguard",
+          context: {
+            targetUrl: "https://example.com/browser-wireguard",
+            targetDomain: "example.com",
+            providerId: "browser-basic",
+            mode: "browser",
+            timeoutMs: 900,
+            egress: {
+              allocationMode: "static",
+              pluginId: "builtin-wireguard-egress",
+              profileId: "wireguard",
+              poolId: "wireguard-pool",
+              routePolicyId: "wireguard-route",
+              routeKind: "wireguard",
+              routeKey: "wireguard",
+              routeConfig: {
+                kind: "wireguard",
+                endpoint: "wg://legacy-metadata-only",
+              },
+              transportBinding: {
+                kind: "wireguard",
+                routeKind: "wireguard",
+                endpoint: "wg://edge-a",
+                proxyUrl: "socks5://user:pass@127.0.0.1:9050",
+                bypass: "localhost,127.0.0.1",
+                diagnostics: {
+                  routeKind: "wireguard",
+                  routeConfigKind: "wireguard",
+                },
+              },
+              egressKey: "wg-edge-a",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-default",
+              browserUserAgent: "Browser Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            browser: {
+              runtimeProfileId: "patchright-default",
+              waitUntil: "commit",
+              timeoutMs: 900,
+              userAgent: "Browser Agent",
+              poolKey: "browser-basic::patchright-default::wg-edge-a::identity-a",
+            },
+            warnings: [],
+          },
+        });
+
+        expect(result.status).toBe(200);
+        expect(proxy).toEqual({
+          server: "socks5://127.0.0.1:9050",
+          username: "user",
+          password: "pass",
+          bypass: "localhost,127.0.0.1",
+        });
+      }).pipe(
+        Effect.provide(AccessProviderRegistryLive),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (options, use) => {
+            proxy = options.proxy;
+
+            return use({
+              goto: async () => ({
+                status: () => 200,
+                allHeaders: async () => ({
+                  "content-type": "text/html; charset=utf-8",
+                }),
+                request: () => ({
+                  url: () => "https://example.com/browser-wireguard",
+                  redirectedFrom: () => null,
+                }),
+              }),
+              content: async () =>
+                "<html><head><title>Browser Runtime</title></head><body>ok</body></html>",
+              url: () => "https://example.com/browser-wireguard",
               waitForLoadState: async () => undefined,
               route: async () => undefined,
               close: async () => undefined,

@@ -56,6 +56,14 @@ describe("sdk access resource kernel", () => {
 
         expect(provisioned.context.providerId).toBe("http-basic");
         expect(provisioned.context.egress.egressKey).toBe("direct-lease");
+        expect(provisioned.context.egress.transportBinding).toEqual({
+          kind: "direct",
+          routeKind: "direct",
+          diagnostics: {
+            routeKind: "direct",
+            routeConfigKind: "direct",
+          },
+        });
         expect(provisioned.context.identity.identityKey).toBe("default-lease");
 
         yield* provisioned.release;
@@ -69,6 +77,14 @@ describe("sdk access resource kernel", () => {
             Effect.succeed({
               ...plan.egress,
               egressKey: "direct-lease",
+              transportBinding: {
+                kind: "direct",
+                routeKind: "direct",
+                diagnostics: {
+                  routeKind: "direct",
+                  routeConfigKind: "direct",
+                },
+              },
               leaseId: "egress-lease-1",
               release: Effect.sync(() => {
                 egressReleased += 1;

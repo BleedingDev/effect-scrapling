@@ -18,6 +18,7 @@ import {
   IdentityLeaseManagerService,
   BUILTIN_LEASED_EGRESS_PLUGIN_ID,
   BUILTIN_LEASED_IDENTITY_PLUGIN_ID,
+  BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
   EgressPluginRegistry,
   makeEgressPluginRegistryLiveLayer,
   type EmptyPluginConfig,
@@ -333,11 +334,144 @@ describe("sdk access broker runtime", () => {
             "Proxy-Authorization": "Bearer token",
           },
         });
+        expect(lease.transportBinding).toEqual({
+          kind: "proxy",
+          routeKind: "http-connect",
+          proxyUrl: "http://proxy.example.test:8080",
+          proxyHeaders: {
+            "Proxy-Authorization": "Bearer token",
+          },
+          diagnostics: {
+            routeKind: "http-connect",
+            routeConfigKind: "http-connect",
+          },
+        });
       }).pipe(
         Effect.provide(
           makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
         ),
       ),
+  );
+
+  it.effect(
+    "builtin wireguard plugin materializes a transport binding through an explicit proxy bridge",
+    () =>
+      Effect.gen(function* () {
+        const registry = yield* EgressPluginRegistry;
+        const plugin = yield* registry.resolve(BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID);
+        const lease = yield* plugin.acquire({
+          url: sharedPlan.targetUrl,
+          profile: {
+            ...sharedPlan.egress,
+            pluginId: BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
+            profileId: "wireguard",
+            poolId: "wireguard-pool",
+            routePolicyId: "wireguard-route",
+            routeKind: "wireguard",
+            routeKey: "wireguard",
+            routeConfig: {
+              kind: "wireguard",
+            },
+          },
+          config: {
+            endpoint: "wg://edge-a",
+            interfaceName: "wg0",
+            exitNodeId: "exit-a",
+            proxyUrl: "socks5://127.0.0.1:9050",
+            bypass: "localhost",
+            egressKey: "wg-edge-a",
+          },
+          plan: {
+            ...sharedPlan,
+            egress: {
+              ...sharedPlan.egress,
+              pluginId: BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
+              profileId: "wireguard",
+              poolId: "wireguard-pool",
+              routePolicyId: "wireguard-route",
+              routeKind: "wireguard",
+              routeKey: "wireguard",
+              routeConfig: {
+                kind: "wireguard",
+              },
+            },
+          },
+        });
+
+        expect(lease.egressKey).toBe("wg-edge-a");
+        expect(lease.transportBinding).toEqual({
+          kind: "wireguard",
+          routeKind: "wireguard",
+          endpoint: "wg://edge-a",
+          interfaceName: "wg0",
+          exitNodeId: "exit-a",
+          proxyUrl: "socks5://127.0.0.1:9050",
+          bypass: "localhost",
+          diagnostics: {
+            routeKind: "wireguard",
+            routeConfigKind: "wireguard",
+          },
+        });
+        expect(lease.routeConfig).toEqual({
+          kind: "wireguard",
+          endpoint: "wg://edge-a",
+          interfaceName: "wg0",
+          exitNodeId: "exit-a",
+        });
+      }).pipe(
+        Effect.provide(
+          makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
+        ),
+      ),
+  );
+
+  it.effect("builtin wireguard plugin rejects execution without a configured proxy bridge", () =>
+    Effect.gen(function* () {
+      const registry = yield* EgressPluginRegistry;
+      const plugin = yield* registry.resolve(BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID);
+      const exit = yield* plugin
+        .acquire({
+          url: sharedPlan.targetUrl,
+          profile: {
+            ...sharedPlan.egress,
+            pluginId: BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
+            profileId: "wireguard",
+            poolId: "wireguard-pool",
+            routePolicyId: "wireguard-route",
+            routeKind: "wireguard",
+            routeKey: "wireguard",
+            routeConfig: {
+              kind: "wireguard",
+            },
+          },
+          config: {
+            endpoint: "wg://edge-a",
+          },
+          plan: {
+            ...sharedPlan,
+            egress: {
+              ...sharedPlan.egress,
+              pluginId: BUILTIN_WIREGUARD_EGRESS_PLUGIN_ID,
+              profileId: "wireguard",
+              poolId: "wireguard-pool",
+              routePolicyId: "wireguard-route",
+              routeKind: "wireguard",
+              routeKey: "wireguard",
+              routeConfig: {
+                kind: "wireguard",
+              },
+            },
+          },
+        })
+        .pipe(Effect.flip);
+
+      expect(exit.message).toBe("Invalid egress plugin config");
+      expect(exit.details).toContain('"proxyUrl"');
+    }).pipe(
+      Effect.provide(
+        makeEgressPluginRegistryLiveLayer().pipe(Layer.provide(EgressLeaseManagerLive)),
+      ),
+    ),
   );
 
   it.effect("plugin registry live layer uses an injected identity lease manager service", () => {

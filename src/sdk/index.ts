@@ -147,6 +147,20 @@ export {
   type ResolvedIdentityProfile,
 } from "./access-profile-runtime.ts";
 export {
+  type AccessTransportBinding,
+  type ActivatedDirectTransportBinding,
+  type ActivatedProxyTransportBinding,
+  type ActivatedWireGuardTransportBinding,
+  createActivatedProxyTransportBinding,
+  createActivatedWireGuardTransportBinding,
+  deriveActivatedTransportBinding,
+  toBrowserLaunchTransportConfig,
+  toBunFetchTransportConfig,
+  toBrowserTransportProxyConfig,
+  toFetchTransportProxyConfig,
+  transportBindingFromRouteConfig,
+} from "./access-transport-binding.ts";
+export {
   type AccessEgressRouteConfig,
   type BrowserLaunchProxyConfig,
   type BunFetchProxyConfig,

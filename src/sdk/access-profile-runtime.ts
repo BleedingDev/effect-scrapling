@@ -123,6 +123,9 @@ const builtinEgressProfiles = Object.freeze({
     },
     requestHeaders: {},
     warnings: [],
+    autoSelectionConstraint: {
+      requiredPluginConfigKeys: ["proxyUrl"],
+    },
   },
   [DEFAULT_HTTP_CONNECT_EGRESS_PROFILE_ID]: {
     allocationMode: "static",

@@ -3,6 +3,10 @@ import {
   type AcquiredIdentitySession,
 } from "./access-broker-runtime.ts";
 import {
+  resolveTransportBinding,
+  type AccessTransportBinding,
+} from "./access-transport-binding.ts";
+import {
   type ResolvedEgressProfile,
   type ResolvedIdentityProfile,
 } from "./access-profile-runtime.ts";
@@ -64,6 +68,7 @@ export type AccessExecutionContext = {
   readonly mode: AccessMode;
   readonly timeoutMs: number;
   readonly egress: AcquiredEgressSession;
+  readonly transportBinding?: AccessTransportBinding | undefined;
   readonly identity: AcquiredIdentitySession;
   readonly http?: ResolvedHttpExecution | undefined;
   readonly browser?:
@@ -99,6 +104,10 @@ export function materializeExecutionContext(input: {
     mode: input.intent.mode,
     timeoutMs: input.intent.timeoutMs,
     egress: input.egress,
+    transportBinding: resolveTransportBinding({
+      binding: input.egress.transportBinding,
+      routeConfig: input.egress.routeConfig,
+    }),
     identity: input.identity,
     ...(input.intent.http === undefined ? {} : { http: input.intent.http }),
     ...(input.intent.browser === undefined

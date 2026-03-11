@@ -38,6 +38,12 @@ import {
 } from "./access-profile-runtime.ts";
 import { type ResolvedExecutionPlan } from "./access-runtime.ts";
 import {
+  createActivatedProxyTransportBinding,
+  createActivatedWireGuardTransportBinding,
+  deriveActivatedTransportBinding,
+  type ActivatedTransportBinding,
+} from "./access-transport-binding.ts";
+import {
   type AccessEgressRouteConfig,
   parseProxyUrl,
   type ProxyEgressRouteKind,
@@ -56,6 +62,7 @@ let nextIdentityAllocationSequence = 0;
 
 export type ResolvedEgressLease = ResolvedExecutionPlan["egress"] & {
   readonly egressKey: string;
+  readonly transportBinding?: ActivatedTransportBinding | undefined;
   readonly leaseId?: string | undefined;
   readonly release: Effect.Effect<void, never>;
 };
@@ -124,6 +131,9 @@ export type WireGuardEgressPluginConfig = {
   readonly endpoint?: string | undefined;
   readonly interfaceName?: string | undefined;
   readonly exitNodeId?: string | undefined;
+  readonly proxyUrl?: string | undefined;
+  readonly proxyHeaders?: Readonly<Record<string, string>> | undefined;
+  readonly bypass?: string | undefined;
   readonly egressKey?: string | undefined;
 };
 
@@ -440,8 +450,30 @@ function decodeWireGuardEgressPluginConfig(
       "endpoint",
       "interfaceName",
       "exitNodeId",
+      "proxyUrl",
+      "proxyHeaders",
+      "bypass",
       "egressKey",
     ]);
+
+    const proxyUrl = yield* decodeOptionalNonEmptyString({
+      subject: "egress",
+      pluginId,
+      config,
+      key: "proxyUrl",
+    });
+    if (proxyUrl !== undefined) {
+      try {
+        parseProxyUrl(proxyUrl);
+      } catch {
+        return yield* Effect.fail(
+          invalidPlugin(
+            "Invalid egress plugin config",
+            `Plugin "${pluginId}" requires "proxyUrl" to be an absolute URL when provided.`,
+          ),
+        );
+      }
+    }
 
     return {
       endpoint: yield* decodeOptionalNonEmptyString({
@@ -461,6 +493,19 @@ function decodeWireGuardEgressPluginConfig(
         pluginId,
         config,
         key: "exitNodeId",
+      }),
+      proxyUrl,
+      proxyHeaders: yield* decodeOptionalStringRecord({
+        subject: "egress",
+        pluginId,
+        config,
+        key: "proxyHeaders",
+      }),
+      bypass: yield* decodeOptionalNonEmptyString({
+        subject: "egress",
+        pluginId,
+        config,
+        key: "bypass",
       }),
       egressKey: yield* decodeOptionalNonEmptyString({
         subject: "egress",
@@ -603,6 +648,10 @@ export function makeStaticEgressPlugin(id: string = BUILTIN_DIRECT_EGRESS_PLUGIN
         return {
           ...profile,
           egressKey: profile.routeKey,
+          transportBinding: deriveActivatedTransportBinding({
+            routeKind: profile.routeKind,
+            routeConfig: profile.routeConfig,
+          }),
           release: Effect.void,
         } satisfies ResolvedEgressLease;
       }),
@@ -626,15 +675,42 @@ export function makeWireGuardEgressPlugin(id: string = BUILTIN_WIREGUARD_EGRESS_
     acquire: ({ profile, config }) =>
       Effect.gen(function* () {
         yield* ensureAllocationMode("egress", "static", profile.allocationMode, id);
+        const proxyUrl = config.proxyUrl;
+        if (proxyUrl === undefined) {
+          return yield* Effect.fail(
+            invalidPlugin(
+              "Invalid egress plugin config",
+              `Plugin "${id}" requires a non-empty "proxyUrl" value so the WireGuard transport can expose a bridge binding to execution providers.`,
+            ),
+          );
+        }
+        const routeConfig = mergeRouteConfig(profile.routeConfig, {
+          kind: "wireguard",
+          ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
+          ...(config.interfaceName === undefined ? {} : { interfaceName: config.interfaceName }),
+          ...(config.exitNodeId === undefined ? {} : { exitNodeId: config.exitNodeId }),
+        });
         return {
           ...profile,
-          routeConfig: mergeRouteConfig(profile.routeConfig, {
-            kind: "wireguard",
-            ...(config.endpoint === undefined ? {} : { endpoint: config.endpoint }),
-            ...(config.interfaceName === undefined ? {} : { interfaceName: config.interfaceName }),
-            ...(config.exitNodeId === undefined ? {} : { exitNodeId: config.exitNodeId }),
+          routeConfig,
+          transportBinding: createActivatedWireGuardTransportBinding({
+            proxyUrl,
+            proxyHeaders: config.proxyHeaders,
+            bypass: config.bypass,
+            endpoint: config.endpoint,
+            interfaceName: config.interfaceName,
+            exitNodeId: config.exitNodeId,
+            diagnostics: {
+              routeKind: profile.routeKind,
+              routeConfigKind: routeConfig.kind,
+            },
           }),
-          egressKey: config.egressKey ?? config.endpoint ?? profile.routeKey,
+          egressKey:
+            config.egressKey ??
+            config.exitNodeId ??
+            proxyUrl ??
+            config.endpoint ??
+            profile.routeKey,
           release: Effect.void,
         } satisfies ResolvedEgressLease;
       }),
@@ -651,13 +727,24 @@ export function makeProxyStaticEgressPlugin(input: {
     acquire: ({ profile, config }) =>
       Effect.gen(function* () {
         yield* ensureAllocationMode("egress", "static", profile.allocationMode, input.id);
+        const routeConfig = mergeRouteConfig(profile.routeConfig, {
+          kind: input.kind,
+          proxyUrl: config.proxyUrl,
+          ...(config.proxyHeaders === undefined ? {} : { proxyHeaders: config.proxyHeaders }),
+          ...(config.bypass === undefined ? {} : { bypass: config.bypass }),
+        });
         return {
           ...profile,
-          routeConfig: mergeRouteConfig(profile.routeConfig, {
-            kind: input.kind,
+          routeConfig,
+          transportBinding: createActivatedProxyTransportBinding({
+            routeKind: input.kind,
             proxyUrl: config.proxyUrl,
-            ...(config.proxyHeaders === undefined ? {} : { proxyHeaders: config.proxyHeaders }),
-            ...(config.bypass === undefined ? {} : { bypass: config.bypass }),
+            proxyHeaders: config.proxyHeaders,
+            bypass: config.bypass,
+            diagnostics: {
+              routeKind: profile.routeKind,
+              routeConfigKind: routeConfig.kind,
+            },
           }),
           egressKey: config.egressKey ?? config.proxyUrl,
           release: Effect.void,
@@ -730,6 +817,10 @@ export function makeLeaseBackedEgressPlugin(input: {
         return {
           ...profile,
           egressKey: lease.egressKey,
+          transportBinding: deriveActivatedTransportBinding({
+            routeKind: profile.routeKind,
+            routeConfig: profile.routeConfig,
+          }),
           leaseId: lease.id,
           release: input.manager.release(lease.id).pipe(Effect.ignore, Effect.orDie),
         } satisfies ResolvedEgressLease;
