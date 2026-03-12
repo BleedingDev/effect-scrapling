@@ -27,6 +27,12 @@ const STRONG_FINAL_URL_PATTERNS: ReadonlyArray<AccessWallPattern> = [
 const FINAL_URL_TRAP_PATTERNS = STRONG_FINAL_URL_PATTERNS.filter(
   (pattern) => pattern.signal === "url-trap",
 );
+const DIRECT_TRAP_URL_PATTERNS: ReadonlyArray<AccessWallPattern> = [
+  {
+    signal: "url-trap",
+    pattern: /(?:^|[/?#&=_])(?:tspd|_incapsula_resource|distil_r_captcha)(?:$|[/?#&=_])/iu,
+  },
+];
 const REDIRECT_ONLY_FINAL_URL_PATTERNS = STRONG_FINAL_URL_PATTERNS.filter(
   (pattern) => pattern.signal !== "url-trap",
 );
@@ -106,6 +112,7 @@ const TRAP_SIGNALS = new Set(["url-trap"]);
 const RATE_LIMIT_SIGNALS = new Set(["status-429"]);
 const EXPLICIT_CHALLENGE_SIGNALS = new Set(["text-challenge", "title-challenge", "url-challenge"]);
 const STRONG_CONSENT_SIGNALS = new Set(["text-consent", "title-consent", "url-consent"]);
+const CONSENT_HINT_SIGNALS = new Set(["text-consent-hint", "title-consent-hint"]);
 const WEAK_CONSENT_SIGNALS = new Set([
   "text-cookies",
   "text-gdpr",
@@ -200,7 +207,7 @@ export function detectAccessWall(input: {
     normalizedRequestedUrl !== undefined &&
     normalizedFinalUrl.length > 0 &&
     normalizedRequestedUrl === normalizeComparableUrl(input.finalUrl) &&
-    matchesFinalUrlPatterns(normalizedFinalUrl, FINAL_URL_TRAP_PATTERNS);
+    matchesFinalUrlPatterns(normalizedFinalUrl, DIRECT_TRAP_URL_PATTERNS);
 
   if (input.statusCode === 401) {
     strongSignals.add("status-401");
@@ -215,14 +222,7 @@ export function detectAccessWall(input: {
   if (finalUrlChanged) {
     collectSignals(strongSignals, normalizedFinalUrl, REDIRECT_ONLY_FINAL_URL_PATTERNS);
   }
-  if (
-    normalizedFinalUrl.length > 0 &&
-    (finalUrlChanged ||
-      directTrapEndpointRequested ||
-      input.statusCode === 401 ||
-      input.statusCode === 403 ||
-      input.statusCode === 429)
-  ) {
+  if (normalizedFinalUrl.length > 0 && (finalUrlChanged || directTrapEndpointRequested)) {
     collectSignals(strongSignals, normalizedFinalUrl, FINAL_URL_TRAP_PATTERNS);
   }
   collectSignals(strongSignals, normalizedTitle, STRONG_TITLE_PATTERNS);
@@ -248,6 +248,18 @@ function hasAnySignal(observedSignals: ReadonlySet<string>, expectedSignals: Rea
   return false;
 }
 
+function countSignals(observedSignals: ReadonlySet<string>, expectedSignals: ReadonlySet<string>) {
+  let count = 0;
+
+  for (const signal of expectedSignals) {
+    if (observedSignals.has(signal)) {
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
 export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWallKind | undefined {
   const observedSignals = new Set(signals);
   if (observedSignals.size === 0) {
@@ -270,7 +282,16 @@ export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWa
     return "consent";
   }
 
-  if (hasAnySignal(observedSignals, WEAK_CONSENT_SIGNALS)) {
+  const consentHintCount = countSignals(observedSignals, CONSENT_HINT_SIGNALS);
+  const weakConsentCount = countSignals(observedSignals, WEAK_CONSENT_SIGNALS);
+  if (
+    (consentHintCount >= 1 && weakConsentCount >= 2) ||
+    (consentHintCount >= 1 && weakConsentCount + consentHintCount >= 3)
+  ) {
+    return "consent";
+  }
+
+  if (weakConsentCount > 0 || consentHintCount > 0) {
     return undefined;
   }
 

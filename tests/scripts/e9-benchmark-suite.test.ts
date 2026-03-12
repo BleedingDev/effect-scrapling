@@ -8,6 +8,7 @@ import {
   E9BenchmarkSuiteArtifactSchema,
   type E9BenchmarkSuiteProgressEvent,
   mergeE9BenchmarkArtifacts,
+  mergeChallengeSignals,
   runE9BenchmarkSuite,
 } from "../../src/e9-benchmark-suite.ts";
 import { E9HighFrictionCanaryArtifactSchema } from "../../src/e9-high-friction-canary.ts";
@@ -469,6 +470,17 @@ describe("e9 benchmark suite", () => {
     );
   });
 
+  it("merges runtime warnings with locally detectable access-wall signals", () => {
+    expect(
+      mergeChallengeSignals(
+        ["status-403"],
+        ["text-consent", "title-consent", "url-consent"],
+        ["url-consent"],
+      ),
+    ).toEqual(["status-403", "text-consent", "title-consent", "url-consent"]);
+    expect(mergeChallengeSignals(["status-403"], ["url-trap"])).toEqual(["status-403", "url-trap"]);
+  });
+
   it("classifies consent walls into a dedicated benchmark failure category even when they return 403", async () => {
     const artifact = await runE9BenchmarkSuite(
       {
@@ -581,6 +593,55 @@ describe("e9 benchmark suite", () => {
     expect(artifact.recommendations).toContain(
       "Top remote failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
     );
+  });
+
+  it("classifies consent hint bundles into consent failures when privacy signals accompany them", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http"],
+        httpProfiles: ["effect-http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-http-consent-hints",
+            domain: "lidl.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://lidl.example/",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 200,
+                redirected: true,
+                challengeDetected: true,
+                observedChallengeSignals: ["text-consent-hint", "text-gdpr", "text-privacy"],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                finalUrl: "https://www.lidl.example/privacy-center",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.httpCorpus.attempts[0]?.failureCategory).toBe("access-wall-consent");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-consent",
+      count: 1,
+    });
   });
 
   it("classifies trap interstitials separately from generic empty-content failures", async () => {

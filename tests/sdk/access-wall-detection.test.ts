@@ -180,6 +180,34 @@ describe("sdk access wall detection", () => {
     expect(classifyAccessWallKind(analysis.signals)).toBe("challenge");
   });
 
+  it("does not treat benign direct botmanager slugs as trap endpoints", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/products/botmanager-check",
+      finalUrl: "https://store.example.test/products/botmanager-check",
+      statusCode: 200,
+      title: "Botmanager Check",
+      text: "<main>Botmanager Check</main>",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(false);
+    expect(analysis.signals).not.toContain("url-trap");
+    expect(classifyAccessWallKind(analysis.signals)).toBeUndefined();
+  });
+
+  it("does not treat blocked benign botmanager slugs as trap endpoints", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/products/botmanager-check",
+      finalUrl: "https://store.example.test/products/botmanager-check",
+      statusCode: 403,
+      title: "Access denied",
+      text: "Access denied",
+    });
+
+    expect(analysis.signals).toContain("status-403");
+    expect(analysis.signals).not.toContain("url-trap");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("challenge");
+  });
+
   it("round-trips access wall warnings", () => {
     expect(
       readAccessWallSignalsFromWarnings(toAccessWallWarnings(["url-consent", "text-consent"])),
@@ -198,6 +226,9 @@ describe("sdk access wall detection", () => {
     expect(
       classifyAccessWallKind(["text-cookies", "text-consent", "title-consent", "url-consent"]),
     ).toBe("consent");
+    expect(classifyAccessWallKind(["text-consent-hint", "text-gdpr", "text-privacy"])).toBe(
+      "consent",
+    );
     expect(classifyAccessWallKind(["status-403", "url-challenge"])).toBe("challenge");
     expect(classifyAccessWallKind(["status-403", "text-consent", "title-consent"])).toBe("consent");
     expect(classifyAccessWallKind(["status-403"])).toBeUndefined();
