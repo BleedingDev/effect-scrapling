@@ -35,6 +35,8 @@ function invalidExecution(message: string, details?: string) {
   });
 }
 
+const MINIMUM_CLOUDFLARE_SOLVER_TIMEOUT_MS = 60_000;
+
 function resolveBrowserProviderWaitUntil(
   provider: AccessProviderDescriptor,
   browserOptions?: BrowserExecutionOptions,
@@ -160,7 +162,13 @@ function browserExecutionFromIdentity(input: {
   };
 }): ResolvedBrowserExecution {
   const browserOptions = input.execution?.browser;
-  const browserTimeoutMs = browserOptions?.timeoutMs ?? input.defaultTimeoutMs;
+  const solveCloudflare = browserOptions?.challengeHandling?.solveCloudflare ?? false;
+  const browserTimeoutMs = solveCloudflare
+    ? Math.max(
+        browserOptions?.timeoutMs ?? input.defaultTimeoutMs,
+        MINIMUM_CLOUDFLARE_SOLVER_TIMEOUT_MS,
+      )
+    : (browserOptions?.timeoutMs ?? input.defaultTimeoutMs);
   const browserUserAgent = browserOptions?.userAgent ?? input.identity.browserUserAgent;
 
   return {
@@ -172,6 +180,7 @@ function browserExecutionFromIdentity(input: {
     waitUntil: resolveBrowserProviderWaitUntil(input.provider, browserOptions),
     timeoutMs: browserTimeoutMs,
     ...(browserUserAgent === undefined ? {} : { userAgent: browserUserAgent }),
+    ...(solveCloudflare ? { challengeHandling: { solveCloudflare: true } } : {}),
   };
 }
 

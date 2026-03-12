@@ -20,6 +20,28 @@ export type PatchrightResponse = {
   readonly request?: () => PatchrightRequest;
 };
 
+type PatchrightBoundingBox = {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+};
+
+type PatchrightElementHandle = {
+  readonly boundingBox: () => Promise<PatchrightBoundingBox | null>;
+  readonly isVisible: () => Promise<boolean>;
+};
+
+type PatchrightLocator = {
+  readonly boundingBox: () => Promise<PatchrightBoundingBox | null>;
+  readonly isVisible?: () => Promise<boolean>;
+  readonly last?: () => PatchrightLocator;
+};
+
+type PatchrightFrame = {
+  readonly frameElement: () => Promise<PatchrightElementHandle>;
+};
+
 export type PatchrightPage = {
   readonly goto: (
     url: string,
@@ -34,6 +56,19 @@ export type PatchrightPage = {
     state: "load" | "domcontentloaded" | "networkidle",
     options?: { readonly timeout?: number },
   ) => Promise<void>;
+  readonly waitForTimeout?: (timeoutMs: number) => Promise<void>;
+  readonly frame?: (selector: { readonly url: RegExp }) => PatchrightFrame | null;
+  readonly locator?: (selector: string) => PatchrightLocator;
+  readonly mouse?: {
+    readonly click: (
+      x: number,
+      y: number,
+      options?: {
+        readonly delay?: number;
+        readonly button?: "left" | "middle" | "right";
+      },
+    ) => Promise<void>;
+  };
   readonly route: (
     matcher: string,
     handler: (route: PatchrightRoute) => Promise<void> | void,
@@ -41,7 +76,7 @@ export type PatchrightPage = {
   readonly close: () => Promise<void>;
 };
 
-type PatchrightRequest = {
+export type PatchrightRequest = {
   readonly url: () => string;
   readonly redirectedFrom?: () => PatchrightRequest | null;
 };

@@ -71,6 +71,9 @@ const EXECUTION_PROFILE_SHAPE = {
     waitUntil: true,
     timeoutMs: true,
     userAgent: true,
+    challengeHandling: {
+      solveCloudflare: true,
+    },
   },
   fallback: {
     browserOnAccessWall: true,
@@ -346,6 +349,7 @@ export function accessPreview(
         contentLength: page.contentLength,
         durationMs: page.durationMs,
         execution: toExecutionMetadata(executed.context),
+        ...(page.mediation === undefined ? {} : { mediation: page.mediation }),
         timings: page.timings,
       },
       warnings: [...executed.warnings],
@@ -419,6 +423,7 @@ export function renderPreview(
       data: {
         url: page.url,
         execution: toExecutionMetadata(executed.context),
+        ...(page.mediation === undefined ? {} : { mediation: page.mediation }),
         status: {
           code: page.status,
           ok: page.status >= 200 && page.status < 300,
@@ -496,6 +501,7 @@ export function extractRun(
         values,
         durationMs: page.durationMs,
         execution: toExecutionMetadata(executed.context),
+        ...(page.mediation === undefined ? {} : { mediation: page.mediation }),
       },
       warnings:
         values.length === 0

@@ -4,7 +4,7 @@ import { Effect, Schema } from "effect";
 import { createCliHost, executeCli } from "../../src/standalone.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import { defineAccessModule } from "../../src/sdk/engine.ts";
-import { RenderPreviewResponseSchema } from "../../src/sdk/schemas.ts";
+import { ExtractRunResponseSchema, RenderPreviewResponseSchema } from "../../src/sdk/schemas.ts";
 import type { FetchClient } from "../../src/sdk/scraper.ts";
 
 function mockHtmlFetch(body: string): FetchClient {
@@ -271,6 +271,30 @@ describe("cli app", () => {
     expect("providerId" in payload.normalizedPayload.execution).toBe(false);
   });
 
+  it("threads Cloudflare solver policy through CLI explain and lifts browser timeout", async () => {
+    const result = await executeCli([
+      "access",
+      "explain",
+      "--url",
+      "https://example.com/alza-like",
+      "--mode",
+      "browser",
+      "--provider",
+      "browser-stealth",
+      "--browser-timeout-ms",
+      "5000",
+      "--solve-cloudflare",
+    ]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.resolved.driverId).toBe("browser-stealth");
+    expect(payload.resolved.browser.timeoutMs).toBe(60_000);
+    expect(payload.normalizedPayload.execution.browser.challengeHandling.solveCloudflare).toBe(
+      true,
+    );
+  });
+
   it("runs doctor through the CLI boundary with the expected JSON envelope", async () => {
     const result = await executeCli(["doctor"]);
     const payload = JSON.parse(result.output);
@@ -370,6 +394,66 @@ describe("cli app", () => {
     expect(payload.data.values).toEqual(["Effect Scrapling"]);
   });
 
+  it("surfaces mediation metadata for browser extract runs through the CLI boundary", async () => {
+    await resetSdkBrowserPool();
+    mock.module("patchright", () => ({
+      chromium: {
+        launch: async () => ({
+          newContext: async (_options: { readonly userAgent: string }) => ({
+            newPage: async () => ({
+              route: async () => {},
+              goto: async () => ({
+                status: () => 200,
+                allHeaders: async () => ({
+                  "content-type": "text/html; charset=utf-8",
+                }),
+              }),
+              waitForLoadState: async () => {},
+              content: async () => "<html><body><h1>Browser Extract</h1><p>ok</p></body></html>",
+              url: () => "https://example.com/articles/browser-extract",
+              close: async () => {},
+            }),
+            close: async () => {},
+          }),
+          close: async () => {},
+        }),
+      },
+    }));
+
+    try {
+      const result = await executeCli([
+        "extract",
+        "run",
+        "--url",
+        "https://example.com/articles/browser-extract",
+        "--selector",
+        "h1",
+        "--mode",
+        "browser",
+        "--provider",
+        "browser-basic",
+      ]);
+      const payload = JSON.parse(result.output);
+      const extract = Schema.decodeUnknownSync(ExtractRunResponseSchema)(payload);
+
+      expect(result.exitCode).toBe(0);
+      expect(extract.command).toBe("extract run");
+      expect(extract.data.values).toEqual(["Browser Extract"]);
+      expect(extract.data.mediation).toEqual({
+        kind: "none",
+        status: "none",
+        attemptCount: 0,
+        evidence: {
+          signals: [],
+        },
+        timings: {},
+      });
+    } finally {
+      await resetSdkBrowserPool();
+      mock.restore();
+    }
+  });
+
   it("maps NetworkError failures to the CLI error envelope", async () => {
     const result = await executeCli(
       ["access", "preview", "--url", "https://example.com/start"],
@@ -460,6 +544,15 @@ describe("cli app", () => {
       expect(result.exitCode).toBe(0);
       expect(payload.command).toBe("access preview");
       expect(payload.data.finalUrl).toBe("https://example.com/articles/effect-scrapling");
+      expect(payload.data.mediation).toEqual({
+        kind: "none",
+        status: "none",
+        attemptCount: 0,
+        evidence: {
+          signals: [],
+        },
+        timings: {},
+      });
       expect(seenOptions).toEqual([
         {
           userAgent: "CLI Browser",
@@ -551,6 +644,15 @@ describe("cli app", () => {
       expect(result.exitCode).toBe(0);
       expect(preview.command).toBe("render preview");
       expect(preview.data.execution.mode).toBe("browser");
+      expect(preview.data.mediation).toEqual({
+        kind: "none",
+        status: "none",
+        attemptCount: 0,
+        evidence: {
+          signals: [],
+        },
+        timings: {},
+      });
       expect(preview.data.status).toEqual({
         code: 200,
         ok: true,

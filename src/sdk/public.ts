@@ -26,6 +26,7 @@ import {
   AccessResourceError,
 } from "./errors.ts";
 import { type FetchClient } from "./scraper.ts";
+import { type BrowserMediationOutcome } from "./browser-mediation-model.ts";
 import {
   AccessExecutionFallbackSchema,
   AccessExecutionMetadataSchema,
@@ -97,6 +98,7 @@ export type AccessDriverExecutionResult = {
   readonly html: string;
   readonly durationMs: number;
   readonly timings: AccessDriverExecutionTimings;
+  readonly mediation?: BrowserMediationOutcome | undefined;
   readonly warnings: ReadonlyArray<string>;
 };
 

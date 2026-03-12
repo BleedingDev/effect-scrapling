@@ -27,6 +27,11 @@ export type ResolvedBrowserExecution = {
   readonly waitUntil: BrowserWaitUntil;
   readonly timeoutMs: number;
   readonly userAgent?: string | undefined;
+  readonly challengeHandling?:
+    | {
+        readonly solveCloudflare: boolean;
+      }
+    | undefined;
 };
 
 export type ResolvedBrowserFallbackExecution = {

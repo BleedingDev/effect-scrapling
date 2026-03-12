@@ -14,6 +14,17 @@ import {
 } from "./access-transport-binding.ts";
 import { BrowserRuntime, type PatchrightPage } from "./browser-pool.ts";
 import {
+  type BrowserMediationOutcome,
+  type BrowserNavigationSnapshot,
+  makeEmptyBrowserMediationOutcome,
+} from "./browser-mediation-model.ts";
+import {
+  BrowserMediationRuntime,
+  BrowserMediationRuntimeLive,
+  type BrowserMediationService,
+  resolveBrowserMediationPolicy,
+} from "./browser-mediation-runtime.ts";
+import {
   detectAccessWall,
   extractHtmlTitle,
   toAccessWallWarnings,
@@ -38,6 +49,14 @@ const BROWSER_OPERATION_TIMEOUT_GRACE_MS = 1_000;
 const DEFAULT_BROWSER_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
 const DEFAULT_USER_AGENT = "effect-scrapling/0.0.1";
+
+type BrowserExecutionStage =
+  | "route-registration"
+  | "navigation"
+  | "load-state"
+  | "challenge-resolution"
+  | "dom-read"
+  | "header-read";
 
 export type AccessProviderCapabilities = {
   readonly mode: AccessMode;
@@ -79,6 +98,7 @@ export type AccessExecutionResult = {
   readonly durationMs: number;
   readonly execution: ReturnType<typeof toExecutionMetadata>;
   readonly timings: AccessExecutionTimings;
+  readonly mediation?: BrowserMediationOutcome | undefined;
   readonly warnings: ReadonlyArray<string>;
 };
 
@@ -117,6 +137,10 @@ function roundTiming(value: number) {
   return Math.round(Math.max(0, value) * 1_000) / 1_000;
 }
 
+function shouldAttemptPostClearanceNetworkSettle(waitUntil: BrowserWaitUntil) {
+  return waitUntil !== "networkidle";
+}
+
 function countRedirectChain(request: unknown) {
   if (!request || typeof request !== "object") {
     return 0;
@@ -142,24 +166,33 @@ function countRedirectChain(request: unknown) {
   return redirectCount;
 }
 
-function resolveBrowserLoadState(
-  waitUntil: BrowserWaitUntil,
-): "load" | "domcontentloaded" | "networkidle" | undefined {
-  if (waitUntil === "commit") {
-    return undefined;
-  }
-  return waitUntil;
-}
-
 function formatBrowserOperationTimeoutDetails(input: {
   readonly url: string;
   readonly providerId: AccessProviderId;
   readonly waitUntil: BrowserWaitUntil;
   readonly browserTimeoutMs: number;
+  readonly hardTimeoutMs: number;
   readonly stage?: string | undefined;
 }) {
-  const hardTimeoutMs = input.browserTimeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
-  return `Browser access exceeded the hard timeout for ${input.url} (provider=${input.providerId}, waitUntil=${input.waitUntil}, browserTimeoutMs=${input.browserTimeoutMs}, hardTimeoutMs=${hardTimeoutMs}, stage=${input.stage ?? "unknown"}). The browser runtime likely stopped resolving or rejecting an in-flight promise.`;
+  return `Browser access exceeded the hard timeout for ${input.url} (provider=${input.providerId}, waitUntil=${input.waitUntil}, browserTimeoutMs=${input.browserTimeoutMs}, hardTimeoutMs=${input.hardTimeoutMs}, stage=${input.stage ?? "unknown"}). The browser runtime likely stopped resolving or rejecting an in-flight promise.`;
+}
+
+function resolveBrowserHardTimeoutMs(input: {
+  readonly browserTimeoutMs: number;
+  readonly challengeHandling?:
+    | NonNullable<AccessExecutionContext["browser"]>["challengeHandling"]
+    | undefined;
+}) {
+  const mediationPolicy = resolveBrowserMediationPolicy({
+    timeoutMs: input.browserTimeoutMs,
+    challengeHandling: input.challengeHandling,
+  });
+  const effectiveBrowserTimeoutMs =
+    mediationPolicy.mode === "solve"
+      ? Math.max(input.browserTimeoutMs, mediationPolicy.timeBudgetMs)
+      : input.browserTimeoutMs;
+
+  return effectiveBrowserTimeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
 }
 
 function withHardTimeout<A, E>(input: {
@@ -330,15 +363,11 @@ function executeBrowserProvider(
   context: AccessExecutionContext & {
     readonly browser: NonNullable<AccessExecutionContext["browser"]>;
   },
+  mediationRuntime: BrowserMediationService,
 ): Effect.Effect<AccessExecutionResult, BrowserError, BrowserRuntime> {
   return Effect.gen(function* () {
     const browserRuntime = yield* BrowserRuntime;
-    let currentBrowserStage:
-      | "route-registration"
-      | "navigation"
-      | "dom-read"
-      | "header-read"
-      | undefined;
+    let currentBrowserStage: BrowserExecutionStage | undefined;
     let runtimeWarnings: ReadonlyArray<string> = [];
     const transportBinding = resolveTransportBinding({
       binding: context.transportBinding ?? context.egress.transportBinding,
@@ -379,17 +408,29 @@ function executeBrowserProvider(
         },
         (page: PatchrightPage, poolWarnings) => {
           runtimeWarnings = poolWarnings ?? [];
-          let stage: "route-registration" | "navigation" | "dom-read" | "header-read" | undefined;
+          let stage: BrowserExecutionStage | undefined;
 
-          return Effect.tryPromise({
-            try: async () => {
-              const startedAt = performance.now();
-              let blockedRequestReason: string | undefined;
-              let blockedRequestCount = 0;
+          const runPageStage = <A>(
+            nextStage: Exclude<BrowserExecutionStage, "challenge-resolution">,
+            operation: () => Promise<A>,
+          ) =>
+            Effect.tryPromise({
+              try: async () => {
+                stage = nextStage;
+                currentBrowserStage = nextStage;
+                return await operation();
+              },
+              catch: (error) => error,
+            });
 
-              const routeRegistrationStartedAt = performance.now();
-              stage = "route-registration";
-              currentBrowserStage = stage;
+          return Effect.gen(function* () {
+            const startedAt = performance.now();
+            let blockedRequestReason: string | undefined;
+            let blockedRequestCount = 0;
+            let challengeWarnings: ReadonlyArray<string> = [];
+
+            const routeRegistrationStartedAt = performance.now();
+            yield* runPageStage("route-registration", async () => {
               await page.route("**/*", async (route) => {
                 const requestUrl = route.request().url();
                 const violation = getUrlPolicyViolation(new URL(requestUrl), {
@@ -405,93 +446,236 @@ function executeBrowserProvider(
 
                 await route.continue();
               });
-              const routeRegistrationDurationMs = performance.now() - routeRegistrationStartedAt;
+            });
+            const routeRegistrationDurationMs = performance.now() - routeRegistrationStartedAt;
 
-              const gotoStartedAt = performance.now();
-              stage = "navigation";
-              currentBrowserStage = stage;
-              const response = await page.goto(url, {
+            const gotoStartedAt = performance.now();
+            let response = yield* runPageStage("navigation", () =>
+              page.goto(url, {
                 waitUntil: context.browser.waitUntil,
                 timeout: context.browser.timeoutMs,
-              });
-              const gotoDurationMs = performance.now() - gotoStartedAt;
-
-              if (!response) {
-                throw new Error("navigation-response-missing");
-              }
-
-              const loadState = resolveBrowserLoadState(context.browser.waitUntil);
-              const loadStateDurationMs = loadState === undefined ? undefined : 0;
-
-              if (blockedRequestReason) {
-                throw new Error(blockedRequestReason);
-              }
-
-              const domReadStartedAt = performance.now();
-              stage = "dom-read";
-              currentBrowserStage = stage;
-              const html = await page.content();
-              const domReadDurationMs = performance.now() - domReadStartedAt;
-              const status = response.status();
-              const finalUrl = resolveValidatedUrl(page.url()).toString();
-              const headerReadStartedAt = performance.now();
-              stage = "header-read";
-              currentBrowserStage = stage;
-              const headers = await response.allHeaders();
-              const headerReadDurationMs = performance.now() - headerReadStartedAt;
-              const wallAnalysis = detectAccessWall({
-                statusCode: status,
-                requestedUrl: url,
-                finalUrl,
-                title: extractHtmlTitle(html),
-                text: html,
-              });
-              if (status >= 400 && !wallAnalysis.likelyAccessWall) {
-                throw new Error(`HTTP ${status}`);
-              }
-              const requestGetter = Reflect.get(response, "request");
-              const redirectCount =
-                typeof requestGetter === "function"
-                  ? countRedirectChain(requestGetter.call(response))
-                  : 0;
-              stage = undefined;
-              currentBrowserStage = undefined;
-
-              return {
-                url,
-                finalUrl,
-                status,
-                contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
-                contentLength: html.length,
-                html,
-                durationMs: Math.max(0.001, roundTiming(performance.now() - startedAt)),
-                execution: toExecutionMetadata(context),
-                timings: {
-                  requestCount: redirectCount + 1,
-                  redirectCount,
-                  blockedRequestCount,
-                  routeRegistrationDurationMs: roundTiming(routeRegistrationDurationMs),
-                  gotoDurationMs: roundTiming(gotoDurationMs),
-                  ...(loadState === undefined
-                    ? {}
-                    : { loadStateDurationMs: roundTiming(loadStateDurationMs ?? 0) }),
-                  domReadDurationMs: roundTiming(domReadDurationMs),
-                  headerReadDurationMs: roundTiming(headerReadDurationMs),
-                },
-                warnings: wallAnalysis.likelyAccessWall
-                  ? toAccessWallWarnings(wallAnalysis.signals)
-                  : [],
-              } satisfies AccessExecutionResult;
-            },
-            catch: (error) =>
-              new BrowserError({
-                message: `Browser access failed for ${url}`,
-                details:
-                  stage === undefined
-                    ? formatUnknownError(error)
-                    : `${stage}: ${formatUnknownError(error)}`,
               }),
-          });
+            );
+            let gotoDurationMs = performance.now() - gotoStartedAt;
+
+            if (!response) {
+              return yield* Effect.fail(new Error("navigation-response-missing"));
+            }
+            const initialResponse = response;
+
+            if (blockedRequestReason) {
+              return yield* Effect.fail(new Error(blockedRequestReason));
+            }
+
+            const initialDomReadStartedAt = performance.now();
+            let html = yield* runPageStage("dom-read", () => page.content());
+            let domReadDurationMs = performance.now() - initialDomReadStartedAt;
+            const initialHeaderReadStartedAt = performance.now();
+            let headers = yield* runPageStage("header-read", () => initialResponse.allHeaders());
+            let headerReadDurationMs = performance.now() - initialHeaderReadStartedAt;
+            const initialStatus = initialResponse.status();
+            const initialFinalUrl = resolveValidatedUrl(page.url()).toString();
+            const initialRequestGetter = Reflect.get(initialResponse, "request");
+            const initialRedirectCount =
+              typeof initialRequestGetter === "function"
+                ? countRedirectChain(initialRequestGetter.call(initialResponse))
+                : 0;
+            const initialSnapshot = {
+              requestedUrl: url,
+              finalUrl: initialFinalUrl,
+              status: initialStatus,
+              title: extractHtmlTitle(html) ?? null,
+              contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
+              htmlLength: html.length,
+              redirectCount: initialRedirectCount,
+            } satisfies BrowserNavigationSnapshot;
+
+            const mediationStartedAt = performance.now();
+            stage = "challenge-resolution";
+            currentBrowserStage = stage;
+            const mediationResolution = yield* mediationRuntime.mediate({
+              page,
+              pageContent: html,
+              initialSnapshot,
+              timeoutMs: context.browser.timeoutMs,
+              challengeHandling: context.browser.challengeHandling,
+            });
+            const mediationDurationMs = performance.now() - mediationStartedAt;
+            let mediationOutcome: BrowserMediationOutcome =
+              mediationResolution.outcome.status === "none"
+                ? makeEmptyBrowserMediationOutcome()
+                : {
+                    ...mediationResolution.outcome,
+                    timings: {
+                      ...mediationResolution.outcome.timings,
+                      resolutionMs: roundTiming(mediationDurationMs),
+                    },
+                  };
+            challengeWarnings = [...mediationResolution.warnings];
+            const shouldFollowUpNavigation =
+              mediationResolution.followUpNavigationRequired ||
+              (mediationResolution.currentPageRefreshRequired &&
+                mediationResolution.postClearanceStrategy === "reload-target");
+            const shouldRefreshCurrentPage =
+              mediationResolution.currentPageRefreshRequired && !shouldFollowUpNavigation;
+
+            if (shouldRefreshCurrentPage || shouldFollowUpNavigation) {
+              challengeWarnings = [
+                ...challengeWarnings,
+                `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
+                `cloudflare-solver:post-clearance-strategy:${mediationResolution.postClearanceStrategy}`,
+              ];
+              if (shouldRefreshCurrentPage) {
+                const mediatedDomReadStartedAt = performance.now();
+                html = yield* runPageStage("dom-read", () => page.content());
+                domReadDurationMs += performance.now() - mediatedDomReadStartedAt;
+              }
+            }
+
+            if (shouldFollowUpNavigation) {
+              const followUpNavigationStartedAt = performance.now();
+              response = yield* runPageStage("navigation", () =>
+                page.goto(url, {
+                  waitUntil: context.browser.waitUntil,
+                  timeout: context.browser.timeoutMs,
+                }),
+              );
+              if (!response) {
+                return yield* Effect.fail(new Error("challenge-follow-up-response-missing"));
+              }
+              const followUpResponse = response;
+              if (blockedRequestReason) {
+                return yield* Effect.fail(new Error(blockedRequestReason));
+              }
+              const followUpNavigationDurationMs = performance.now() - followUpNavigationStartedAt;
+              gotoDurationMs += followUpNavigationDurationMs;
+              if (shouldAttemptPostClearanceNetworkSettle(context.browser.waitUntil)) {
+                const postClearanceLoadStateReached = yield* runPageStage("load-state", () =>
+                  page.waitForLoadState("networkidle", {
+                    timeout: context.browser.timeoutMs,
+                  }),
+                ).pipe(
+                  Effect.match({
+                    onFailure: () => false,
+                    onSuccess: () => true,
+                  }),
+                );
+                if (!postClearanceLoadStateReached) {
+                  challengeWarnings = [
+                    ...challengeWarnings,
+                    "cloudflare-solver:post-clearance-networkidle-unreached",
+                  ];
+                }
+              }
+              const followUpDomReadStartedAt = performance.now();
+              html = yield* runPageStage("dom-read", () => page.content());
+              domReadDurationMs += performance.now() - followUpDomReadStartedAt;
+              if (blockedRequestReason) {
+                return yield* Effect.fail(new Error(blockedRequestReason));
+              }
+              if (mediationResolution.outcome.status !== "none") {
+                challengeWarnings = [
+                  ...challengeWarnings,
+                  `cloudflare-solver:follow-up-navigation-ms:${roundTiming(
+                    followUpNavigationDurationMs,
+                  )}`,
+                ];
+                mediationOutcome = {
+                  ...mediationOutcome,
+                  timings: {
+                    ...mediationOutcome.timings,
+                    followUpNavigationMs: roundTiming(followUpNavigationDurationMs),
+                  },
+                };
+              }
+              const followUpHeaderReadStartedAt = performance.now();
+              headers = yield* runPageStage("header-read", () => followUpResponse.allHeaders());
+              headerReadDurationMs += performance.now() - followUpHeaderReadStartedAt;
+            }
+            const status = response.status();
+            const finalUrl = resolveValidatedUrl(page.url()).toString();
+            const wallAnalysis = detectAccessWall({
+              statusCode: status,
+              requestedUrl: url,
+              finalUrl,
+              title: extractHtmlTitle(html),
+              text: html,
+            });
+            if (status >= 400 && !wallAnalysis.likelyAccessWall) {
+              return yield* Effect.fail(new Error(`HTTP ${status}`));
+            }
+            if (mediationOutcome.status === "cleared" && wallAnalysis.likelyAccessWall) {
+              mediationOutcome = {
+                ...mediationOutcome,
+                status: "unresolved",
+                failureReason: "no-progress",
+              };
+              challengeWarnings = [...challengeWarnings, "cloudflare-solver:clearance-unconfirmed"];
+            }
+            const requestGetter = Reflect.get(response, "request");
+            const finalRedirectCount =
+              typeof requestGetter === "function"
+                ? countRedirectChain(requestGetter.call(response))
+                : 0;
+            const redirectCount = shouldFollowUpNavigation
+              ? initialRedirectCount + finalRedirectCount
+              : finalRedirectCount;
+            const finalSnapshot = {
+              requestedUrl: url,
+              finalUrl,
+              status,
+              title: extractHtmlTitle(html) ?? null,
+              contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
+              htmlLength: html.length,
+              redirectCount: finalRedirectCount,
+            } satisfies BrowserNavigationSnapshot;
+            stage = undefined;
+            currentBrowserStage = undefined;
+
+            return {
+              url,
+              finalUrl,
+              status,
+              contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
+              contentLength: html.length,
+              html,
+              durationMs: Math.max(0.001, roundTiming(performance.now() - startedAt)),
+              execution: toExecutionMetadata(context),
+              timings: {
+                requestCount: redirectCount + 1 + (shouldFollowUpNavigation ? 1 : 0),
+                redirectCount,
+                blockedRequestCount,
+                routeRegistrationDurationMs: roundTiming(routeRegistrationDurationMs),
+                gotoDurationMs: roundTiming(gotoDurationMs),
+                domReadDurationMs: roundTiming(domReadDurationMs),
+                headerReadDurationMs: roundTiming(headerReadDurationMs),
+              },
+              mediation:
+                mediationOutcome.status === "none"
+                  ? mediationOutcome
+                  : {
+                      ...mediationOutcome,
+                      evidence: {
+                        ...mediationOutcome.evidence,
+                        postNavigation: finalSnapshot,
+                      },
+                    },
+              warnings: wallAnalysis.likelyAccessWall
+                ? [...toAccessWallWarnings(wallAnalysis.signals), ...challengeWarnings]
+                : challengeWarnings,
+            } satisfies AccessExecutionResult;
+          }).pipe(
+            Effect.mapError(
+              (error) =>
+                new BrowserError({
+                  message: `Browser access failed for ${url}`,
+                  details:
+                    stage === undefined
+                      ? formatUnknownError(error)
+                      : `${stage}: ${formatUnknownError(error)}`,
+                }),
+            ),
+          );
         },
       )
       .pipe(
@@ -511,9 +695,13 @@ function executeBrowserProvider(
         ),
       );
 
+    const hardTimeoutMs = resolveBrowserHardTimeoutMs({
+      browserTimeoutMs: context.browser.timeoutMs,
+      challengeHandling: context.browser.challengeHandling,
+    });
     return yield* withHardTimeout({
       effect: browserAccessEffect,
-      timeoutMs: context.browser.timeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS,
+      timeoutMs: hardTimeoutMs,
       onTimeout: () =>
         new BrowserError({
           message: `Browser access failed for ${url}`,
@@ -522,6 +710,7 @@ function executeBrowserProvider(
             providerId: context.providerId,
             waitUntil: context.browser.waitUntil,
             browserTimeoutMs: context.browser.timeoutMs,
+            hardTimeoutMs,
             stage: currentBrowserStage,
           }),
           ...(runtimeWarnings.length === 0 ? {} : { warnings: runtimeWarnings }),
@@ -544,6 +733,7 @@ export function makeHttpAccessProvider(id: "http-basic" | "http-impersonated"): 
 
 export function makeBrowserAccessProvider(
   id: typeof DEFAULT_BROWSER_PROVIDER_ID | typeof DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
+  mediationRuntime: BrowserMediationService,
 ): AccessProvider {
   return {
     id,
@@ -569,7 +759,11 @@ export function makeBrowserAccessProvider(
         );
       }
 
-      return executeBrowserProvider(url, { ...context, browser: context.browser });
+      return executeBrowserProvider(
+        url,
+        { ...context, browser: context.browser },
+        mediationRuntime,
+      );
     },
   };
 }
@@ -674,15 +868,18 @@ export function makeStaticAccessProviderRegistry(
 export function makeAccessProviderRegistryLive() {
   return Layer.effect(
     AccessProviderRegistry,
-    Effect.succeed(
-      makeStaticAccessProviderRegistry({
+    Effect.gen(function* () {
+      const mediationRuntime = yield* BrowserMediationRuntime;
+      return makeStaticAccessProviderRegistry({
         "http-basic": makeHttpAccessProvider("http-basic"),
         "http-impersonated": makeHttpAccessProvider("http-impersonated"),
-        "browser-basic": makeBrowserAccessProvider("browser-basic"),
-        "browser-stealth": makeBrowserAccessProvider("browser-stealth"),
-      } satisfies Readonly<Record<AccessProviderId, AccessProvider>>),
-    ),
+        "browser-basic": makeBrowserAccessProvider("browser-basic", mediationRuntime),
+        "browser-stealth": makeBrowserAccessProvider("browser-stealth", mediationRuntime),
+      } satisfies Readonly<Record<AccessProviderId, AccessProvider>>);
+    }),
   );
 }
 
-export const AccessProviderRegistryLive = makeAccessProviderRegistryLive();
+export const AccessProviderRegistryLive = makeAccessProviderRegistryLive().pipe(
+  Layer.provide(BrowserMediationRuntimeLive),
+);

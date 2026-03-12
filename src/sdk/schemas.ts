@@ -1,4 +1,5 @@
 import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from "effect";
+import { BrowserMediationOutcomeSchema } from "./browser-mediation-model.ts";
 
 const PositiveInt = Schema.Int.check(Schema.isGreaterThan(0));
 const NonNegativeInt = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
@@ -93,6 +94,11 @@ export const BrowserExecutionOptionsSchema = Schema.Struct({
   waitUntil: Schema.optional(BrowserWaitUntilInputSchema),
   timeoutMs: Schema.optional(PositiveIntInputSchema),
   userAgent: Schema.optional(NonEmptyTrimmedString),
+  challengeHandling: Schema.optional(
+    Schema.Struct({
+      solveCloudflare: BooleanInputSchema.pipe(Schema.withDecodingDefault(() => false)),
+    }),
+  ),
 });
 
 export const HttpExecutionOptionsSchema = Schema.Struct({
@@ -171,6 +177,7 @@ export const AccessPreviewResponseSchema = Schema.Struct({
     contentLength: NonNegativeInt,
     durationMs: NonNegativeNumber,
     execution: AccessExecutionMetadataSchema,
+    mediation: Schema.optional(BrowserMediationOutcomeSchema),
     timings: Schema.optional(
       Schema.Struct({
         requestCount: PositiveInt,
@@ -249,6 +256,7 @@ export const RenderPreviewResponseSchema = Schema.Struct({
   data: Schema.Struct({
     url: Schema.String,
     execution: AccessExecutionMetadataSchema,
+    mediation: Schema.optional(BrowserMediationOutcomeSchema),
     status: RenderPreviewStatusSchema,
     artifacts: RenderPreviewArtifactBundleSchema,
   }),
@@ -266,6 +274,7 @@ export const ExtractRunResponseSchema = Schema.Struct({
     values: Schema.Array(Schema.String),
     durationMs: NonNegativeNumber,
     execution: AccessExecutionMetadataSchema,
+    mediation: Schema.optional(BrowserMediationOutcomeSchema),
   }),
   warnings: Schema.Array(Schema.String),
 });

@@ -30,6 +30,11 @@ import {
 } from "./access-provider-ids.ts";
 import { makeBrowserAccessProvider, makeHttpAccessProvider } from "./access-provider-runtime.ts";
 import {
+  BrowserMediationRuntime,
+  makeBrowserMediationService,
+  type BrowserMediationService,
+} from "./browser-mediation-runtime.ts";
+import {
   DEFAULT_EGRESS_PROFILE_ID,
   DEFAULT_HTTP_CONNECT_EGRESS_PROFILE_ID,
   DEFAULT_IDENTITY_PROFILE_ID,
@@ -107,15 +112,21 @@ export function makeAccessCoreRuntimeModule(input: {
   readonly leasedEgressPlugin: EgressAllocationPlugin<unknown>;
   readonly leasedIdentityPluginId: string;
   readonly leasedIdentityPlugin: IdentityAllocationPlugin<unknown>;
+  readonly mediationRuntime?: BrowserMediationService | undefined;
 }) {
+  const mediationRuntime = input.mediationRuntime;
   return {
     id: AccessCoreRuntimeModuleId,
     providers: {
       "http-basic": makeHttpAccessProvider("http-basic"),
       "http-impersonated": makeHttpAccessProvider("http-impersonated"),
-      [DEFAULT_BROWSER_PROVIDER_ID]: makeBrowserAccessProvider(DEFAULT_BROWSER_PROVIDER_ID),
+      [DEFAULT_BROWSER_PROVIDER_ID]: makeBrowserAccessProvider(
+        DEFAULT_BROWSER_PROVIDER_ID,
+        mediationRuntime ?? makeBrowserMediationService(),
+      ),
       [DEFAULT_STEALTH_BROWSER_PROVIDER_ID]: makeBrowserAccessProvider(
         DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
+        mediationRuntime ?? makeBrowserMediationService(),
       ),
     },
     egressPlugins: {
@@ -313,6 +324,7 @@ export function makeBuiltinAccessRuntimeModules(input: {
     const leasedIdentityPlugin = yield* makeLeaseBackedIdentityPlugin({
       manager: input.identityLeaseManager,
     });
+    const mediationRuntime = yield* BrowserMediationRuntime;
 
     return [
       makeAccessCoreRuntimeModule({
@@ -320,6 +332,7 @@ export function makeBuiltinAccessRuntimeModules(input: {
         leasedEgressPlugin,
         leasedIdentityPluginId: leasedIdentityPlugin.id,
         leasedIdentityPlugin,
+        mediationRuntime,
       }),
       HttpConnectAccessRuntimeModule,
       Socks5AccessRuntimeModule,

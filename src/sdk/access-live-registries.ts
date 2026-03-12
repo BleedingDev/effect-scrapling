@@ -13,13 +13,16 @@ import {
   AccessProviderRegistry,
   makeStaticAccessProviderRegistry,
 } from "./access-provider-runtime.ts";
+import { BrowserMediationRuntimeLive } from "./browser-mediation-runtime.ts";
 import {
   AccessProfileRegistry,
   makeStaticAccessProfileRegistry,
 } from "./access-profile-runtime.ts";
 
 export const AccessModuleRegistryLive = makeAccessModuleRegistryLiveLayer().pipe(
-  Layer.provide(Layer.mergeAll(EgressLeaseManagerLive, IdentityLeaseManagerLive)),
+  Layer.provide(
+    Layer.mergeAll(EgressLeaseManagerLive, IdentityLeaseManagerLive, BrowserMediationRuntimeLive),
+  ),
 );
 
 export const AccessModuleCompositionLive = Layer.effect(

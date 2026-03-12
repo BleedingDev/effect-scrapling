@@ -11,10 +11,11 @@ import {
 import {
   type AccessProvider,
   type AccessProviderDescriptor,
+  AccessProviderRegistryLive,
   AccessProviderRegistry,
-  makeAccessProviderRegistryLive,
   makeStaticAccessProviderRegistry,
 } from "../../src/sdk/access-provider-runtime.ts";
+import { BrowserMediationRuntimeLive } from "../../src/sdk/browser-mediation-runtime.ts";
 import {
   AccessSelectionPolicyLive,
   AccessSelectionPolicy,
@@ -76,7 +77,7 @@ function makeProviderRegistry(descriptors: ReadonlyArray<AccessProviderDescripto
 }
 
 function makeAccessExecutionRuntimeLayer(
-  providerRegistryLayer = makeAccessProviderRegistryLive(),
+  providerRegistryLayer = AccessProviderRegistryLive,
   selectionPolicyLayer: Layer.Layer<
     AccessSelectionPolicy,
     never,
@@ -94,6 +95,7 @@ function makeAccessExecutionRuntimeLayer(
   return AccessExecutionRuntimeLive.pipe(
     Layer.provide(
       Layer.mergeAll(
+        BrowserMediationRuntimeLive,
         Layer.succeed(
           AccessModuleRegistry,
           makeStaticAccessModuleRegistry({
@@ -172,7 +174,7 @@ function resolveExecutionWithSelectionPolicy(
 ) {
   const providerRegistryLayer =
     providerRegistry === undefined
-      ? makeAccessProviderRegistryLive()
+      ? AccessProviderRegistryLive
       : Layer.succeed(AccessProviderRegistry, providerRegistry);
   const selectionPolicyLayer = Layer.succeed(AccessSelectionPolicy, policy);
 

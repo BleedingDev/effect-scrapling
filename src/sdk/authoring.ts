@@ -77,16 +77,35 @@ function normalizeExecutionPayload(payload: JsonObject): JsonObject | undefined 
     assertAllowedKeys('"execution.http"', httpPayload, ["userAgent"]);
   }
 
-  const browserPayload =
+  const rawBrowserPayload =
     executionPayload.browser === undefined
       ? undefined
       : decodeJsonObject('"execution.browser"', executionPayload.browser);
-  if (browserPayload !== undefined) {
-    assertAllowedKeys('"execution.browser"', browserPayload, [
+  let browserPayload = rawBrowserPayload;
+  if (rawBrowserPayload !== undefined) {
+    assertAllowedKeys('"execution.browser"', rawBrowserPayload, [
       "waitUntil",
       "timeoutMs",
       "userAgent",
+      "challengeHandling",
     ]);
+
+    const challengeHandlingPayload =
+      rawBrowserPayload.challengeHandling === undefined
+        ? undefined
+        : decodeJsonObject(
+            '"execution.browser.challengeHandling"',
+            rawBrowserPayload.challengeHandling,
+          );
+    if (challengeHandlingPayload !== undefined) {
+      assertAllowedKeys('"execution.browser.challengeHandling"', challengeHandlingPayload, [
+        "solveCloudflare",
+      ]);
+      browserPayload = {
+        ...rawBrowserPayload,
+        challengeHandling: challengeHandlingPayload,
+      };
+    }
   }
 
   const fallbackPayload =
@@ -247,6 +266,7 @@ function buildCliExecutionPayload(options: CliOptions): JsonObject | undefined {
   const browserWaitUntil = parseNonEmptyString("browser-wait-until", options["browser-wait-until"]);
   const browserTimeoutMs = parseNonEmptyString("browser-timeout-ms", options["browser-timeout-ms"]);
   const browserUserAgent = parseNonEmptyString("browser-user-agent", options["browser-user-agent"]);
+  const solveCloudflare = parseFlagOrValue("solve-cloudflare", options["solve-cloudflare"]);
 
   const http: MutableJsonObject = {};
   if (httpUserAgent !== undefined) {
@@ -262,6 +282,11 @@ function buildCliExecutionPayload(options: CliOptions): JsonObject | undefined {
   }
   if (browserUserAgent !== undefined) {
     browser.userAgent = browserUserAgent;
+  }
+  if (solveCloudflare !== undefined) {
+    browser.challengeHandling = {
+      solveCloudflare,
+    };
   }
 
   const execution: MutableJsonObject = {};

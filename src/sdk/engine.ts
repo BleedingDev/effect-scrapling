@@ -14,6 +14,8 @@ import {
   EgressLeaseManagerService,
   IdentityLeaseManagerService,
 } from "./access-allocation-plugin-runtime.ts";
+import { BrowserMediationRuntimeLive } from "./browser-mediation-runtime.ts";
+import { BrowserMediationRuntime } from "./browser-mediation-runtime.ts";
 import {
   AccessQuarantinedError,
   AccessResourceError,
@@ -178,7 +180,7 @@ function makeEngineOverrides(
   | Layer.Layer<
       AccessModuleRegistry,
       never,
-      EgressLeaseManagerService | IdentityLeaseManagerService
+      EgressLeaseManagerService | IdentityLeaseManagerService | BrowserMediationRuntime
     >
   | undefined {
   if (options.modules === undefined && options.includeBuiltinModules !== false) {
@@ -200,7 +202,7 @@ function makeEngineOverrides(
         modules: [...builtinModules, ...(options.modules ?? [])],
       });
     }),
-  );
+  ).pipe(Layer.provide(BrowserMediationRuntimeLive));
 }
 
 function provideFetchClient<A, E, R>(

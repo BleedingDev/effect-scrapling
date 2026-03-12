@@ -2,9 +2,9 @@ import { Effect, Layer, Option, ServiceMap } from "effect";
 import { type AccessHealthSnapshot } from "@effect-scrapling/foundation-core/access-health-runtime";
 import {
   BuiltinAccessProviderDescriptors,
+  AccessProviderRegistryLive,
   type AccessProviderDescriptor,
   AccessProviderRegistry,
-  makeAccessProviderRegistryLive,
 } from "./access-provider-runtime.ts";
 import {
   DEFAULT_BROWSER_PROVIDER_ID,
@@ -598,7 +598,7 @@ export const AccessSelectionPolicyLive = Layer.succeed(AccessSelectionPolicy, {
     }),
 });
 
-const SharedAccessProviderRegistryLive = makeAccessProviderRegistryLive();
+const SharedAccessProviderRegistryLive = AccessProviderRegistryLive;
 
 export const AccessSelectionPolicyEnvironmentLive = Layer.mergeAll(
   SharedAccessProviderRegistryLive,

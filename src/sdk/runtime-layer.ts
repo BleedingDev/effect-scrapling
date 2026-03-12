@@ -63,11 +63,16 @@ import {
 } from "./access-profile-policy-runtime.ts";
 import { AccessExecutionRuntime, AccessExecutionRuntimeLive } from "./access-runtime.ts";
 import { BrowserRuntime, BrowserRuntimeLive } from "./browser-pool.ts";
+import {
+  BrowserMediationRuntime,
+  BrowserMediationRuntimeLive,
+} from "./browser-mediation-runtime.ts";
 import { FetchService, FetchServiceLive } from "./fetch-service.ts";
 import { SharedAccessHealthSignalsLive } from "./access-health-shared-runtime.ts";
 
 export type SdkRuntimeServices =
   | BrowserRuntime
+  | BrowserMediationRuntime
   | AccessProfileRegistry
   | AccessProfileSelectionStrategy
   | AccessProfileSelectionHealthSignalsGateway
@@ -113,7 +118,9 @@ const SharedHealthSelectionServicesLive = Layer.mergeAll(
 );
 
 const ProvidedAccessModuleRegistryLive = makeAccessModuleRegistryLiveLayer().pipe(
-  Layer.provide(Layer.mergeAll(EgressLeaseManagerLive, IdentityLeaseManagerLive)),
+  Layer.provide(
+    Layer.mergeAll(EgressLeaseManagerLive, IdentityLeaseManagerLive, BrowserMediationRuntimeLive),
+  ),
 );
 
 const ProvidedAccessModuleCompositionLive = Layer.effect(
@@ -261,6 +268,7 @@ export const SdkRuntimeDependenciesLive = Layer.mergeAll(
   SharedHealthSelectionServicesLive,
   ProvidedAccessProviderRegistryLive,
   BrowserRuntimeLive,
+  BrowserMediationRuntimeLive,
   ProvidedAccessProgramLinkerLive,
   AccessSelectionStrategyLive,
   ProvidedAccessSelectionPolicyLive,
@@ -341,9 +349,15 @@ const rebuildDerivedRuntimeServices = <ROverrides>(
       IdentityLeaseManagerService,
       overrides,
     );
+    const overriddenBrowserMediationRuntime = overrideServiceContext(
+      BrowserMediationRuntime,
+      overrides,
+    );
     const resolvedAccessModuleRegistry =
       overriddenAccessModuleRegistry === undefined
-        ? overriddenEgressLeaseManager === undefined && overriddenIdentityLeaseManager === undefined
+        ? overriddenEgressLeaseManager === undefined &&
+          overriddenIdentityLeaseManager === undefined &&
+          overriddenBrowserMediationRuntime === undefined
           ? singleServiceContext(
               AccessModuleRegistry,
               ServiceMap.get(context, AccessModuleRegistry),
@@ -354,6 +368,7 @@ const rebuildDerivedRuntimeServices = <ROverrides>(
                   Layer.mergeAll(
                     contextServiceLayer(EgressLeaseManagerService, context),
                     contextServiceLayer(IdentityLeaseManagerService, context),
+                    contextServiceLayer(BrowserMediationRuntime, context),
                   ),
                 ),
               ),
