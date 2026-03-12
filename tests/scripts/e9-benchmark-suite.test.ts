@@ -14,6 +14,7 @@ import {
 } from "../../src/e9-benchmark-suite.ts";
 import { E9HighFrictionCanaryArtifactSchema } from "../../src/e9-high-friction-canary.ts";
 import { E9ScraplingParityArtifactSchema } from "../../src/e9-scrapling-parity.ts";
+import { makePreferredPathOverrideWarning } from "../../src/sdk/access-health-warning-runtime.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import {
   formatE9BenchmarkSuiteProgressEvent,
@@ -22,6 +23,15 @@ import {
 } from "../../scripts/benchmarks/e9-benchmark-suite.ts";
 
 describe("e9 benchmark suite", () => {
+  const legacyPreferredPathOverrideWarnings = {
+    egress:
+      'Selection policy chose egress "leased-direct" instead of preferred "direct"; access health signals rate the preferred path as less healthy.',
+    identity:
+      'Selection policy chose identity "leased-default" instead of preferred "default"; access health signals rate the preferred path as less healthy.',
+    provider:
+      'Selection policy chose provider "browser-basic" instead of preferred "http-basic"; access health signals rate the preferred provider as less healthy.',
+  } as const;
+
   it("parses CLI options", () => {
     expect(
       parseOptions([
@@ -343,10 +353,16 @@ describe("e9 benchmark suite", () => {
     expect(summary).toBeDefined();
     delete summary?.topRemoteFailureCategories;
     delete summary?.topRemoteFailureDomains;
+    delete summary?.preferredPathOverrideCount;
+    delete summary?.topPreferredPathOverrideDomains;
+    delete summary?.topPreferredPathOverrideKinds;
 
     const decoded = Schema.decodeUnknownSync(E9BenchmarkSuiteArtifactSchema)(legacyArtifact);
     expect(decoded.summary?.topRemoteFailureCategories).toBeUndefined();
     expect(decoded.summary?.topRemoteFailureDomains).toBeUndefined();
+    expect(decoded.summary?.preferredPathOverrideCount).toBeUndefined();
+    expect(decoded.summary?.topPreferredPathOverrideDomains).toBeUndefined();
+    expect(decoded.summary?.topPreferredPathOverrideKinds).toBeUndefined();
   });
 
   it("formats legacy mixed-domain summaries that do not yet carry per-category counts", () => {
@@ -497,6 +513,148 @@ describe("e9 benchmark suite", () => {
     expect(artifact.recommendations).toContain(
       "Timeout-heavy domains to inspect first: alpha.example.",
     );
+  });
+
+  it("surfaces access-health-driven preferred-path override drift separately from hard local failures", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http", "browser"],
+        httpProfiles: ["effect-http"],
+        browserProfiles: ["effect-browser"],
+        httpConcurrency: [1],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-http-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/http-a",
+            pageType: "listing",
+            title: "Alpha A",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-http-beta",
+            domain: "beta.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://beta.example/http-b",
+            pageType: "listing",
+            title: "Beta B",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-browser-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/browser-a",
+            pageType: "product",
+            title: "Alpha Browser",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: page.url,
+                warnings: page.url.endsWith("/http-a")
+                  ? [
+                      makePreferredPathOverrideWarning({
+                        kind: "egress",
+                        selectedId: "leased-direct",
+                        preferredId: "direct",
+                      }),
+                      makePreferredPathOverrideWarning({
+                        kind: "identity",
+                        selectedId: "leased-default",
+                        preferredId: "default",
+                      }),
+                    ]
+                  : page.url.endsWith("/http-b")
+                    ? [
+                        makePreferredPathOverrideWarning({
+                          kind: "provider",
+                          selectedId: "browser-basic",
+                          preferredId: "http-basic",
+                        }),
+                      ]
+                    : [],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: page.url,
+                warnings: page.url.endsWith("/browser-a")
+                  ? [
+                      makePreferredPathOverrideWarning({
+                        kind: "egress",
+                        selectedId: "leased-direct",
+                        preferredId: "direct",
+                      }),
+                    ]
+                  : [],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.preferredPathOverrideCount).toBe(3);
+    expect(artifact.summary?.topPreferredPathOverrideDomains).toEqual([
+      { key: "alpha.example", count: 2 },
+      { key: "beta.example", count: 1 },
+    ]);
+    expect(artifact.summary?.topPreferredPathOverrideKinds).toEqual([
+      { key: "egress", count: 2 },
+      { key: "identity", count: 1 },
+      { key: "provider", count: 1 },
+    ]);
+    expect(artifact.warnings).toContain(
+      "Access-health-driven preferred-path overrides affected 3 attempts; success and throughput may reflect fallback provider, egress or identity choices instead of the preferred route.",
+    );
+    expect(artifact.warnings).toContain(
+      "Preferred-path overrides cluster on alpha.example (2 attempts).",
+    );
+    expect(artifact.warnings).toContain("Top preferred-path override kind: egress (2 attempts).");
+    expect(artifact.recommendations).toContain(
+      "Stabilize or isolate access-health-driven provider, egress, or identity overrides before comparing benchmark trends against the preferred path.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Preferred-path override domains to inspect first: alpha.example, beta.example.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Inspect egress health-scoring drift before treating throughput or success changes as domain behavior.",
+    );
+    expect(artifact.summary?.topLocalFailureCategories).toEqual([]);
   });
 
   it("merges runtime warnings with locally detectable access-wall signals", () => {
@@ -4591,6 +4749,9 @@ describe("e9 benchmark suite", () => {
             topRemoteFailureCategories: [],
             topBrowserFailureCategories: [],
             topLocalFailureCategories: [],
+            preferredPathOverrideCount: 0,
+            topPreferredPathOverrideDomains: [],
+            topPreferredPathOverrideKinds: [],
           },
           warnings: ["Skipped phases: browser, scrapling, canary."],
           recommendations: [
@@ -4642,6 +4803,9 @@ describe("e9 benchmark suite", () => {
         topRemoteFailureCategories: [],
         topBrowserFailureCategories: [],
         topLocalFailureCategories: [],
+        preferredPathOverrideCount: 0,
+        topPreferredPathOverrideDomains: [],
+        topPreferredPathOverrideKinds: [],
       },
       warnings: ["Skipped phases: browser, scrapling, canary."],
       recommendations: ["Use the full-corpus preset when you need definitive release evidence."],
@@ -4922,6 +5086,121 @@ describe("e9 benchmark suite", () => {
     expect(merged.httpCorpus.sweeps[0]?.parallelEfficiency).toBe(1);
     expect(merged.httpCorpus.sweeps[1]?.parallelEfficiency).toBeLessThanOrEqual(1);
     expect(merged.browserCorpus.sweeps[0]?.profile).toBe("patchright-browser");
+  });
+
+  it("recomputes preferred-path override diagnostics when merging partial artifacts", async () => {
+    const pages = [
+      {
+        siteId: "site-alpha",
+        domain: "alpha.example",
+        kind: "retailer",
+        state: "healthy",
+        url: "https://alpha.example/p/1",
+        pageType: "product",
+        title: "Alpha Product",
+        challengeSignals: [],
+      },
+      {
+        siteId: "site-beta",
+        domain: "beta.example",
+        kind: "aggregator",
+        state: "partial",
+        url: "https://beta.example/search?q=tesla",
+        pageType: "search",
+        title: "Beta Search",
+        challengeSignals: [],
+      },
+    ] as const;
+
+    const httpOnly = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        benchmarkId: "suite-preferred-http",
+        phases: ["http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages,
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 25,
+                contentBytes: 1_024,
+                titlePresent: true,
+                finalUrl: page.url,
+                warnings:
+                  page.domain === "alpha.example"
+                    ? [legacyPreferredPathOverrideWarnings.egress]
+                    : [],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    const browserOnly = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        benchmarkId: "suite-preferred-browser",
+        phases: ["browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages,
+        browserProfileFactories: [
+          {
+            profile: "patchright-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 40,
+                contentBytes: 2_048,
+                titlePresent: true,
+                finalUrl: page.url,
+                warnings:
+                  page.domain === "beta.example"
+                    ? [
+                        legacyPreferredPathOverrideWarnings.provider,
+                        legacyPreferredPathOverrideWarnings.identity,
+                      ]
+                    : [],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    const merged = mergeE9BenchmarkArtifacts([httpOnly, browserOnly]);
+
+    expect(merged.summary?.preferredPathOverrideCount).toBe(2);
+    expect(merged.summary?.topPreferredPathOverrideDomains).toEqual([
+      { key: "alpha.example", count: 1 },
+      { key: "beta.example", count: 1 },
+    ]);
+    expect(merged.summary?.topPreferredPathOverrideKinds).toEqual([
+      { key: "egress", count: 1 },
+      { key: "identity", count: 1 },
+      { key: "provider", count: 1 },
+    ]);
+    expect(merged.warnings).toContain(
+      "Access-health-driven preferred-path overrides affected 2 attempts; success and throughput may reflect fallback provider, egress or identity choices instead of the preferred route.",
+    );
+    expect(merged.recommendations).toContain(
+      "Stabilize or isolate access-health-driven provider, egress, or identity overrides before comparing benchmark trends against the preferred path.",
+    );
   });
 
   it("merges reruns for the same page even when redirect targets differ", async () => {

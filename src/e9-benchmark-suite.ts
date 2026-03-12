@@ -19,6 +19,10 @@ import {
   readAccessWallSignalsFromWarnings,
 } from "./sdk/access-wall-detection.ts";
 import {
+  parsePreferredPathOverrideWarning,
+  type PreferredPathOverrideKind,
+} from "./sdk/access-health-warning-runtime.ts";
+import {
   AccessExecutionRuntime,
   DEFAULT_BROWSER_PROVIDER_ID,
   DEFAULT_HTTP_PROVIDER_ID,
@@ -320,6 +324,9 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   topBrowserRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRemoteFailureCategories: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topLocalFailureCategories: Schema.Array(BenchmarkReportItemSchema),
+  preferredPathOverrideCount: Schema.optional(NonNegativeIntSchema),
+  topPreferredPathOverrideDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topPreferredPathOverrideKinds: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRecoveredAllocationDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRecoveredAllocationProfiles: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
 });
@@ -1228,6 +1235,22 @@ function hasRecoveredBrowserAllocationWarning(warnings: ReadonlyArray<string> | 
     warnings?.some((warning) => warning.startsWith(RECOVERED_BROWSER_ALLOCATION_WARNING_PREFIX)) ??
     false
   );
+}
+
+function getPreferredPathOverrideKinds(warnings: ReadonlyArray<string> | undefined) {
+  const kinds = new Set<PreferredPathOverrideKind>();
+  for (const warning of warnings ?? []) {
+    const kind = parsePreferredPathOverrideWarning(warning);
+    if (kind !== undefined) {
+      kinds.add(kind);
+    }
+  }
+
+  return [...kinds].sort(compareStrings);
+}
+
+function hasPreferredPathOverrideWarning(warnings: ReadonlyArray<string> | undefined) {
+  return getPreferredPathOverrideKinds(warnings).length > 0;
 }
 
 function classifyAccessWallFailureCategory(
@@ -2755,6 +2778,10 @@ function buildSuiteSummary(input: {
     hasRecoveredBrowserAllocationWarning(attempt.warnings),
   );
   const browserRecoveredBrowserAllocationCount = browserRecoveredAllocationAttempts.length;
+  const preferredPathOverrideAttempts = [
+    ...input.httpCorpus.attempts,
+    ...input.browserCorpus.attempts,
+  ].filter((attempt) => hasPreferredPathOverrideWarning(attempt.warnings));
 
   return Schema.decodeUnknownSync(E9BenchmarkSuiteSummarySchema)({
     executedPhases,
@@ -2902,6 +2929,17 @@ function buildSuiteSummary(input: {
       ),
       5,
     ),
+    preferredPathOverrideCount: preferredPathOverrideAttempts.length,
+    topPreferredPathOverrideDomains: buildCountBreakdown(
+      preferredPathOverrideAttempts.map((attempt) => attempt.domain),
+      5,
+    ),
+    topPreferredPathOverrideKinds: buildCountBreakdown(
+      preferredPathOverrideAttempts.flatMap((attempt) =>
+        getPreferredPathOverrideKinds(attempt.warnings),
+      ),
+      5,
+    ),
     topBrowserRecoveredAllocationDomains: buildCountBreakdown(
       browserRecoveredAllocationAttempts.map((attempt) => attempt.domain),
       5,
@@ -2920,6 +2958,8 @@ function buildSuiteWarnings(input: {
 }) {
   const warnings = new Array<string>();
   const topRemoteFailureCategories = input.summary.topRemoteFailureCategories ?? [];
+  const topPreferredPathOverrideDomain = input.summary.topPreferredPathOverrideDomains?.[0];
+  const topPreferredPathOverrideKind = input.summary.topPreferredPathOverrideKinds?.[0];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureDomain = input.summary.topBrowserRemoteFailureDomains?.[0];
   const topBrowserRemoteFailureCategory = input.summary.topBrowserRemoteFailureCategories?.[0];
@@ -2959,6 +2999,25 @@ function buildSuiteWarnings(input: {
   ) {
     warnings.push(
       `Browser effective success rate rises to ${Math.round(input.summary.browserEffectiveSuccessRate * 1000) / 10}% when local stack failures are excluded.`,
+    );
+  }
+
+  const preferredPathOverrideCount = input.summary.preferredPathOverrideCount ?? 0;
+  if (preferredPathOverrideCount > 0) {
+    warnings.push(
+      `Access-health-driven preferred-path overrides affected ${preferredPathOverrideCount} attempts; success and throughput may reflect fallback provider, egress or identity choices instead of the preferred route.`,
+    );
+  }
+
+  if (topPreferredPathOverrideDomain !== undefined && topPreferredPathOverrideDomain.count > 0) {
+    warnings.push(
+      `Preferred-path overrides cluster on ${topPreferredPathOverrideDomain.key} (${topPreferredPathOverrideDomain.count} attempts).`,
+    );
+  }
+
+  if (topPreferredPathOverrideKind !== undefined && topPreferredPathOverrideKind.count > 0) {
+    warnings.push(
+      `Top preferred-path override kind: ${topPreferredPathOverrideKind.key} (${topPreferredPathOverrideKind.count} attempts).`,
     );
   }
 
@@ -3049,6 +3108,8 @@ function buildSuiteRecommendations(input: {
     input.summary.topBrowserResponseFailureDomains ??
     mergeCountBreakdowns([topNavigationHttpErrorFailureDomains, topHeaderReadFailureDomains], 5);
   const topMixedRemoteFailureDomains = input.summary.topMixedRemoteFailureDomains ?? [];
+  const topPreferredPathOverrideDomains = input.summary.topPreferredPathOverrideDomains ?? [];
+  const topPreferredPathOverrideKinds = input.summary.topPreferredPathOverrideKinds ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureCategories =
     input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
@@ -3081,6 +3142,37 @@ function buildSuiteRecommendations(input: {
     recommendations.push(
       "Review browser failure categories and top failing domains before treating browser fallback as production-ready.",
     );
+  }
+
+  const preferredPathOverrideCount = input.summary.preferredPathOverrideCount ?? 0;
+  if (preferredPathOverrideCount > 0) {
+    recommendations.push(
+      "Stabilize or isolate access-health-driven provider, egress, or identity overrides before comparing benchmark trends against the preferred path.",
+    );
+    if (topPreferredPathOverrideDomains.length > 0) {
+      recommendations.push(
+        `Preferred-path override domains to inspect first: ${formatTopDomains(topPreferredPathOverrideDomains)}.`,
+      );
+    }
+
+    const topPreferredPathOverrideKind = topPreferredPathOverrideKinds[0]?.key;
+    switch (topPreferredPathOverrideKind) {
+      case "egress":
+        recommendations.push(
+          "Inspect egress health-scoring drift before treating throughput or success changes as domain behavior.",
+        );
+        break;
+      case "identity":
+        recommendations.push(
+          "Inspect identity health-scoring drift before treating access outcomes as domain-side regressions.",
+        );
+        break;
+      case "provider":
+        recommendations.push(
+          "Inspect provider health-scoring drift before treating lane-selection changes as benchmark regressions.",
+        );
+        break;
+    }
   }
 
   if (input.summary.browserLocalFailureCount > 0 || input.summary.httpLocalFailureCount > 0) {

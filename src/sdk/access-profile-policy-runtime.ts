@@ -23,6 +23,7 @@ import {
 import { type AccessExecutionProfile, type AccessProviderId } from "./schemas.ts";
 import { InvalidInputError } from "./errors.ts";
 import { SharedAccessHealthSignalsLive } from "./access-health-shared-runtime.ts";
+import { makePreferredPathOverrideWarning } from "./access-health-warning-runtime.ts";
 
 export type AccessProfileResolutionInput = {
   readonly url: string;
@@ -151,7 +152,11 @@ function withResolvedEgressWarnings(input: {
     })
   ) {
     warnings.push(
-      `Selection policy chose egress "${input.selectedProfileId}" instead of preferred "${input.preferredProfileId}"; access health signals rate the preferred path as less healthy.`,
+      makePreferredPathOverrideWarning({
+        kind: "egress",
+        selectedId: input.selectedProfileId,
+        preferredId: input.preferredProfileId,
+      }),
     );
   }
 
@@ -206,7 +211,11 @@ function withResolvedIdentityWarnings(input: {
     })
   ) {
     warnings.push(
-      `Selection policy chose identity "${input.selectedProfileId}" instead of preferred "${input.preferredProfileId}"; access health signals rate the preferred path as less healthy.`,
+      makePreferredPathOverrideWarning({
+        kind: "identity",
+        selectedId: input.selectedProfileId,
+        preferredId: input.preferredProfileId,
+      }),
     );
   }
 

@@ -29,6 +29,7 @@ import {
   type AccessSelectionCandidate,
   type AccessSelectionStrategyDecision,
 } from "./access-selection-strategy-runtime.ts";
+import { makePreferredPathOverrideWarning } from "./access-health-warning-runtime.ts";
 import { type AccessExecutionProfile, type AccessMode, type AccessProviderId } from "./schemas.ts";
 import { SharedAccessHealthSignalsLive } from "./access-health-shared-runtime.ts";
 
@@ -146,7 +147,11 @@ function withHealthWarnings(input: {
     })
   ) {
     warnings.push(
-      `Selection policy chose provider "${input.selectedProviderId}" instead of preferred "${input.preferredProviderId}"; access health signals rate the preferred provider as less healthy.`,
+      makePreferredPathOverrideWarning({
+        kind: "provider",
+        selectedId: input.selectedProviderId,
+        preferredId: input.preferredProviderId,
+      }),
     );
   }
 
