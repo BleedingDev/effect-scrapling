@@ -914,6 +914,14 @@ function detectChallengeSignals(input: {
   return analysis.likelyAccessWall ? analysis.signals : [];
 }
 
+export function mergeChallengeSignals(
+  ...signalSets: ReadonlyArray<ReadonlyArray<string>>
+): ReadonlyArray<string> {
+  return [...new Set(signalSets.flat().filter((signal) => signal.trim().length > 0))].sort(
+    compareStrings,
+  );
+}
+
 function countRedirectChain(request: unknown) {
   if (!request || typeof request !== "object") {
     return undefined;
@@ -1740,14 +1748,14 @@ async function createEffectHttpRunner(input: { readonly timeoutMs: number }): Pr
           }).pipe(sdkEnvironment.provide),
         );
         const warningSignals = readAccessWallSignalsFromWarnings(response.warnings);
-        const challengeSignals =
-          warningSignals.length > 0
-            ? warningSignals
-            : detectChallengeSignals({
-                requestedUrl: page.url,
-                statusCode: response.data.status,
-                finalUrl: response.data.finalUrl,
-              });
+        const challengeSignals = mergeChallengeSignals(
+          warningSignals,
+          detectChallengeSignals({
+            requestedUrl: page.url,
+            statusCode: response.data.status,
+            finalUrl: response.data.finalUrl,
+          }),
+        );
 
         return {
           statusCode: response.data.status,
@@ -1896,16 +1904,16 @@ async function createEffectBrowserRunner(input: {
         );
         const [navigationArtifact, renderedDomArtifact] = response.data.artifacts;
         const warningSignals = readAccessWallSignalsFromWarnings(response.warnings);
-        const challengeSignals =
-          warningSignals.length > 0
-            ? warningSignals
-            : detectChallengeSignals({
-                requestedUrl: page.url,
-                statusCode: response.data.status.code,
-                finalUrl: navigationArtifact.finalUrl,
-                title: renderedDomArtifact.title ?? undefined,
-                text: renderedDomArtifact.textPreview,
-              });
+        const challengeSignals = mergeChallengeSignals(
+          warningSignals,
+          detectChallengeSignals({
+            requestedUrl: page.url,
+            statusCode: response.data.status.code,
+            finalUrl: navigationArtifact.finalUrl,
+            title: renderedDomArtifact.title ?? undefined,
+            text: renderedDomArtifact.textPreview,
+          }),
+        );
 
         return {
           statusCode: response.data.status.code,
