@@ -62,13 +62,13 @@ test for those benchmark runs:
     `300` milliseconds respectively
 - [`docs/artifacts/e9-benchmark-suite-fast-regression-artifact.json`](../artifacts/e9-benchmark-suite-fast-regression-artifact.json)
   reported `status: "pass"` with:
-  - `generatedAt = 2026-03-12T07:14:57.388Z`
+  - `generatedAt = 2026-03-12T09:11:43.893Z`
   - `totalAttemptCount = 640`
   - `totalSweepCount = 5`
-  - `httpSuccessRate = 0.896`
-  - `browserSuccessRate = 0.859`
-  - `httpBestThroughputPagesPerMinute = 1453.683`
-  - `browserBestThroughputPagesPerMinute = 77.843`
+  - `httpSuccessRate = 0.924`
+  - `browserSuccessRate = 0.887`
+  - `httpBestThroughputPagesPerMinute = 1431.267`
+  - `browserBestThroughputPagesPerMinute = 106.214`
   - `httpLocalFailureCount = 0`
   - `browserLocalFailureCount = 0`
 
@@ -78,10 +78,13 @@ browser-side categories rather than recorded local-failure counters:
 
 - `ebay.com` appeared in both the top HTTP and top browser failure-domain lists
 - `zbozi.cz` appeared in the top browser failure-domain list
-- smaller residual failures appeared on `datart.cz`, `lidl-shop.cz`, `mp.cz`,
-  and `shein.com`
-- the top browser failure category was `access-wall` (`33` attempts), followed
-  by `browser-navigation-timeout` (`3` attempts)
+- `biano.cz` appeared in the top browser failure-domain list for this sampled
+  run
+- the remaining top residual failure domains in the artifact summary were
+  `datart.cz`, `lidl-shop.cz`, `mp.cz`, and `shein.com`
+- the top browser failure category was `access-wall` (`26` attempts), followed
+  by `browser-navigation-timeout` (`2` attempts) and
+  `browser-navigation-connection` (`1` attempt)
 - no recovered-browser allocations and zero local-failure counters
 - skipped `scrapling` and `canary` phases in the sampled preset, so a
   full-corpus run remains the right release-evidence follow-up when needed
@@ -94,7 +97,7 @@ production-ready, and it does not prove release readiness. Its benchmark-driven
 follow-up remains concrete:
 
 - review browser failure categories and top failing domains
-- prioritize diagnostics for `ebay.com`, `zbozi.cz`, and `lidl-shop.cz`
+- prioritize diagnostics for `ebay.com`, `zbozi.cz`, and `biano.cz`
 - run parity and canary phases separately, or the full-corpus suite, when
   competitor evidence, high-friction evidence, or definitive release evidence
   is needed
