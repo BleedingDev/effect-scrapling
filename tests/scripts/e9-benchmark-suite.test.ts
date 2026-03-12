@@ -589,9 +589,16 @@ describe("e9 benchmark suite", () => {
       key: "access-wall-consent",
       count: 1,
     });
+    expect(artifact.summary?.topConsentFailureDomains?.[0]).toEqual({
+      key: "zbozi.example",
+      count: 1,
+    });
     expect(artifact.recommendations).toContain("Prioritize diagnostics for zbozi.example.");
     expect(artifact.recommendations).toContain(
       "Top remote failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Consent-heavy domains to inspect first: zbozi.example.",
     );
   });
 
@@ -642,6 +649,109 @@ describe("e9 benchmark suite", () => {
       key: "access-wall-consent",
       count: 1,
     });
+  });
+
+  it("surfaces challenge-heavy domains separately from mixed remote failure domains", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http"],
+        httpProfiles: ["effect-http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-challenge-a",
+            domain: "ebay.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://ebay.example/a",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-challenge-b",
+            domain: "shein.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://shein.example/b",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-consent-a",
+            domain: "zbozi.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://zbozi.example/c",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async (page) => {
+                if (page.url === "https://ebay.example/a") {
+                  return {
+                    statusCode: 200,
+                    redirected: true,
+                    challengeDetected: true,
+                    observedChallengeSignals: ["url-challenge"],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    finalUrl: "https://ebay.example/challenge",
+                  };
+                }
+
+                if (page.url === "https://shein.example/b") {
+                  return {
+                    statusCode: 200,
+                    redirected: true,
+                    challengeDetected: true,
+                    observedChallengeSignals: ["text-challenge"],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    finalUrl: "https://shein.example/challenge",
+                  };
+                }
+
+                return {
+                  statusCode: 200,
+                  redirected: true,
+                  challengeDetected: true,
+                  observedChallengeSignals: ["text-consent", "title-consent"],
+                  durationMs: 50,
+                  contentBytes: 0,
+                  titlePresent: false,
+                  finalUrl: "https://zbozi.example/consent",
+                };
+              },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-challenge",
+      count: 2,
+    });
+    expect(artifact.summary?.topChallengeFailureDomains).toEqual([
+      { key: "ebay.example", count: 1 },
+      { key: "shein.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Challenge-heavy domains to inspect first: ebay.example, shein.example.",
+    );
   });
 
   it("classifies trap interstitials separately from generic empty-content failures", async () => {
@@ -873,10 +983,94 @@ describe("e9 benchmark suite", () => {
       count: 1,
     });
     expect(artifact.warnings).toContain(
-      "Local configuration or planning failures affected 1 attempts; raw throughput and success metrics are partially invalidated.",
+      "Local configuration, planning, or browser-engine failures affected 1 attempts; raw throughput and success metrics are partially invalidated.",
     );
     expect(artifact.recommendations).toContain(
       "Fix local selection/plugin configuration failures before comparing remote-site success or throughput across browser sweeps.",
+    );
+  });
+
+  it("preserves remote browser guidance when local and remote browser failures mix", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/p/1",
+            pageType: "product",
+            title: "Alpha Product",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-beta",
+            domain: "beta.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://beta.example/p/2",
+            pageType: "product",
+            title: "Beta Product",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) =>
+                page.siteId === "site-alpha"
+                  ? {
+                      redirected: false,
+                      challengeDetected: false,
+                      observedChallengeSignals: [],
+                      durationMs: 0.5,
+                      contentBytes: 0,
+                      titlePresent: false,
+                      error:
+                        'Browser access failed for https://alpha.example/p/1 :: Plugin "builtin-http-connect-egress" requires a non-empty "proxyUrl" value.',
+                    }
+                  : {
+                      statusCode: 200,
+                      redirected: true,
+                      challengeDetected: true,
+                      observedChallengeSignals: ["text-consent", "title-consent"],
+                      durationMs: 120,
+                      contentBytes: 2_048,
+                      titlePresent: true,
+                      finalUrl: "https://cmp.example/consent",
+                      warnings: ["access-wall:text-consent", "access-wall:title-consent"],
+                    },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.browserLocalFailureCount).toBe(1);
+    expect(artifact.summary?.browserRemoteFailureCount).toBe(1);
+    expect(artifact.summary?.topBrowserRemoteFailureDomains?.[0]).toEqual({
+      key: "beta.example",
+      count: 1,
+    });
+    expect(artifact.summary?.topBrowserRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-consent",
+      count: 1,
+    });
+    expect(artifact.warnings).toContain("Browser failures cluster on beta.example (1 attempts).");
+    expect(artifact.warnings).toContain(
+      "Top browser failure category: access-wall-consent (1 attempts).",
+    );
+    expect(artifact.recommendations).toContain(
+      "Review browser failure categories and top failing domains before treating browser fallback as production-ready.",
     );
   });
 
@@ -914,6 +1108,21 @@ describe("e9 benchmark suite", () => {
                 contentBytes: 2_048,
                 titlePresent: true,
                 finalUrl: page.url,
+                executionMetadata: {
+                  source: "executed",
+                  providerId: "browser-basic",
+                  mode: "browser",
+                  egressProfileId: "direct",
+                  egressPluginId: "builtin-direct-egress",
+                  egressRouteKind: "direct",
+                  egressRouteKey: "direct",
+                  egressPoolId: "direct-pool",
+                  egressRoutePolicyId: "direct-route",
+                  identityProfileId: "default",
+                  identityPluginId: "builtin-default-identity",
+                  identityTenantId: "public",
+                  browserRuntimeProfileId: "patchright-default",
+                },
                 warnings: [
                   "Recovered browser allocation after retryable protocol error: Protocol error (Page.enable): Internal server error, session closed.",
                 ],
@@ -930,11 +1139,25 @@ describe("e9 benchmark suite", () => {
     );
     expect(artifact.browserCorpus.sweeps[0]?.recoveredBrowserAllocationCount).toBe(1);
     expect(artifact.summary?.browserRecoveredBrowserAllocationCount).toBe(1);
+    expect(artifact.summary?.topBrowserRecoveredAllocationDomains?.[0]).toEqual({
+      key: "alpha.example",
+      count: 1,
+    });
+    expect(artifact.summary?.topBrowserRecoveredAllocationProfiles?.[0]).toEqual({
+      key: "patchright-default",
+      count: 1,
+    });
     expect(artifact.warnings).toContain(
       "Recovered browser allocation protocol faults occurred 1 times; browser runtime retried successfully but engine stability noise is present.",
     );
+    expect(artifact.warnings).toContain(
+      "Recovered browser allocation faults clustered on alpha.example (1 attempts).",
+    );
     expect(artifact.recommendations).toContain(
       "Inspect Patchright/Chromium page-allocation stability and recovered protocol faults before trusting browser-lane reliability trends.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Start recovered browser-allocation triage with profile patchright-default on domain alpha.example.",
     );
   });
 
@@ -2723,7 +2946,7 @@ describe("e9 benchmark suite", () => {
           newContext: async () => {
             throw new Error("context-boom");
           },
-          close: async () => {},
+          close: async () => undefined,
         }),
       },
     }));
@@ -2757,8 +2980,83 @@ describe("e9 benchmark suite", () => {
       expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe(
         "browser-context-allocation",
       );
+      expect(artifact.browserCorpus.sweeps[0]?.localFailureCount).toBe(1);
+      expect(artifact.summary?.browserLocalFailureCount).toBe(1);
+      expect(artifact.summary?.topLocalFailureCategories[0]).toEqual({
+        key: "browser-context-allocation",
+        count: 1,
+      });
+      expect(artifact.summary?.topRemoteFailureCategories).toEqual([]);
+      expect(artifact.summary?.topRemoteFailureDomains).toEqual([]);
+      expect(artifact.summary?.topBrowserFailureCategories[0]).toEqual({
+        key: "browser-context-allocation",
+        count: 1,
+      });
+      expect(artifact.warnings).toContain(
+        "Local configuration, planning, or browser-engine failures affected 1 attempts; raw throughput and success metrics are partially invalidated.",
+      );
+      expect(artifact.recommendations).toContain(
+        "Stabilize local browser engine/bootstrap failures before comparing remote-site success or throughput across browser sweeps.",
+      );
     } finally {
       mock.restore();
     }
+  });
+
+  it("treats local-only browser engine sweeps as warn instead of fail", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["patchright-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://example.com/p/1",
+            pageType: "product",
+            title: "Alpha Product",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "patchright-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                error: "patchright context-allocation failed: context-boom",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.sweeps[0]?.effectiveAttemptCount).toBe(0);
+    expect(artifact.summary?.browserLocalFailureCount).toBe(1);
+    expect(artifact.status).toBe("warn");
+    const warnings = artifact.warnings ?? [];
+    expect(warnings.some((warning) => warning.startsWith("Browser lane is degraded:"))).toBeFalse();
+    expect(
+      warnings.some((warning) => warning.startsWith("Browser failures cluster on")),
+    ).toBeFalse();
+    expect(
+      warnings.some((warning) => warning.startsWith("Top browser failure category:")),
+    ).toBeFalse();
+    expect(artifact.recommendations).not.toContain(
+      "Review browser failure categories and top failing domains before treating browser fallback as production-ready.",
+    );
   });
 });
