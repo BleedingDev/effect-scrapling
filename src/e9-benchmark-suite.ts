@@ -331,6 +331,21 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   topHttpPreferredPathOverrideKinds: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserPreferredPathOverrideDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserPreferredPathOverrideKinds: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  preferredPathOverrideFailureCount: Schema.optional(NonNegativeIntSchema),
+  topPreferredPathOverrideFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topPreferredPathOverrideFailureKinds: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topHttpPreferredPathOverrideFailureDomains: Schema.optional(
+    Schema.Array(BenchmarkReportItemSchema),
+  ),
+  topHttpPreferredPathOverrideFailureKinds: Schema.optional(
+    Schema.Array(BenchmarkReportItemSchema),
+  ),
+  topBrowserPreferredPathOverrideFailureDomains: Schema.optional(
+    Schema.Array(BenchmarkReportItemSchema),
+  ),
+  topBrowserPreferredPathOverrideFailureKinds: Schema.optional(
+    Schema.Array(BenchmarkReportItemSchema),
+  ),
   topBrowserRecoveredAllocationDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRecoveredAllocationProfiles: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
 });
@@ -2801,6 +2816,16 @@ function buildSuiteSummary(input: {
     ...httpPreferredPathOverrideAttempts,
     ...browserPreferredPathOverrideAttempts,
   ];
+  const httpPreferredPathOverrideFailures = httpPreferredPathOverrideAttempts.filter(
+    (attempt) => attempt.success === false && !isLocalFailureCategory(attempt.failureCategory),
+  );
+  const browserPreferredPathOverrideFailures = browserPreferredPathOverrideAttempts.filter(
+    (attempt) => attempt.success === false && !isLocalFailureCategory(attempt.failureCategory),
+  );
+  const preferredPathOverrideFailures = [
+    ...httpPreferredPathOverrideFailures,
+    ...browserPreferredPathOverrideFailures,
+  ];
 
   return Schema.decodeUnknownSync(E9BenchmarkSuiteSummarySchema)({
     executedPhases,
@@ -2979,6 +3004,37 @@ function buildSuiteSummary(input: {
       ),
       5,
     ),
+    preferredPathOverrideFailureCount: preferredPathOverrideFailures.length,
+    topPreferredPathOverrideFailureDomains: buildCountBreakdown(
+      preferredPathOverrideFailures.map((attempt) => attempt.domain),
+      5,
+    ),
+    topPreferredPathOverrideFailureKinds: buildCountBreakdown(
+      preferredPathOverrideFailures.flatMap((attempt) =>
+        getPreferredPathOverrideKinds(attempt.warnings),
+      ),
+      5,
+    ),
+    topHttpPreferredPathOverrideFailureDomains: buildCountBreakdown(
+      httpPreferredPathOverrideFailures.map((attempt) => attempt.domain),
+      5,
+    ),
+    topHttpPreferredPathOverrideFailureKinds: buildCountBreakdown(
+      httpPreferredPathOverrideFailures.flatMap((attempt) =>
+        getPreferredPathOverrideKinds(attempt.warnings),
+      ),
+      5,
+    ),
+    topBrowserPreferredPathOverrideFailureDomains: buildCountBreakdown(
+      browserPreferredPathOverrideFailures.map((attempt) => attempt.domain),
+      5,
+    ),
+    topBrowserPreferredPathOverrideFailureKinds: buildCountBreakdown(
+      browserPreferredPathOverrideFailures.flatMap((attempt) =>
+        getPreferredPathOverrideKinds(attempt.warnings),
+      ),
+      5,
+    ),
     topBrowserRecoveredAllocationDomains: buildCountBreakdown(
       browserRecoveredAllocationAttempts.map((attempt) => attempt.domain),
       5,
@@ -3021,6 +3077,36 @@ function buildSuiteWarnings(input: {
   );
   const topBrowserPreferredPathOverrideKind = getUniqueTopBreakdownEntry(
     topBrowserPreferredPathOverrideKinds,
+  );
+  const topPreferredPathOverrideFailureDomains =
+    input.summary.topPreferredPathOverrideFailureDomains ?? [];
+  const topPreferredPathOverrideFailureKinds =
+    input.summary.topPreferredPathOverrideFailureKinds ?? [];
+  const topPreferredPathOverrideFailureDomain = getUniqueTopBreakdownEntry(
+    topPreferredPathOverrideFailureDomains,
+  );
+  const topPreferredPathOverrideFailureKind = getUniqueTopBreakdownEntry(
+    topPreferredPathOverrideFailureKinds,
+  );
+  const topHttpPreferredPathOverrideFailureDomains =
+    input.summary.topHttpPreferredPathOverrideFailureDomains ?? [];
+  const topHttpPreferredPathOverrideFailureKinds =
+    input.summary.topHttpPreferredPathOverrideFailureKinds ?? [];
+  const topHttpPreferredPathOverrideFailureDomain = getUniqueTopBreakdownEntry(
+    topHttpPreferredPathOverrideFailureDomains,
+  );
+  const topHttpPreferredPathOverrideFailureKind = getUniqueTopBreakdownEntry(
+    topHttpPreferredPathOverrideFailureKinds,
+  );
+  const topBrowserPreferredPathOverrideFailureDomains =
+    input.summary.topBrowserPreferredPathOverrideFailureDomains ?? [];
+  const topBrowserPreferredPathOverrideFailureKinds =
+    input.summary.topBrowserPreferredPathOverrideFailureKinds ?? [];
+  const topBrowserPreferredPathOverrideFailureDomain = getUniqueTopBreakdownEntry(
+    topBrowserPreferredPathOverrideFailureDomains,
+  );
+  const topBrowserPreferredPathOverrideFailureKind = getUniqueTopBreakdownEntry(
+    topBrowserPreferredPathOverrideFailureKinds,
   );
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureDomain = input.summary.topBrowserRemoteFailureDomains?.[0];
@@ -3150,6 +3236,91 @@ function buildSuiteWarnings(input: {
     );
   }
 
+  const preferredPathOverrideFailureCount = input.summary.preferredPathOverrideFailureCount ?? 0;
+  if (preferredPathOverrideFailureCount > 0) {
+    warnings.push(
+      `Preferred-path overrides were present on ${preferredPathOverrideFailureCount} failed attempts; some failure trends may reflect fallback provider, egress or identity choices instead of the preferred route.`,
+    );
+  }
+
+  if (
+    topPreferredPathOverrideFailureDomain !== undefined &&
+    topPreferredPathOverrideFailureDomain.count > 0
+  ) {
+    warnings.push(
+      `Failed override attempts cluster on ${topPreferredPathOverrideFailureDomain.key} (${topPreferredPathOverrideFailureDomain.count} attempts).`,
+    );
+  } else if (topPreferredPathOverrideFailureDomains.length > 1) {
+    warnings.push(
+      `Failed override attempts span multiple domains: ${formatTopBreakdownKeys(topPreferredPathOverrideFailureDomains)}.`,
+    );
+  }
+
+  if (
+    topPreferredPathOverrideFailureKind !== undefined &&
+    topPreferredPathOverrideFailureKind.count > 0
+  ) {
+    warnings.push(
+      `Top failed override kind: ${topPreferredPathOverrideFailureKind.key} (${topPreferredPathOverrideFailureKind.count} attempts).`,
+    );
+  } else if (topPreferredPathOverrideFailureKinds.length > 1) {
+    warnings.push(
+      `Failed override kinds are mixed: ${formatTopBreakdownKeys(topPreferredPathOverrideFailureKinds)}.`,
+    );
+  }
+
+  if (
+    topHttpPreferredPathOverrideFailureDomain !== undefined &&
+    topHttpPreferredPathOverrideFailureDomain.count > 0
+  ) {
+    warnings.push(
+      `HTTP failed override attempts cluster on ${topHttpPreferredPathOverrideFailureDomain.key} (${topHttpPreferredPathOverrideFailureDomain.count} attempts).`,
+    );
+  } else if (topHttpPreferredPathOverrideFailureDomains.length > 1) {
+    warnings.push(
+      `HTTP failed override attempts span multiple domains: ${formatTopBreakdownKeys(topHttpPreferredPathOverrideFailureDomains)}.`,
+    );
+  }
+
+  if (
+    topHttpPreferredPathOverrideFailureKind !== undefined &&
+    topHttpPreferredPathOverrideFailureKind.count > 0
+  ) {
+    warnings.push(
+      `Top HTTP failed override kind: ${topHttpPreferredPathOverrideFailureKind.key} (${topHttpPreferredPathOverrideFailureKind.count} attempts).`,
+    );
+  } else if (topHttpPreferredPathOverrideFailureKinds.length > 1) {
+    warnings.push(
+      `HTTP failed override kinds are mixed: ${formatTopBreakdownKeys(topHttpPreferredPathOverrideFailureKinds)}.`,
+    );
+  }
+
+  if (
+    topBrowserPreferredPathOverrideFailureDomain !== undefined &&
+    topBrowserPreferredPathOverrideFailureDomain.count > 0
+  ) {
+    warnings.push(
+      `Browser failed override attempts cluster on ${topBrowserPreferredPathOverrideFailureDomain.key} (${topBrowserPreferredPathOverrideFailureDomain.count} attempts).`,
+    );
+  } else if (topBrowserPreferredPathOverrideFailureDomains.length > 1) {
+    warnings.push(
+      `Browser failed override attempts span multiple domains: ${formatTopBreakdownKeys(topBrowserPreferredPathOverrideFailureDomains)}.`,
+    );
+  }
+
+  if (
+    topBrowserPreferredPathOverrideFailureKind !== undefined &&
+    topBrowserPreferredPathOverrideFailureKind.count > 0
+  ) {
+    warnings.push(
+      `Top browser failed override kind: ${topBrowserPreferredPathOverrideFailureKind.key} (${topBrowserPreferredPathOverrideFailureKind.count} attempts).`,
+    );
+  } else if (topBrowserPreferredPathOverrideFailureKinds.length > 1) {
+    warnings.push(
+      `Browser failed override kinds are mixed: ${formatTopBreakdownKeys(topBrowserPreferredPathOverrideFailureKinds)}.`,
+    );
+  }
+
   if (input.summary.browserRecoveredBrowserAllocationCount > 0) {
     warnings.push(
       `Recovered browser allocation protocol faults occurred ${input.summary.browserRecoveredBrowserAllocationCount} times; browser runtime retried successfully but engine stability noise is present.`,
@@ -3246,6 +3417,18 @@ function buildSuiteRecommendations(input: {
     input.summary.topBrowserPreferredPathOverrideDomains ?? [];
   const topBrowserPreferredPathOverrideKinds =
     input.summary.topBrowserPreferredPathOverrideKinds ?? [];
+  const topPreferredPathOverrideFailureDomains =
+    input.summary.topPreferredPathOverrideFailureDomains ?? [];
+  const topPreferredPathOverrideFailureKinds =
+    input.summary.topPreferredPathOverrideFailureKinds ?? [];
+  const topHttpPreferredPathOverrideFailureDomains =
+    input.summary.topHttpPreferredPathOverrideFailureDomains ?? [];
+  const topHttpPreferredPathOverrideFailureKinds =
+    input.summary.topHttpPreferredPathOverrideFailureKinds ?? [];
+  const topBrowserPreferredPathOverrideFailureDomains =
+    input.summary.topBrowserPreferredPathOverrideFailureDomains ?? [];
+  const topBrowserPreferredPathOverrideFailureKinds =
+    input.summary.topBrowserPreferredPathOverrideFailureKinds ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureCategories =
     input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
@@ -3366,6 +3549,91 @@ function buildSuiteRecommendations(input: {
           );
           break;
       }
+    }
+  }
+
+  const preferredPathOverrideFailureCount = input.summary.preferredPathOverrideFailureCount ?? 0;
+  if (preferredPathOverrideFailureCount > 0) {
+    recommendations.push(
+      "Separate failed fallback-route attempts from domain-level failure triage before treating the worst sites as pure remote regressions.",
+    );
+    if (topPreferredPathOverrideFailureDomains.length > 0) {
+      recommendations.push(
+        `Failed override domains to inspect first: ${formatTopDomains(topPreferredPathOverrideFailureDomains)}.`,
+      );
+    }
+
+    const topPreferredPathOverrideFailureKind = getUniqueTopBreakdownEntry(
+      topPreferredPathOverrideFailureKinds,
+    )?.key;
+    switch (topPreferredPathOverrideFailureKind) {
+      case "egress":
+        recommendations.push(
+          "Failed override attempts are egress-led; inspect fallback egress health scoring before attributing these failures to remote site behavior.",
+        );
+        break;
+      case "identity":
+        recommendations.push(
+          "Failed override attempts are identity-led; inspect fallback identity health scoring before attributing these failures to remote site behavior.",
+        );
+        break;
+      case "provider":
+        recommendations.push(
+          "Failed override attempts are provider-led; inspect fallback provider health scoring before attributing these failures to remote site behavior.",
+        );
+        break;
+    }
+
+    if (topHttpPreferredPathOverrideFailureDomains.length > 0) {
+      recommendations.push(
+        `HTTP failed override domains to inspect first: ${formatTopDomains(topHttpPreferredPathOverrideFailureDomains)}.`,
+      );
+    }
+    const topHttpPreferredPathOverrideFailureKind = getUniqueTopBreakdownEntry(
+      topHttpPreferredPathOverrideFailureKinds,
+    )?.key;
+    switch (topHttpPreferredPathOverrideFailureKind) {
+      case "egress":
+        recommendations.push(
+          "HTTP failed override attempts are egress-led; inspect fallback HTTP egress scoring before treating HTTP failures as site-level regressions.",
+        );
+        break;
+      case "identity":
+        recommendations.push(
+          "HTTP failed override attempts are identity-led; inspect fallback HTTP identity scoring before treating HTTP failures as site-level regressions.",
+        );
+        break;
+      case "provider":
+        recommendations.push(
+          "HTTP failed override attempts are provider-led; inspect fallback HTTP provider scoring before treating HTTP failures as site-level regressions.",
+        );
+        break;
+    }
+
+    if (topBrowserPreferredPathOverrideFailureDomains.length > 0) {
+      recommendations.push(
+        `Browser failed override domains to inspect first: ${formatTopDomains(topBrowserPreferredPathOverrideFailureDomains)}.`,
+      );
+    }
+    const topBrowserPreferredPathOverrideFailureKind = getUniqueTopBreakdownEntry(
+      topBrowserPreferredPathOverrideFailureKinds,
+    )?.key;
+    switch (topBrowserPreferredPathOverrideFailureKind) {
+      case "egress":
+        recommendations.push(
+          "Browser failed override attempts are egress-led; inspect fallback browser egress scoring before treating browser failures as site-level regressions.",
+        );
+        break;
+      case "identity":
+        recommendations.push(
+          "Browser failed override attempts are identity-led; inspect fallback browser identity scoring before treating browser failures as site-level regressions.",
+        );
+        break;
+      case "provider":
+        recommendations.push(
+          "Browser failed override attempts are provider-led; inspect fallback browser provider scoring before treating browser failures as site-level regressions.",
+        );
+        break;
     }
   }
 

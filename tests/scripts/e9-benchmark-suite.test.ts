@@ -360,6 +360,13 @@ describe("e9 benchmark suite", () => {
     delete summary?.topHttpPreferredPathOverrideKinds;
     delete summary?.topBrowserPreferredPathOverrideDomains;
     delete summary?.topBrowserPreferredPathOverrideKinds;
+    delete summary?.preferredPathOverrideFailureCount;
+    delete summary?.topPreferredPathOverrideFailureDomains;
+    delete summary?.topPreferredPathOverrideFailureKinds;
+    delete summary?.topHttpPreferredPathOverrideFailureDomains;
+    delete summary?.topHttpPreferredPathOverrideFailureKinds;
+    delete summary?.topBrowserPreferredPathOverrideFailureDomains;
+    delete summary?.topBrowserPreferredPathOverrideFailureKinds;
 
     const decoded = Schema.decodeUnknownSync(E9BenchmarkSuiteArtifactSchema)(legacyArtifact);
     expect(decoded.summary?.topRemoteFailureCategories).toBeUndefined();
@@ -371,6 +378,13 @@ describe("e9 benchmark suite", () => {
     expect(decoded.summary?.topHttpPreferredPathOverrideKinds).toBeUndefined();
     expect(decoded.summary?.topBrowserPreferredPathOverrideDomains).toBeUndefined();
     expect(decoded.summary?.topBrowserPreferredPathOverrideKinds).toBeUndefined();
+    expect(decoded.summary?.preferredPathOverrideFailureCount).toBeUndefined();
+    expect(decoded.summary?.topPreferredPathOverrideFailureDomains).toBeUndefined();
+    expect(decoded.summary?.topPreferredPathOverrideFailureKinds).toBeUndefined();
+    expect(decoded.summary?.topHttpPreferredPathOverrideFailureDomains).toBeUndefined();
+    expect(decoded.summary?.topHttpPreferredPathOverrideFailureKinds).toBeUndefined();
+    expect(decoded.summary?.topBrowserPreferredPathOverrideFailureDomains).toBeUndefined();
+    expect(decoded.summary?.topBrowserPreferredPathOverrideFailureKinds).toBeUndefined();
   });
 
   it("formats legacy mixed-domain summaries that do not yet carry per-category counts", () => {
@@ -847,6 +861,254 @@ describe("e9 benchmark suite", () => {
     );
     expect(artifact.recommendations).toContain(
       "Browser preferred-path drift is identity-led; inspect browser identity health scoring before treating browser failures as domain-side regressions.",
+    );
+  });
+
+  it("surfaces failures that happened under preferred-path overrides separately from generic drift", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http", "browser"],
+        httpProfiles: ["effect-http"],
+        browserProfiles: ["effect-browser"],
+        httpConcurrency: [1],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-http-boozt",
+            domain: "boozt.com",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.com/http-fail",
+            pageType: "listing",
+            title: "Boozt",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-http-success",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/http-success",
+            pageType: "listing",
+            title: "Alpha Success",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-browser-datart-a",
+            domain: "datart.cz",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.cz/browser-fail-a",
+            pageType: "product",
+            title: "Datart A",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-browser-datart-b",
+            domain: "datart.cz",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.cz/browser-fail-b",
+            pageType: "product",
+            title: "Datart B",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: page.domain === "boozt.com" ? 403 : 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: page.domain === "boozt.com" ? 0 : 20_000,
+                titlePresent: page.domain !== "boozt.com",
+                finalUrl: page.url,
+                success: page.domain !== "boozt.com",
+                warnings:
+                  page.domain === "boozt.com" || page.domain === "alpha.example"
+                    ? [
+                        makePreferredPathOverrideWarning({
+                          kind: "egress",
+                          selectedId: "leased-direct",
+                          preferredId: "direct",
+                        }),
+                      ]
+                    : [],
+                ...(page.domain === "boozt.com"
+                  ? {
+                      error: `Access failed for ${page.url} :: Error: HTTP 403 Forbidden`,
+                    }
+                  : {}),
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: page.domain === "datart.cz" ? 403 : 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: page.domain === "datart.cz" ? ["status-403"] : [],
+                durationMs: 50,
+                contentBytes: page.domain === "datart.cz" ? 0 : 20_000,
+                titlePresent: page.domain !== "datart.cz",
+                finalUrl: page.url,
+                success: page.domain !== "datart.cz",
+                warnings:
+                  page.domain === "datart.cz"
+                    ? [
+                        makePreferredPathOverrideWarning({
+                          kind: "identity",
+                          selectedId: "leased-default",
+                          preferredId: "default",
+                        }),
+                      ]
+                    : [],
+                ...(page.domain === "datart.cz"
+                  ? {
+                      error: `Access failed for ${page.url} :: Error: HTTP 403 Forbidden`,
+                    }
+                  : {}),
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.preferredPathOverrideFailureCount).toBe(3);
+    expect(artifact.summary?.topPreferredPathOverrideFailureDomains).toEqual([
+      { key: "datart.cz", count: 2 },
+      { key: "boozt.com", count: 1 },
+    ]);
+    expect(artifact.summary?.topPreferredPathOverrideFailureKinds).toEqual([
+      { key: "identity", count: 2 },
+      { key: "egress", count: 1 },
+    ]);
+    expect(artifact.summary?.topHttpPreferredPathOverrideFailureDomains).toEqual([
+      { key: "boozt.com", count: 1 },
+    ]);
+    expect(artifact.summary?.topHttpPreferredPathOverrideFailureKinds).toEqual([
+      { key: "egress", count: 1 },
+    ]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideFailureDomains).toEqual([
+      { key: "datart.cz", count: 2 },
+    ]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideFailureKinds).toEqual([
+      { key: "identity", count: 2 },
+    ]);
+    expect(artifact.warnings).toContain(
+      "Preferred-path overrides were present on 3 failed attempts; some failure trends may reflect fallback provider, egress or identity choices instead of the preferred route.",
+    );
+    expect(artifact.warnings).toContain(
+      "Failed override attempts cluster on datart.cz (2 attempts).",
+    );
+    expect(artifact.warnings).toContain("Top failed override kind: identity (2 attempts).");
+    expect(artifact.warnings).toContain(
+      "HTTP failed override attempts cluster on boozt.com (1 attempts).",
+    );
+    expect(artifact.warnings).toContain("Top HTTP failed override kind: egress (1 attempts).");
+    expect(artifact.warnings).toContain(
+      "Browser failed override attempts cluster on datart.cz (2 attempts).",
+    );
+    expect(artifact.warnings).toContain("Top browser failed override kind: identity (2 attempts).");
+    expect(artifact.recommendations).toContain(
+      "Separate failed fallback-route attempts from domain-level failure triage before treating the worst sites as pure remote regressions.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Failed override domains to inspect first: datart.cz, boozt.com.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Failed override attempts are identity-led; inspect fallback identity health scoring before attributing these failures to remote site behavior.",
+    );
+    expect(artifact.recommendations).toContain(
+      "HTTP failed override domains to inspect first: boozt.com.",
+    );
+    expect(artifact.recommendations).toContain(
+      "HTTP failed override attempts are egress-led; inspect fallback HTTP egress scoring before treating HTTP failures as site-level regressions.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser failed override domains to inspect first: datart.cz.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser failed override attempts are identity-led; inspect fallback browser identity scoring before treating browser failures as site-level regressions.",
+    );
+  });
+
+  it("excludes local failures from preferred-path override failure diagnostics", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-local",
+            domain: "local.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://local.example/failure",
+            pageType: "product",
+            title: "Local Failure",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                finalUrl: page.url,
+                success: false,
+                warnings: [
+                  makePreferredPathOverrideWarning({
+                    kind: "identity",
+                    selectedId: "leased-default",
+                    preferredId: "default",
+                  }),
+                ],
+                error: `patchright page-allocation failed: Error: Target page, context or browser has been closed`,
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.preferredPathOverrideCount).toBe(1);
+    expect(artifact.summary?.preferredPathOverrideFailureCount).toBe(0);
+    expect(artifact.summary?.topPreferredPathOverrideFailureDomains).toEqual([]);
+    expect(artifact.summary?.topPreferredPathOverrideFailureKinds).toEqual([]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideFailureDomains).toEqual([]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideFailureKinds).toEqual([]);
+    expect(artifact.warnings).not.toContain(
+      "Preferred-path overrides were present on 1 failed attempts; some failure trends may reflect fallback provider, egress or identity choices instead of the preferred route.",
+    );
+    expect(artifact.recommendations).not.toContain(
+      "Separate failed fallback-route attempts from domain-level failure triage before treating the worst sites as pure remote regressions.",
     );
   });
 
@@ -4949,6 +5211,13 @@ describe("e9 benchmark suite", () => {
             topHttpPreferredPathOverrideKinds: [],
             topBrowserPreferredPathOverrideDomains: [],
             topBrowserPreferredPathOverrideKinds: [],
+            preferredPathOverrideFailureCount: 0,
+            topPreferredPathOverrideFailureDomains: [],
+            topPreferredPathOverrideFailureKinds: [],
+            topHttpPreferredPathOverrideFailureDomains: [],
+            topHttpPreferredPathOverrideFailureKinds: [],
+            topBrowserPreferredPathOverrideFailureDomains: [],
+            topBrowserPreferredPathOverrideFailureKinds: [],
           },
           warnings: ["Skipped phases: browser, scrapling, canary."],
           recommendations: [
@@ -5007,6 +5276,13 @@ describe("e9 benchmark suite", () => {
         topHttpPreferredPathOverrideKinds: [],
         topBrowserPreferredPathOverrideDomains: [],
         topBrowserPreferredPathOverrideKinds: [],
+        preferredPathOverrideFailureCount: 0,
+        topPreferredPathOverrideFailureDomains: [],
+        topPreferredPathOverrideFailureKinds: [],
+        topHttpPreferredPathOverrideFailureDomains: [],
+        topHttpPreferredPathOverrideFailureKinds: [],
+        topBrowserPreferredPathOverrideFailureDomains: [],
+        topBrowserPreferredPathOverrideFailureKinds: [],
       },
       warnings: ["Skipped phases: browser, scrapling, canary."],
       recommendations: ["Use the full-corpus preset when you need definitive release evidence."],
@@ -5409,6 +5685,13 @@ describe("e9 benchmark suite", () => {
       { key: "identity", count: 1 },
       { key: "provider", count: 1 },
     ]);
+    expect(merged.summary?.preferredPathOverrideFailureCount).toBe(0);
+    expect(merged.summary?.topPreferredPathOverrideFailureDomains).toEqual([]);
+    expect(merged.summary?.topPreferredPathOverrideFailureKinds).toEqual([]);
+    expect(merged.summary?.topHttpPreferredPathOverrideFailureDomains).toEqual([]);
+    expect(merged.summary?.topHttpPreferredPathOverrideFailureKinds).toEqual([]);
+    expect(merged.summary?.topBrowserPreferredPathOverrideFailureDomains).toEqual([]);
+    expect(merged.summary?.topBrowserPreferredPathOverrideFailureKinds).toEqual([]);
     expect(merged.warnings).toContain(
       "Access-health-driven preferred-path overrides affected 2 attempts; success and throughput may reflect fallback provider, egress or identity choices instead of the preferred route.",
     );
