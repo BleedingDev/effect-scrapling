@@ -327,6 +327,10 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   preferredPathOverrideCount: Schema.optional(NonNegativeIntSchema),
   topPreferredPathOverrideDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topPreferredPathOverrideKinds: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topHttpPreferredPathOverrideDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topHttpPreferredPathOverrideKinds: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topBrowserPreferredPathOverrideDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topBrowserPreferredPathOverrideKinds: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRecoveredAllocationDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRecoveredAllocationProfiles: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
 });
@@ -1251,6 +1255,15 @@ function getPreferredPathOverrideKinds(warnings: ReadonlyArray<string> | undefin
 
 function hasPreferredPathOverrideWarning(warnings: ReadonlyArray<string> | undefined) {
   return getPreferredPathOverrideKinds(warnings).length > 0;
+}
+
+function getUniqueTopBreakdownEntry(
+  entries: ReadonlyArray<Schema.Schema.Type<typeof BenchmarkReportItemSchema>> | undefined,
+) {
+  const [first, second] = entries ?? [];
+  return first !== undefined && (second === undefined || first.count > second.count)
+    ? first
+    : undefined;
 }
 
 function classifyAccessWallFailureCategory(
@@ -2778,10 +2791,16 @@ function buildSuiteSummary(input: {
     hasRecoveredBrowserAllocationWarning(attempt.warnings),
   );
   const browserRecoveredBrowserAllocationCount = browserRecoveredAllocationAttempts.length;
+  const httpPreferredPathOverrideAttempts = input.httpCorpus.attempts.filter((attempt) =>
+    hasPreferredPathOverrideWarning(attempt.warnings),
+  );
+  const browserPreferredPathOverrideAttempts = input.browserCorpus.attempts.filter((attempt) =>
+    hasPreferredPathOverrideWarning(attempt.warnings),
+  );
   const preferredPathOverrideAttempts = [
-    ...input.httpCorpus.attempts,
-    ...input.browserCorpus.attempts,
-  ].filter((attempt) => hasPreferredPathOverrideWarning(attempt.warnings));
+    ...httpPreferredPathOverrideAttempts,
+    ...browserPreferredPathOverrideAttempts,
+  ];
 
   return Schema.decodeUnknownSync(E9BenchmarkSuiteSummarySchema)({
     executedPhases,
@@ -2940,6 +2959,26 @@ function buildSuiteSummary(input: {
       ),
       5,
     ),
+    topHttpPreferredPathOverrideDomains: buildCountBreakdown(
+      httpPreferredPathOverrideAttempts.map((attempt) => attempt.domain),
+      5,
+    ),
+    topHttpPreferredPathOverrideKinds: buildCountBreakdown(
+      httpPreferredPathOverrideAttempts.flatMap((attempt) =>
+        getPreferredPathOverrideKinds(attempt.warnings),
+      ),
+      5,
+    ),
+    topBrowserPreferredPathOverrideDomains: buildCountBreakdown(
+      browserPreferredPathOverrideAttempts.map((attempt) => attempt.domain),
+      5,
+    ),
+    topBrowserPreferredPathOverrideKinds: buildCountBreakdown(
+      browserPreferredPathOverrideAttempts.flatMap((attempt) =>
+        getPreferredPathOverrideKinds(attempt.warnings),
+      ),
+      5,
+    ),
     topBrowserRecoveredAllocationDomains: buildCountBreakdown(
       browserRecoveredAllocationAttempts.map((attempt) => attempt.domain),
       5,
@@ -2958,11 +2997,41 @@ function buildSuiteWarnings(input: {
 }) {
   const warnings = new Array<string>();
   const topRemoteFailureCategories = input.summary.topRemoteFailureCategories ?? [];
-  const topPreferredPathOverrideDomain = input.summary.topPreferredPathOverrideDomains?.[0];
-  const topPreferredPathOverrideKind = input.summary.topPreferredPathOverrideKinds?.[0];
+  const topPreferredPathOverrideDomains = input.summary.topPreferredPathOverrideDomains ?? [];
+  const topPreferredPathOverrideKinds = input.summary.topPreferredPathOverrideKinds ?? [];
+  const topPreferredPathOverrideDomain = getUniqueTopBreakdownEntry(
+    topPreferredPathOverrideDomains,
+  );
+  const topPreferredPathOverrideKind = getUniqueTopBreakdownEntry(topPreferredPathOverrideKinds);
+  const topHttpPreferredPathOverrideDomains =
+    input.summary.topHttpPreferredPathOverrideDomains ?? [];
+  const topHttpPreferredPathOverrideKinds = input.summary.topHttpPreferredPathOverrideKinds ?? [];
+  const topHttpPreferredPathOverrideDomain = getUniqueTopBreakdownEntry(
+    topHttpPreferredPathOverrideDomains,
+  );
+  const topHttpPreferredPathOverrideKind = getUniqueTopBreakdownEntry(
+    topHttpPreferredPathOverrideKinds,
+  );
+  const topBrowserPreferredPathOverrideDomains =
+    input.summary.topBrowserPreferredPathOverrideDomains ?? [];
+  const topBrowserPreferredPathOverrideKinds =
+    input.summary.topBrowserPreferredPathOverrideKinds ?? [];
+  const topBrowserPreferredPathOverrideDomain = getUniqueTopBreakdownEntry(
+    topBrowserPreferredPathOverrideDomains,
+  );
+  const topBrowserPreferredPathOverrideKind = getUniqueTopBreakdownEntry(
+    topBrowserPreferredPathOverrideKinds,
+  );
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureDomain = input.summary.topBrowserRemoteFailureDomains?.[0];
   const topBrowserRemoteFailureCategory = input.summary.topBrowserRemoteFailureCategories?.[0];
+  const formatTopBreakdownKeys = (
+    entries: ReadonlyArray<Schema.Schema.Type<typeof BenchmarkReportItemSchema>>,
+  ) =>
+    entries
+      .slice(0, 3)
+      .map((entry) => entry.key)
+      .join(", ");
 
   if (input.summary.skippedPhases.length > 0) {
     warnings.push(`Skipped phases: ${input.summary.skippedPhases.join(", ")}.`);
@@ -3013,11 +3082,71 @@ function buildSuiteWarnings(input: {
     warnings.push(
       `Preferred-path overrides cluster on ${topPreferredPathOverrideDomain.key} (${topPreferredPathOverrideDomain.count} attempts).`,
     );
+  } else if (topPreferredPathOverrideDomains.length > 1) {
+    warnings.push(
+      `Preferred-path overrides span multiple domains: ${formatTopBreakdownKeys(topPreferredPathOverrideDomains)}.`,
+    );
   }
 
   if (topPreferredPathOverrideKind !== undefined && topPreferredPathOverrideKind.count > 0) {
     warnings.push(
       `Top preferred-path override kind: ${topPreferredPathOverrideKind.key} (${topPreferredPathOverrideKind.count} attempts).`,
+    );
+  } else if (topPreferredPathOverrideKinds.length > 1) {
+    warnings.push(
+      `Preferred-path override kinds are mixed: ${formatTopBreakdownKeys(topPreferredPathOverrideKinds)}.`,
+    );
+  }
+
+  if (
+    topHttpPreferredPathOverrideDomain !== undefined &&
+    topHttpPreferredPathOverrideDomain.count > 0
+  ) {
+    warnings.push(
+      `HTTP preferred-path overrides cluster on ${topHttpPreferredPathOverrideDomain.key} (${topHttpPreferredPathOverrideDomain.count} attempts).`,
+    );
+  } else if (topHttpPreferredPathOverrideDomains.length > 1) {
+    warnings.push(
+      `HTTP preferred-path overrides span multiple domains: ${formatTopBreakdownKeys(topHttpPreferredPathOverrideDomains)}.`,
+    );
+  }
+
+  if (
+    topHttpPreferredPathOverrideKind !== undefined &&
+    topHttpPreferredPathOverrideKind.count > 0
+  ) {
+    warnings.push(
+      `Top HTTP preferred-path override kind: ${topHttpPreferredPathOverrideKind.key} (${topHttpPreferredPathOverrideKind.count} attempts).`,
+    );
+  } else if (topHttpPreferredPathOverrideKinds.length > 1) {
+    warnings.push(
+      `HTTP preferred-path override kinds are mixed: ${formatTopBreakdownKeys(topHttpPreferredPathOverrideKinds)}.`,
+    );
+  }
+
+  if (
+    topBrowserPreferredPathOverrideDomain !== undefined &&
+    topBrowserPreferredPathOverrideDomain.count > 0
+  ) {
+    warnings.push(
+      `Browser preferred-path overrides cluster on ${topBrowserPreferredPathOverrideDomain.key} (${topBrowserPreferredPathOverrideDomain.count} attempts).`,
+    );
+  } else if (topBrowserPreferredPathOverrideDomains.length > 1) {
+    warnings.push(
+      `Browser preferred-path overrides span multiple domains: ${formatTopBreakdownKeys(topBrowserPreferredPathOverrideDomains)}.`,
+    );
+  }
+
+  if (
+    topBrowserPreferredPathOverrideKind !== undefined &&
+    topBrowserPreferredPathOverrideKind.count > 0
+  ) {
+    warnings.push(
+      `Top browser preferred-path override kind: ${topBrowserPreferredPathOverrideKind.key} (${topBrowserPreferredPathOverrideKind.count} attempts).`,
+    );
+  } else if (topBrowserPreferredPathOverrideKinds.length > 1) {
+    warnings.push(
+      `Browser preferred-path override kinds are mixed: ${formatTopBreakdownKeys(topBrowserPreferredPathOverrideKinds)}.`,
     );
   }
 
@@ -3110,6 +3239,13 @@ function buildSuiteRecommendations(input: {
   const topMixedRemoteFailureDomains = input.summary.topMixedRemoteFailureDomains ?? [];
   const topPreferredPathOverrideDomains = input.summary.topPreferredPathOverrideDomains ?? [];
   const topPreferredPathOverrideKinds = input.summary.topPreferredPathOverrideKinds ?? [];
+  const topHttpPreferredPathOverrideDomains =
+    input.summary.topHttpPreferredPathOverrideDomains ?? [];
+  const topHttpPreferredPathOverrideKinds = input.summary.topHttpPreferredPathOverrideKinds ?? [];
+  const topBrowserPreferredPathOverrideDomains =
+    input.summary.topBrowserPreferredPathOverrideDomains ?? [];
+  const topBrowserPreferredPathOverrideKinds =
+    input.summary.topBrowserPreferredPathOverrideKinds ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureCategories =
     input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
@@ -3155,7 +3291,9 @@ function buildSuiteRecommendations(input: {
       );
     }
 
-    const topPreferredPathOverrideKind = topPreferredPathOverrideKinds[0]?.key;
+    const topPreferredPathOverrideKind = getUniqueTopBreakdownEntry(
+      topPreferredPathOverrideKinds,
+    )?.key;
     switch (topPreferredPathOverrideKind) {
       case "egress":
         recommendations.push(
@@ -3172,6 +3310,62 @@ function buildSuiteRecommendations(input: {
           "Inspect provider health-scoring drift before treating lane-selection changes as benchmark regressions.",
         );
         break;
+    }
+
+    const topHttpPreferredPathOverrideKind = getUniqueTopBreakdownEntry(
+      topHttpPreferredPathOverrideKinds,
+    )?.key;
+    if (topHttpPreferredPathOverrideDomains.length > 0) {
+      recommendations.push(
+        `HTTP preferred-path override domains to inspect first: ${formatTopDomains(topHttpPreferredPathOverrideDomains)}.`,
+      );
+    }
+    if (topHttpPreferredPathOverrideKind !== undefined) {
+      switch (topHttpPreferredPathOverrideKind) {
+        case "egress":
+          recommendations.push(
+            "HTTP preferred-path drift is egress-led; inspect HTTP egress health scoring before interpreting throughput changes.",
+          );
+          break;
+        case "identity":
+          recommendations.push(
+            "HTTP preferred-path drift is identity-led; inspect HTTP identity health scoring before treating access changes as remote regressions.",
+          );
+          break;
+        case "provider":
+          recommendations.push(
+            "HTTP preferred-path drift is provider-led; inspect HTTP provider health scoring before treating lane changes as benchmark regressions.",
+          );
+          break;
+      }
+    }
+
+    const topBrowserPreferredPathOverrideKind = getUniqueTopBreakdownEntry(
+      topBrowserPreferredPathOverrideKinds,
+    )?.key;
+    if (topBrowserPreferredPathOverrideDomains.length > 0) {
+      recommendations.push(
+        `Browser preferred-path override domains to inspect first: ${formatTopDomains(topBrowserPreferredPathOverrideDomains)}.`,
+      );
+    }
+    if (topBrowserPreferredPathOverrideKind !== undefined) {
+      switch (topBrowserPreferredPathOverrideKind) {
+        case "egress":
+          recommendations.push(
+            "Browser preferred-path drift is egress-led; inspect browser egress health scoring before interpreting fallback results.",
+          );
+          break;
+        case "identity":
+          recommendations.push(
+            "Browser preferred-path drift is identity-led; inspect browser identity health scoring before treating browser failures as domain-side regressions.",
+          );
+          break;
+        case "provider":
+          recommendations.push(
+            "Browser preferred-path drift is provider-led; inspect browser provider health scoring before treating browser lane changes as regressions.",
+          );
+          break;
+      }
     }
   }
 

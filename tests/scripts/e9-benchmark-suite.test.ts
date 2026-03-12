@@ -356,6 +356,10 @@ describe("e9 benchmark suite", () => {
     delete summary?.preferredPathOverrideCount;
     delete summary?.topPreferredPathOverrideDomains;
     delete summary?.topPreferredPathOverrideKinds;
+    delete summary?.topHttpPreferredPathOverrideDomains;
+    delete summary?.topHttpPreferredPathOverrideKinds;
+    delete summary?.topBrowserPreferredPathOverrideDomains;
+    delete summary?.topBrowserPreferredPathOverrideKinds;
 
     const decoded = Schema.decodeUnknownSync(E9BenchmarkSuiteArtifactSchema)(legacyArtifact);
     expect(decoded.summary?.topRemoteFailureCategories).toBeUndefined();
@@ -363,6 +367,10 @@ describe("e9 benchmark suite", () => {
     expect(decoded.summary?.preferredPathOverrideCount).toBeUndefined();
     expect(decoded.summary?.topPreferredPathOverrideDomains).toBeUndefined();
     expect(decoded.summary?.topPreferredPathOverrideKinds).toBeUndefined();
+    expect(decoded.summary?.topHttpPreferredPathOverrideDomains).toBeUndefined();
+    expect(decoded.summary?.topHttpPreferredPathOverrideKinds).toBeUndefined();
+    expect(decoded.summary?.topBrowserPreferredPathOverrideDomains).toBeUndefined();
+    expect(decoded.summary?.topBrowserPreferredPathOverrideKinds).toBeUndefined();
   });
 
   it("formats legacy mixed-domain summaries that do not yet carry per-category counts", () => {
@@ -638,6 +646,21 @@ describe("e9 benchmark suite", () => {
       { key: "identity", count: 1 },
       { key: "provider", count: 1 },
     ]);
+    expect(artifact.summary?.topHttpPreferredPathOverrideDomains).toEqual([
+      { key: "alpha.example", count: 1 },
+      { key: "beta.example", count: 1 },
+    ]);
+    expect(artifact.summary?.topHttpPreferredPathOverrideKinds).toEqual([
+      { key: "egress", count: 1 },
+      { key: "identity", count: 1 },
+      { key: "provider", count: 1 },
+    ]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideDomains).toEqual([
+      { key: "alpha.example", count: 1 },
+    ]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideKinds).toEqual([
+      { key: "egress", count: 1 },
+    ]);
     expect(artifact.warnings).toContain(
       "Access-health-driven preferred-path overrides affected 3 attempts; success and throughput may reflect fallback provider, egress or identity choices instead of the preferred route.",
     );
@@ -645,6 +668,18 @@ describe("e9 benchmark suite", () => {
       "Preferred-path overrides cluster on alpha.example (2 attempts).",
     );
     expect(artifact.warnings).toContain("Top preferred-path override kind: egress (2 attempts).");
+    expect(artifact.warnings).toContain(
+      "HTTP preferred-path overrides span multiple domains: alpha.example, beta.example.",
+    );
+    expect(artifact.warnings).toContain(
+      "HTTP preferred-path override kinds are mixed: egress, identity, provider.",
+    );
+    expect(artifact.warnings).toContain(
+      "Browser preferred-path overrides cluster on alpha.example (1 attempts).",
+    );
+    expect(artifact.warnings).toContain(
+      "Top browser preferred-path override kind: egress (1 attempts).",
+    );
     expect(artifact.recommendations).toContain(
       "Stabilize or isolate access-health-driven provider, egress, or identity overrides before comparing benchmark trends against the preferred path.",
     );
@@ -654,7 +689,165 @@ describe("e9 benchmark suite", () => {
     expect(artifact.recommendations).toContain(
       "Inspect egress health-scoring drift before treating throughput or success changes as domain behavior.",
     );
+    expect(artifact.recommendations).toContain(
+      "HTTP preferred-path override domains to inspect first: alpha.example, beta.example.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser preferred-path override domains to inspect first: alpha.example.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser preferred-path drift is egress-led; inspect browser egress health scoring before interpreting fallback results.",
+    );
     expect(artifact.summary?.topLocalFailureCategories).toEqual([]);
+  });
+
+  it("keeps browser identity override drift visible when aggregate preferred-path drift is egress-led", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http", "browser"],
+        httpProfiles: ["effect-http"],
+        browserProfiles: ["effect-browser"],
+        httpConcurrency: [1],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-http-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/http-a",
+            pageType: "listing",
+            title: "Alpha A",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-http-beta",
+            domain: "beta.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://beta.example/http-b",
+            pageType: "listing",
+            title: "Beta B",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-browser-datart",
+            domain: "datart.cz",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.cz/browser-a",
+            pageType: "product",
+            title: "Datart Browser",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-browser-sportisimo",
+            domain: "sportisimo.cz",
+            kind: "retailer",
+            state: "partial",
+            url: "https://sportisimo.cz/browser-b",
+            pageType: "listing",
+            title: "Sportisimo Browser",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: page.url,
+                warnings:
+                  page.domain === "alpha.example" || page.domain === "beta.example"
+                    ? [
+                        makePreferredPathOverrideWarning({
+                          kind: "egress",
+                          selectedId: "leased-direct",
+                          preferredId: "direct",
+                        }),
+                      ]
+                    : [],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: page.url,
+                warnings:
+                  page.domain === "datart.cz" || page.domain === "sportisimo.cz"
+                    ? [
+                        makePreferredPathOverrideWarning({
+                          kind: "identity",
+                          selectedId: "leased-default",
+                          preferredId: "default",
+                        }),
+                      ]
+                    : [],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topPreferredPathOverrideKinds).toEqual([
+      { key: "egress", count: 2 },
+      { key: "identity", count: 2 },
+    ]);
+    expect(artifact.summary?.topHttpPreferredPathOverrideKinds).toEqual([
+      { key: "egress", count: 2 },
+    ]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideKinds).toEqual([
+      { key: "identity", count: 2 },
+    ]);
+    expect(artifact.summary?.topBrowserPreferredPathOverrideDomains).toEqual([
+      { key: "datart.cz", count: 1 },
+      { key: "sportisimo.cz", count: 1 },
+    ]);
+    expect(artifact.warnings).toContain(
+      "Preferred-path override kinds are mixed: egress, identity.",
+    );
+    expect(artifact.warnings).not.toContain(
+      "Top preferred-path override kind: egress (2 attempts).",
+    );
+    expect(artifact.warnings).toContain(
+      "Browser preferred-path overrides span multiple domains: datart.cz, sportisimo.cz.",
+    );
+    expect(artifact.warnings).toContain(
+      "Top browser preferred-path override kind: identity (2 attempts).",
+    );
+    expect(artifact.recommendations).not.toContain(
+      "Inspect egress health-scoring drift before treating throughput or success changes as domain behavior.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser preferred-path override domains to inspect first: datart.cz, sportisimo.cz.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser preferred-path drift is identity-led; inspect browser identity health scoring before treating browser failures as domain-side regressions.",
+    );
   });
 
   it("merges runtime warnings with locally detectable access-wall signals", () => {
@@ -4752,6 +4945,10 @@ describe("e9 benchmark suite", () => {
             preferredPathOverrideCount: 0,
             topPreferredPathOverrideDomains: [],
             topPreferredPathOverrideKinds: [],
+            topHttpPreferredPathOverrideDomains: [],
+            topHttpPreferredPathOverrideKinds: [],
+            topBrowserPreferredPathOverrideDomains: [],
+            topBrowserPreferredPathOverrideKinds: [],
           },
           warnings: ["Skipped phases: browser, scrapling, canary."],
           recommendations: [
@@ -4806,6 +5003,10 @@ describe("e9 benchmark suite", () => {
         preferredPathOverrideCount: 0,
         topPreferredPathOverrideDomains: [],
         topPreferredPathOverrideKinds: [],
+        topHttpPreferredPathOverrideDomains: [],
+        topHttpPreferredPathOverrideKinds: [],
+        topBrowserPreferredPathOverrideDomains: [],
+        topBrowserPreferredPathOverrideKinds: [],
       },
       warnings: ["Skipped phases: browser, scrapling, canary."],
       recommendations: ["Use the full-corpus preset when you need definitive release evidence."],
@@ -5195,11 +5396,30 @@ describe("e9 benchmark suite", () => {
       { key: "identity", count: 1 },
       { key: "provider", count: 1 },
     ]);
+    expect(merged.summary?.topHttpPreferredPathOverrideDomains).toEqual([
+      { key: "alpha.example", count: 1 },
+    ]);
+    expect(merged.summary?.topHttpPreferredPathOverrideKinds).toEqual([
+      { key: "egress", count: 1 },
+    ]);
+    expect(merged.summary?.topBrowserPreferredPathOverrideDomains).toEqual([
+      { key: "beta.example", count: 1 },
+    ]);
+    expect(merged.summary?.topBrowserPreferredPathOverrideKinds).toEqual([
+      { key: "identity", count: 1 },
+      { key: "provider", count: 1 },
+    ]);
     expect(merged.warnings).toContain(
       "Access-health-driven preferred-path overrides affected 2 attempts; success and throughput may reflect fallback provider, egress or identity choices instead of the preferred route.",
     );
+    expect(merged.warnings).toContain(
+      "Browser preferred-path override kinds are mixed: identity, provider.",
+    );
     expect(merged.recommendations).toContain(
       "Stabilize or isolate access-health-driven provider, egress, or identity overrides before comparing benchmark trends against the preferred path.",
+    );
+    expect(merged.recommendations).toContain(
+      "Browser preferred-path override domains to inspect first: beta.example.",
     );
   });
 
