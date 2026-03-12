@@ -11,6 +11,7 @@ import {
   DEFAULT_HTTP_PROVIDER_ID,
   DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
 } from "./access-provider-ids.ts";
+import { resolveModeDefaultProviderId } from "./access-default-provider.ts";
 export {
   DEFAULT_BROWSER_PROVIDER_ID,
   DEFAULT_HTTP_PROVIDER_ID,
@@ -379,15 +380,37 @@ export function makeStaticAccessSelectionPolicy(input?: {
 
           if (requestedMode === undefined) {
             return Effect.gen(function* () {
-              yield* ensureKnownProvider(input.defaultProviderId);
-              return input.defaultProviderId;
+              const configuredProvider = yield* providerRegistry.findDescriptor(
+                input.defaultProviderId,
+              );
+              if (configuredProvider !== undefined) {
+                return input.defaultProviderId;
+              }
+
+              const resolvedLaneDefault =
+                input.defaultProviderId === DEFAULT_BROWSER_PROVIDER_ID ||
+                input.defaultProviderId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
+                  ? defaultBrowserProviderId
+                  : input.defaultProviderId === DEFAULT_HTTP_PROVIDER_ID
+                    ? defaultHttpProviderId
+                    : undefined;
+
+              if (resolvedLaneDefault !== undefined) {
+                yield* ensureKnownProvider(resolvedLaneDefault);
+                return resolvedLaneDefault;
+              }
+
+              return yield* Effect.fail(
+                invalidExecution(
+                  "Unknown access provider",
+                  `No access provider named "${input.defaultProviderId}" is registered.`,
+                ),
+              );
             });
           }
 
           if (requestedMode === "http") {
             return Effect.gen(function* () {
-              yield* ensureKnownProvider(input.defaultProviderId);
-              yield* ensureKnownProvider(defaultHttpProviderId);
               const providerModes = yield* resolveProviderModes([
                 input.defaultProviderId,
                 defaultHttpProviderId,
@@ -399,13 +422,13 @@ export function makeStaticAccessSelectionPolicy(input?: {
                 defaultBrowserProviderId,
                 providerModes,
               });
-              return candidates[0] ?? defaultHttpProviderId;
+              const resolvedProviderId = candidates[0] ?? defaultHttpProviderId;
+              yield* ensureKnownProvider(resolvedProviderId);
+              return resolvedProviderId;
             });
           }
 
           return Effect.gen(function* () {
-            yield* ensureKnownProvider(input.defaultProviderId);
-            yield* ensureKnownProvider(defaultBrowserProviderId);
             const providerModes = yield* resolveProviderModes([
               input.defaultProviderId,
               defaultBrowserProviderId,
@@ -417,7 +440,9 @@ export function makeStaticAccessSelectionPolicy(input?: {
               defaultBrowserProviderId,
               providerModes,
             });
-            return candidates[0] ?? defaultBrowserProviderId;
+            const resolvedProviderId = candidates[0] ?? defaultBrowserProviderId;
+            yield* ensureKnownProvider(resolvedProviderId);
+            return resolvedProviderId;
           });
         };
 
@@ -546,9 +571,46 @@ export const AccessSelectionPolicyLive = Layer.succeed(AccessSelectionPolicy, {
       const selectionStrategy = Option.getOrUndefined(
         yield* Effect.serviceOption(AccessSelectionStrategy),
       );
+      const liveDefaults =
+        providerRegistry === undefined
+          ? {}
+          : yield* providerRegistry.listDescriptors().pipe(
+              Effect.map((descriptors) => {
+                const providerIdsByMode = {
+                  http: descriptors
+                    .filter((descriptor) => descriptor.capabilities.mode === "http")
+                    .map((descriptor) => descriptor.id),
+                  browser: descriptors
+                    .filter((descriptor) => descriptor.capabilities.mode === "browser")
+                    .map((descriptor) => descriptor.id),
+                } as const;
+                providerIdsByMode.http.sort();
+                providerIdsByMode.browser.sort();
+
+                return {
+                  ...(providerIdsByMode.http.length === 0
+                    ? {}
+                    : {
+                        defaultHttpProviderId: resolveModeDefaultProviderId({
+                          mode: "http",
+                          providerIds: providerIdsByMode.http,
+                        }),
+                      }),
+                  ...(providerIdsByMode.browser.length === 0
+                    ? {}
+                    : {
+                        defaultBrowserProviderId: resolveModeDefaultProviderId({
+                          mode: "browser",
+                          providerIds: providerIdsByMode.browser,
+                        }),
+                      }),
+                };
+              }),
+            );
 
       return yield* makeStaticAccessSelectionPolicy({
         ...(providerRegistry === undefined ? {} : { providerRegistry }),
+        ...liveDefaults,
         ...(healthSignalsGateway === undefined
           ? {}
           : {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "@effect-native/bun-test";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import {
+  makeStaticAccessProviderRegistry,
+  type AccessProvider,
   type AccessProviderDescriptor,
+  AccessProviderRegistry,
   AccessProviderRegistryLive,
 } from "../../src/sdk/access-provider-runtime.ts";
 import {
@@ -12,7 +15,10 @@ import {
   AccessSelectionHealthSignalsGateway,
   AccessSelectionHealthSignalsGatewayLive,
 } from "../../src/sdk/access-selection-health-runtime.ts";
-import { AccessSelectionStrategy } from "../../src/sdk/access-selection-strategy-runtime.ts";
+import {
+  AccessSelectionStrategy,
+  AccessSelectionStrategyLive,
+} from "../../src/sdk/access-selection-strategy-runtime.ts";
 import {
   AccessSelectionPolicy,
   AccessSelectionPolicyLive,
@@ -141,6 +147,109 @@ describe("sdk access policy runtime", () => {
       expect(selection.providerId).toBe("managed-unblocker");
       expect(selection.mode).toBe("browser");
     }),
+  );
+
+  it.effect(
+    "derives lane defaults from the live provider registry when builtin ids are absent",
+    () =>
+      Effect.gen(function* () {
+        const selection = yield* Effect.gen(function* () {
+          const policy = yield* AccessSelectionPolicy;
+          return yield* policy.resolveSelection({
+            url: "https://example.com/live-custom-default-browser",
+            defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+            execution: {
+              mode: "browser",
+            },
+          });
+        }).pipe(
+          Effect.provide(AccessSelectionPolicyLive),
+          Effect.provide(
+            Layer.succeed(
+              AccessProviderRegistry,
+              makeStaticAccessProviderRegistry({
+                "managed-browser": {
+                  id: "managed-browser",
+                  capabilities: {
+                    mode: "browser",
+                    rendersDom: true,
+                  },
+                  execute: () =>
+                    Effect.die(new Error("Execution should not run during selection-policy tests")),
+                } satisfies AccessProvider,
+                "managed-http": {
+                  id: "managed-http",
+                  capabilities: {
+                    mode: "http",
+                    rendersDom: false,
+                  },
+                  execute: () =>
+                    Effect.die(new Error("Execution should not run during selection-policy tests")),
+                } satisfies AccessProvider,
+              }),
+            ),
+          ),
+          Effect.provide(AccessSelectionHealthSignalsGatewayLive),
+          Effect.provideService(AccessSelectionStrategy, {
+            selectCandidate: ({ candidates }) =>
+              Effect.succeed({
+                providerId: candidates[0]?.providerId ?? "managed-http",
+                rationale: "preferred",
+              }),
+          }),
+          Effect.provide(AccessHealthRuntimeLive),
+        );
+
+        expect(selection.providerId).toBe("managed-browser");
+        expect(selection.mode).toBe("browser");
+      }),
+  );
+
+  it.effect(
+    "reuses the live HTTP lane default for implicit-mode requests when builtin ids are absent",
+    () =>
+      Effect.gen(function* () {
+        const selection = yield* Effect.gen(function* () {
+          const policy = yield* AccessSelectionPolicy;
+          return yield* policy.resolveSelection({
+            url: "https://example.com/live-custom-default-http",
+            defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          });
+        }).pipe(
+          Effect.provide(AccessSelectionPolicyLive),
+          Effect.provide(
+            Layer.succeed(
+              AccessProviderRegistry,
+              makeStaticAccessProviderRegistry({
+                "managed-browser": {
+                  id: "managed-browser",
+                  capabilities: {
+                    mode: "browser",
+                    rendersDom: true,
+                  },
+                  execute: () =>
+                    Effect.die(new Error("Execution should not run during selection-policy tests")),
+                } satisfies AccessProvider,
+                "managed-http": {
+                  id: "managed-http",
+                  capabilities: {
+                    mode: "http",
+                    rendersDom: false,
+                  },
+                  execute: () =>
+                    Effect.die(new Error("Execution should not run during selection-policy tests")),
+                } satisfies AccessProvider,
+              }),
+            ),
+          ),
+          Effect.provide(AccessSelectionHealthSignalsGatewayLive),
+          Effect.provide(AccessSelectionStrategyLive),
+          Effect.provide(AccessHealthRuntimeLive),
+        );
+
+        expect(selection.providerId).toBe("managed-http");
+        expect(selection.mode).toBe("http");
+      }),
   );
 
   it.effect(
@@ -518,25 +627,22 @@ describe("sdk access policy runtime", () => {
     }),
   );
 
-  it.effect("fails explicit mode requests when the configured default provider is unknown", () =>
-    Effect.gen(function* () {
-      const failure = yield* resolveSelection({
-        url: "https://example.com/unknown-default-provider",
-        defaultProviderId: "missing-http-provider",
-        execution: {
-          mode: "http",
-        },
-      }).pipe(
-        Effect.match({
-          onSuccess: () => undefined,
-          onFailure: (error) => error,
-        }),
-      );
+  it.effect(
+    "reuses the live lane default when an explicit mode request carries an unknown default provider",
+    () =>
+      Effect.gen(function* () {
+        const selection = yield* resolveSelection({
+          url: "https://example.com/unknown-default-provider",
+          defaultProviderId: "missing-http-provider",
+          execution: {
+            mode: "http",
+          },
+        });
 
-      expect(failure?._tag).toBe("InvalidInputError");
-      expect(failure?.message).toBe("Unknown access provider");
-      expect(failure?.details).toContain("missing-http-provider");
-    }),
+        expect(selection.providerId).toBe(DEFAULT_HTTP_PROVIDER_ID);
+        expect(selection.mode).toBe("http");
+        expect(selection.warnings).toEqual([]);
+      }),
   );
 
   it.effect("rejects strategy outputs outside the computed candidate set", () =>

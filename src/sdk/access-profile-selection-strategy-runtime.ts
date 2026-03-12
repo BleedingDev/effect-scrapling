@@ -2,7 +2,6 @@ import { Effect, Layer, ServiceMap } from "effect";
 import {
   DEFAULT_EGRESS_PROFILE_ID,
   DEFAULT_IDENTITY_PROFILE_ID,
-  DEFAULT_LEASED_EGRESS_PROFILE_ID,
   DEFAULT_LEASED_IDENTITY_PROFILE_ID,
   DEFAULT_LEASED_STEALTH_IDENTITY_PROFILE_ID,
   DEFAULT_STEALTH_IDENTITY_PROFILE_ID,
@@ -39,6 +38,11 @@ export type AccessProfileSelectionDecision = {
   readonly profileId: string;
   readonly rationale: AccessProfileSelectionDecisionRationale;
 };
+
+const EGRESS_PLUGIN_SCORE_DRIFT_TOLERANCE = 20;
+const EGRESS_HEALTH_SCORE_DRIFT_TOLERANCE = 20;
+const IDENTITY_PLUGIN_SCORE_DRIFT_TOLERANCE = 35;
+const IDENTITY_HEALTH_SCORE_DRIFT_TOLERANCE = 35;
 
 function snapshotIsQuarantined(input: {
   readonly quarantinedUntil?: string | null | undefined;
@@ -80,8 +84,51 @@ function rankEgressProfile(input: {
     pluginScore: pluginSnapshot?.score ?? 100,
     score: profileSnapshot?.score ?? 100,
     direct: input.profile.profileId === DEFAULT_EGRESS_PROFILE_ID ? 1 : 0,
-    leased: input.profile.profileId === DEFAULT_LEASED_EGRESS_PROFILE_ID ? 1 : 0,
   };
+}
+
+function comparePreferredBias(input: {
+  readonly leftBias: number;
+  readonly rightBias: number;
+  readonly leftScore: number;
+  readonly rightScore: number;
+  readonly tolerance: number;
+}) {
+  if (input.leftBias === input.rightBias) {
+    return 0;
+  }
+
+  const leftIsPreferred = input.leftBias > input.rightBias;
+  const preferredScore = leftIsPreferred ? input.leftScore : input.rightScore;
+  const challengerScore = leftIsPreferred ? input.rightScore : input.leftScore;
+
+  return challengerScore - preferredScore <= input.tolerance ? input.rightBias - input.leftBias : 0;
+}
+
+function comparePreferredBiasAcrossSignals(input: {
+  readonly leftBias: number;
+  readonly rightBias: number;
+  readonly leftPluginScore: number;
+  readonly rightPluginScore: number;
+  readonly pluginTolerance: number;
+  readonly leftHealthScore: number;
+  readonly rightHealthScore: number;
+  readonly healthTolerance: number;
+}) {
+  if (input.leftBias === input.rightBias) {
+    return 0;
+  }
+
+  const leftIsPreferred = input.leftBias > input.rightBias;
+  const preferredPluginScore = leftIsPreferred ? input.leftPluginScore : input.rightPluginScore;
+  const challengerPluginScore = leftIsPreferred ? input.rightPluginScore : input.leftPluginScore;
+  const preferredHealthScore = leftIsPreferred ? input.leftHealthScore : input.rightHealthScore;
+  const challengerHealthScore = leftIsPreferred ? input.rightHealthScore : input.leftHealthScore;
+
+  return challengerPluginScore - preferredPluginScore <= input.pluginTolerance &&
+    challengerHealthScore - preferredHealthScore <= input.healthTolerance
+    ? input.rightBias - input.leftBias
+    : 0;
 }
 
 function compareEgressProfiles(
@@ -97,20 +144,30 @@ function compareEgressProfiles(
     return leftRank.quarantined - rightRank.quarantined;
   }
 
+  const preferredDirectBias = comparePreferredBiasAcrossSignals({
+    leftBias: leftRank.direct,
+    rightBias: rightRank.direct,
+    leftPluginScore: leftRank.pluginScore,
+    rightPluginScore: rightRank.pluginScore,
+    pluginTolerance: EGRESS_PLUGIN_SCORE_DRIFT_TOLERANCE,
+    leftHealthScore: leftRank.score,
+    rightHealthScore: rightRank.score,
+    healthTolerance: EGRESS_HEALTH_SCORE_DRIFT_TOLERANCE,
+  });
+  if (preferredDirectBias !== 0) {
+    return preferredDirectBias;
+  }
+
   if (leftRank.pluginScore !== rightRank.pluginScore) {
     return rightRank.pluginScore - leftRank.pluginScore;
   }
 
-  if (leftRank.direct !== rightRank.direct) {
-    return rightRank.direct - leftRank.direct;
-  }
-
-  if (leftRank.leased !== rightRank.leased) {
-    return rightRank.leased - leftRank.leased;
-  }
-
   if (leftRank.score !== rightRank.score) {
     return rightRank.score - leftRank.score;
+  }
+
+  if (leftRank.direct !== rightRank.direct) {
+    return rightRank.direct - leftRank.direct;
   }
 
   return left.profileId.localeCompare(right.profileId);
@@ -174,16 +231,38 @@ function compareIdentityProfiles(
     return leftRank.quarantined - rightRank.quarantined;
   }
 
+  const preferredIdentityBias = comparePreferredBias({
+    leftBias: -leftRank.preferenceRank,
+    rightBias: -rightRank.preferenceRank,
+    leftScore: leftRank.pluginScore,
+    rightScore: rightRank.pluginScore,
+    tolerance: IDENTITY_PLUGIN_SCORE_DRIFT_TOLERANCE,
+  });
+  if (preferredIdentityBias !== 0) {
+    return preferredIdentityBias;
+  }
+
   if (leftRank.pluginScore !== rightRank.pluginScore) {
     return rightRank.pluginScore - leftRank.pluginScore;
   }
 
-  if (leftRank.preferenceRank !== rightRank.preferenceRank) {
-    return leftRank.preferenceRank - rightRank.preferenceRank;
+  const preferredIdentityHealthBias = comparePreferredBias({
+    leftBias: -leftRank.preferenceRank,
+    rightBias: -rightRank.preferenceRank,
+    leftScore: leftRank.score,
+    rightScore: rightRank.score,
+    tolerance: IDENTITY_HEALTH_SCORE_DRIFT_TOLERANCE,
+  });
+  if (preferredIdentityHealthBias !== 0) {
+    return preferredIdentityHealthBias;
   }
 
   if (leftRank.score !== rightRank.score) {
     return rightRank.score - leftRank.score;
+  }
+
+  if (leftRank.preferenceRank !== rightRank.preferenceRank) {
+    return leftRank.preferenceRank - rightRank.preferenceRank;
   }
 
   return left.profileId.localeCompare(right.profileId);

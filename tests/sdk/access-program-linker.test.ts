@@ -2,6 +2,11 @@ import { describe, expect, it } from "@effect-native/bun-test";
 import { Effect, Layer } from "effect";
 import { AccessSelectionPolicy } from "../../src/sdk/access-policy-runtime.ts";
 import { AccessProgramLinker } from "../../src/sdk/access-program-linker.ts";
+import {
+  type AccessProvider,
+  AccessProviderRegistry,
+  makeStaticAccessProviderRegistry,
+} from "../../src/sdk/access-provider-runtime.ts";
 import { provideSdkRuntime } from "../../src/sdk/runtime-layer.ts";
 
 describe("sdk access program linker", () => {
@@ -113,6 +118,101 @@ describe("sdk access program linker", () => {
                   },
             ),
         }),
+      ),
+  );
+
+  it.effect("uses available browser providers as render defaults when builtin ids are absent", () =>
+    provideSdkRuntime(
+      Effect.gen(function* () {
+        const linker = yield* AccessProgramLinker;
+        const specialized = yield* linker.specialize({
+          command: "render",
+          url: "https://example.com/products/sku-1",
+          defaultTimeoutMs: 500,
+          defaultProviderId: "browser-basic",
+        });
+
+        expect(specialized.program.defaultProviderId).toBe("managed-browser");
+        expect(specialized.intent.providerId).toBe("managed-browser");
+        expect(specialized.intent.mode).toBe("browser");
+      }),
+      Layer.succeed(
+        AccessProviderRegistry,
+        makeStaticAccessProviderRegistry({
+          "managed-browser": {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+            execute: () =>
+              Effect.die(new Error("Execution should not run during linker specialization tests")),
+          } satisfies AccessProvider,
+          "managed-http": {
+            id: "managed-http",
+            capabilities: {
+              mode: "http",
+              rendersDom: false,
+            },
+            execute: () =>
+              Effect.die(new Error("Execution should not run during linker specialization tests")),
+          } satisfies AccessProvider,
+        }),
+      ),
+    ),
+  );
+
+  it.effect(
+    "rejects arbitrary unknown default provider ids instead of masking them with program defaults",
+    () =>
+      provideSdkRuntime(
+        Effect.gen(function* () {
+          const linker = yield* AccessProgramLinker;
+          const failure = yield* linker
+            .specialize({
+              command: "render",
+              url: "https://example.com/products/sku-2",
+              defaultTimeoutMs: 500,
+              defaultProviderId: "typo-browser",
+            })
+            .pipe(
+              Effect.match({
+                onSuccess: () => undefined,
+                onFailure: (error) => error,
+              }),
+            );
+
+          expect(failure?._tag).toBe("InvalidInputError");
+          expect(failure?.message).toBe("Unknown access provider");
+          expect(failure?.details).toContain("typo-browser");
+        }),
+        Layer.succeed(
+          AccessProviderRegistry,
+          makeStaticAccessProviderRegistry({
+            "managed-browser": {
+              id: "managed-browser",
+              capabilities: {
+                mode: "browser",
+                rendersDom: true,
+              },
+              execute: () =>
+                Effect.die(
+                  new Error("Execution should not run during linker specialization tests"),
+                ),
+            } satisfies AccessProvider,
+            "managed-http": {
+              id: "managed-http",
+              capabilities: {
+                mode: "http",
+                rendersDom: false,
+              },
+              execute: () =>
+                Effect.die(
+                  new Error("Execution should not run during linker specialization tests"),
+                ),
+            } satisfies AccessProvider,
+          }),
+        ),
       ),
   );
 });

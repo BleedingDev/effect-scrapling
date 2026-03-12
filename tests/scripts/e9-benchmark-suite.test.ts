@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
@@ -1960,6 +1960,56 @@ describe("e9 benchmark suite", () => {
         },
       }),
     ).rejects.toThrow("Failed to persist benchmark JSONL sidecar");
+  });
+
+  it("recreates the artifact jsonl parent directory when it disappears mid-run", async () => {
+    const artifactJsonlPath = `tmp/${randomUUID()}/e9-benchmark-suite-recreated.jsonl`;
+    const artifactJsonlDir = artifactJsonlPath.replace(/\/[^/]+$/u, "");
+
+    await runE9BenchmarkSuiteCli(["--artifact-jsonl", artifactJsonlPath], {
+      writeLine: () => undefined,
+      writeProgressLine: () => undefined,
+      runBenchmarkSuite: async (_options, dependencies) => {
+        dependencies?.onProgress?.({
+          kind: "suite-start",
+          benchmarkId: "suite-cli-progress",
+          generatedAt: "2026-03-09T22:00:00.000Z",
+          selectedPhases: ["http"],
+          corpusPath: "tmp/corpus.json",
+          pageCount: 2,
+          siteCount: 1,
+          httpProfiles: ["effect-http"],
+          browserProfiles: [],
+          httpConcurrency: [2],
+          browserConcurrency: [],
+          expectedSweepCount: 1,
+        });
+
+        await rm(artifactJsonlDir, { recursive: true, force: true });
+
+        dependencies?.onProgress?.({
+          kind: "phase-complete",
+          benchmarkId: "suite-cli-progress",
+          generatedAt: "2026-03-09T22:00:00.000Z",
+          phase: "live-http-corpus",
+          attemptCount: 2,
+          sweepCount: 1,
+          totalWallMs: 12,
+        });
+
+        return {} as never;
+      },
+    });
+
+    const artifactJsonlRaw = await readFile(artifactJsonlPath, "utf8");
+    const artifactJsonlEntries = artifactJsonlRaw
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { readonly recordType: string; readonly runId: string });
+
+    expect(artifactJsonlEntries.at(-1)?.recordType).toBe("final-artifact");
+    expect(artifactJsonlEntries.some((entry) => entry.recordType === "progress-event")).toBe(true);
+    expect(new Set(artifactJsonlEntries.map((entry) => entry.runId)).size).toBe(1);
   });
 
   it("honors narrow tty widths for compact CLI progress", async () => {

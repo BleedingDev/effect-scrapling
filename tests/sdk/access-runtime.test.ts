@@ -4,7 +4,10 @@ import {
   AccessModuleRegistry,
   makeStaticAccessModuleRegistry,
 } from "../../src/sdk/access-module-runtime.ts";
-import { AccessProgramLinkerLive } from "../../src/sdk/access-program-linker.ts";
+import {
+  AccessProgramLinker,
+  AccessProgramLinkerLive,
+} from "../../src/sdk/access-program-linker.ts";
 import {
   type AccessProvider,
   type AccessProviderDescriptor,
@@ -28,6 +31,7 @@ import {
 import { AccessProfileSelectionPolicyLive } from "../../src/sdk/access-profile-policy-runtime.ts";
 import { AccessProfileSelectionHealthSignalsGatewayLive } from "../../src/sdk/access-profile-selection-health-runtime.ts";
 import { AccessProfileSelectionStrategyLive } from "../../src/sdk/access-profile-selection-strategy-runtime.ts";
+import { buildCanonicalAccessIr } from "../../src/sdk/canonical-access-ir.ts";
 import { type InvalidInputError } from "../../src/sdk/errors.ts";
 import { AccessSelectionHealthSignalsGatewayLive } from "../../src/sdk/access-selection-health-runtime.ts";
 import { AccessSelectionStrategyLive } from "../../src/sdk/access-selection-strategy-runtime.ts";
@@ -179,6 +183,170 @@ function resolveExecutionWithSelectionPolicy(
     Effect.provide(makeAccessExecutionRuntimeLayer(providerRegistryLayer, selectionPolicyLayer)),
     Effect.provide(AccessHealthRuntimeLive),
   ) as Effect.Effect<ResolvedExecutionPlan, InvalidInputError, never>;
+}
+
+function makeMockExecutionIntent(command: "access" | "render"): ResolvedExecutionPlan {
+  return command === "render"
+    ? {
+        targetUrl: "https://example.com/mock-render",
+        targetDomain: "example.com",
+        providerId: "managed-browser",
+        mode: "browser",
+        timeoutMs: 900,
+        egress: {
+          allocationMode: "static",
+          pluginId: "builtin-direct-egress",
+          profileId: "direct",
+          poolId: "direct-pool",
+          routePolicyId: "direct-route",
+          routeKind: "direct",
+          routeKey: "direct",
+          requestHeaders: {},
+          warnings: [],
+        },
+        identity: {
+          allocationMode: "static",
+          pluginId: "builtin-default-identity",
+          profileId: DEFAULT_IDENTITY_PROFILE_ID,
+          tenantId: "public",
+          browserRuntimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+          httpUserAgent: "effect-scrapling/0.0.1",
+          browserUserAgent: "browser-agent",
+          warnings: [],
+        },
+        browser: {
+          runtimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+          waitUntil: "domcontentloaded",
+          timeoutMs: 900,
+        },
+        warnings: [],
+      }
+    : {
+        targetUrl: "https://example.com/mock-access",
+        targetDomain: "example.com",
+        providerId: "managed-http",
+        mode: "http",
+        timeoutMs: 900,
+        egress: {
+          allocationMode: "static",
+          pluginId: "builtin-direct-egress",
+          profileId: "direct",
+          poolId: "direct-pool",
+          routePolicyId: "direct-route",
+          routeKind: "direct",
+          routeKey: "direct",
+          requestHeaders: {},
+          warnings: [],
+        },
+        identity: {
+          allocationMode: "static",
+          pluginId: "builtin-default-identity",
+          profileId: DEFAULT_IDENTITY_PROFILE_ID,
+          tenantId: "public",
+          browserRuntimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+          httpUserAgent: "effect-scrapling/0.0.1",
+          browserUserAgent: "browser-agent",
+          warnings: [],
+        },
+        http: {
+          userAgent: "effect-scrapling/0.0.1",
+        },
+        warnings: [],
+      };
+}
+
+function resolveExecutionWithMockLinker(input: {
+  readonly irProviders: ReadonlyArray<AccessProviderDescriptor>;
+  readonly executionInput: AccessExecutionInput;
+}) {
+  const ir = buildCanonicalAccessIr({
+    modules: [],
+    providers: input.irProviders,
+    egressProfiles: [],
+    identityProfiles: [],
+    programs: [
+      {
+        programId: "access-preview",
+        command: "access",
+        defaultProviderId: "managed-http",
+        candidateProviderIdsByMode: {
+          http: ["managed-http"],
+          browser: ["managed-browser"],
+        },
+        egressProfileIds: [],
+        identityProfileIds: [],
+        fallbackEdges: [],
+        scoringDimensions: [],
+      },
+      {
+        programId: "render-preview",
+        command: "render",
+        defaultProviderId: "managed-browser",
+        candidateProviderIdsByMode: {
+          http: ["managed-http"],
+          browser: ["managed-browser"],
+        },
+        egressProfileIds: [],
+        identityProfileIds: [],
+        fallbackEdges: [],
+        scoringDimensions: [],
+      },
+    ],
+  });
+  const seenCommands: Array<"access" | "render" | "extract"> = [];
+
+  return Effect.gen(function* () {
+    const runtime = yield* AccessExecutionRuntime;
+    const plan = yield* runtime.resolve(input.executionInput);
+    return {
+      plan,
+      seenCommand: seenCommands[0],
+    };
+  }).pipe(
+    Effect.provide(
+      AccessExecutionRuntimeLive.pipe(
+        Layer.provide(
+          Layer.succeed(AccessProgramLinker, {
+            inspectIr: () => Effect.succeed(ir),
+            listPrograms: () => Effect.succeed([]),
+            specialize: (specialization) =>
+              Effect.sync(() => {
+                seenCommands.push(specialization.command);
+                return {
+                  ir,
+                  program:
+                    ir.programs.find((program) => program.command === specialization.command) ??
+                    ir.programs[0]!,
+                  intent: makeMockExecutionIntent(
+                    specialization.command === "render" ? "render" : "access",
+                  ),
+                  trace: {
+                    programId:
+                      specialization.command === "render" ? "render-preview" : "access-preview",
+                    command: specialization.command,
+                    selectedProviderId:
+                      specialization.command === "render" ? "managed-browser" : "managed-http",
+                    selectedMode: specialization.command === "render" ? "browser" : "http",
+                    candidateProviderIds:
+                      specialization.command === "render" ? ["managed-browser"] : ["managed-http"],
+                    rejectedProviderIds: [],
+                    appliedFallbackEdgeIds: [],
+                    scoringDimensions: [],
+                  },
+                };
+              }),
+          }),
+        ),
+      ),
+    ),
+  ) as Effect.Effect<
+    {
+      readonly plan: ResolvedExecutionPlan;
+      readonly seenCommand: "access" | "render" | "extract" | undefined;
+    },
+    InvalidInputError,
+    never
+  >;
 }
 
 describe("sdk access runtime", () => {
@@ -483,6 +651,31 @@ describe("sdk access runtime", () => {
     }),
   );
 
+  it.effect("keeps an explicit command ahead of browser-lane inference", () =>
+    Effect.gen(function* () {
+      const resolved = yield* resolveExecutionWithMockLinker({
+        irProviders: [
+          {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+          },
+        ],
+        executionInput: {
+          command: "access",
+          url: "https://example.com/explicit-access-command",
+          defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+          defaultTimeoutMs: 900,
+        },
+      });
+
+      expect(resolved.seenCommand).toBe("access");
+      expect(resolved.plan.mode).toBe("http");
+    }),
+  );
+
   it.effect("requires explicit mode for custom providers", () =>
     Effect.gen(function* () {
       const failure = yield* resolveExecution({
@@ -604,6 +797,196 @@ describe("sdk access runtime", () => {
 
       expect(plan.providerId).toBe("managed-unblocker");
       expect(plan.mode).toBe("browser");
+    }),
+  );
+
+  it.effect("falls back to the available HTTP default when builtin provider ids are absent", () =>
+    Effect.gen(function* () {
+      const providerRegistry = makeProviderRegistry([
+        {
+          id: "managed-http",
+          capabilities: {
+            mode: "http",
+            rendersDom: false,
+          },
+        },
+        {
+          id: "managed-browser",
+          capabilities: {
+            mode: "browser",
+            rendersDom: true,
+          },
+        },
+      ]);
+      const customPolicy = makeStaticAccessSelectionPolicy({
+        providerRegistry: makeDescriptorRegistry([
+          {
+            id: "managed-http",
+            capabilities: {
+              mode: "http",
+              rendersDom: false,
+            },
+          },
+          {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+          },
+        ]),
+        defaultHttpProviderId: "managed-http",
+        defaultBrowserProviderId: "managed-browser",
+      });
+      const plan = yield* resolveExecutionWithSelectionPolicy(
+        {
+          url: "https://example.com/custom-default-http",
+          defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          defaultTimeoutMs: 900,
+        },
+        customPolicy,
+        providerRegistry,
+      );
+
+      expect(plan.providerId).toBe("managed-http");
+      expect(plan.mode).toBe("http");
+    }),
+  );
+
+  it.effect(
+    "falls back to the available browser default when builtin browser provider ids are absent",
+    () =>
+      Effect.gen(function* () {
+        const providerRegistry = makeProviderRegistry([
+          {
+            id: "managed-http",
+            capabilities: {
+              mode: "http",
+              rendersDom: false,
+            },
+          },
+          {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+          },
+        ]);
+        const customPolicy = makeStaticAccessSelectionPolicy({
+          providerRegistry: makeDescriptorRegistry([
+            {
+              id: "managed-http",
+              capabilities: {
+                mode: "http",
+                rendersDom: false,
+              },
+            },
+            {
+              id: "managed-browser",
+              capabilities: {
+                mode: "browser",
+                rendersDom: true,
+              },
+            },
+          ]),
+          defaultHttpProviderId: "managed-http",
+          defaultBrowserProviderId: "managed-browser",
+        });
+        const plan = yield* resolveExecutionWithSelectionPolicy(
+          {
+            url: "https://example.com/custom-default-browser",
+            defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+            defaultTimeoutMs: 900,
+            execution: {
+              mode: "browser",
+            },
+          },
+          customPolicy,
+          providerRegistry,
+        );
+
+        expect(plan.providerId).toBe("managed-browser");
+        expect(plan.mode).toBe("browser");
+      }),
+  );
+
+  it.effect(
+    "infers the render command from browser-lane defaults even when builtin browser ids are absent",
+    () =>
+      Effect.gen(function* () {
+        const providerRegistry = makeProviderRegistry([
+          {
+            id: "managed-http",
+            capabilities: {
+              mode: "http",
+              rendersDom: false,
+            },
+          },
+          {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+          },
+        ]);
+        const customPolicy = makeStaticAccessSelectionPolicy({
+          providerRegistry: makeDescriptorRegistry([
+            {
+              id: "managed-http",
+              capabilities: {
+                mode: "http",
+                rendersDom: false,
+              },
+            },
+            {
+              id: "managed-browser",
+              capabilities: {
+                mode: "browser",
+                rendersDom: true,
+              },
+            },
+          ]),
+          defaultHttpProviderId: "managed-http",
+          defaultBrowserProviderId: "managed-browser",
+        });
+        const plan = yield* resolveExecutionWithSelectionPolicy(
+          {
+            url: "https://example.com/custom-default-browser-command",
+            defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+            defaultTimeoutMs: 900,
+          },
+          customPolicy,
+          providerRegistry,
+        );
+
+        expect(plan.providerId).toBe("managed-browser");
+        expect(plan.mode).toBe("browser");
+      }),
+  );
+
+  it.effect("infers the render command for browser-only IRs without builtin browser ids", () =>
+    Effect.gen(function* () {
+      const resolved = yield* resolveExecutionWithMockLinker({
+        irProviders: [
+          {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+          },
+        ],
+        executionInput: {
+          url: "https://example.com/browser-only-ir",
+          defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          defaultTimeoutMs: 900,
+        },
+      });
+
+      expect(resolved.seenCommand).toBe("render");
+      expect(resolved.plan.mode).toBe("browser");
     }),
   );
 

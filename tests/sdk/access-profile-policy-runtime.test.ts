@@ -278,6 +278,204 @@ describe("sdk access profile policy runtime", () => {
     ),
   );
 
+  it.effect("reroutes only egress when plugin score drift moderately favors leased variants", () =>
+    Effect.gen(function* () {
+      const policy = yield* AccessProfileSelectionPolicy;
+      const profiles = yield* policy.resolveProfiles({
+        url: "https://example.com/products/sku-plugin-drift",
+        providerId: "browser-basic",
+      });
+
+      expect(profiles.egress.profileId).toBe("leased-direct");
+      expect(profiles.identity.profileId).toBe("default");
+      expect(profiles.egress.warnings).toContain(
+        'Selection policy chose egress "leased-direct" instead of preferred "direct"; access health signals rate the preferred path as less healthy.',
+      );
+      expect(profiles.identity.warnings).toEqual([]);
+    }).pipe(
+      Effect.provide(
+        AccessProfileSelectionPolicyLive.pipe(
+          Layer.provide(
+            Layer.mergeAll(
+              AccessProfileRegistryLive,
+              AccessHealthRuntimeLive,
+              AccessProfileSelectionStrategyLive,
+              Layer.succeed(AccessProfileSelectionHealthSignalsGateway, {
+                inspect: () =>
+                  Effect.succeed({
+                    egressProfiles: {},
+                    egressPlugins: {
+                      "direct-pool::direct-route::builtin-direct-egress": {
+                        subject: {
+                          kind: "egress-plugin",
+                          poolId: "direct-pool",
+                          routePolicyId: "direct-route",
+                          pluginId: "builtin-direct-egress",
+                        },
+                        successCount: 3,
+                        failureCount: 1,
+                        successStreak: 0,
+                        failureStreak: 0,
+                        score: 75,
+                        quarantinedUntil: null,
+                      },
+                      "leased-direct-pool::leased-direct-route::builtin-leased-egress": {
+                        subject: {
+                          kind: "egress-plugin",
+                          poolId: "leased-direct-pool",
+                          routePolicyId: "leased-direct-route",
+                          pluginId: "builtin-leased-egress",
+                        },
+                        successCount: 8,
+                        failureCount: 0,
+                        successStreak: 8,
+                        failureStreak: 0,
+                        score: 100,
+                        quarantinedUntil: null,
+                      },
+                    },
+                    identityProfiles: {},
+                    identityPlugins: {
+                      "public::builtin-default-identity": {
+                        subject: {
+                          kind: "identity-plugin",
+                          tenantId: "public",
+                          domain: "example.com",
+                          pluginId: "builtin-default-identity",
+                        },
+                        successCount: 2,
+                        failureCount: 1,
+                        successStreak: 0,
+                        failureStreak: 0,
+                        score: 66.67,
+                        quarantinedUntil: null,
+                      },
+                      "public::builtin-leased-identity": {
+                        subject: {
+                          kind: "identity-plugin",
+                          tenantId: "public",
+                          domain: "example.com",
+                          pluginId: "builtin-leased-identity",
+                        },
+                        successCount: 5,
+                        failureCount: 0,
+                        successStreak: 5,
+                        failureStreak: 0,
+                        score: 100,
+                        quarantinedUntil: null,
+                      },
+                    },
+                    degraded: false,
+                    egressWarnings: [],
+                    identityWarnings: [],
+                  }),
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  it.effect("reroutes only egress when profile score drift moderately favors leased variants", () =>
+    Effect.gen(function* () {
+      const policy = yield* AccessProfileSelectionPolicy;
+      const profiles = yield* policy.resolveProfiles({
+        url: "https://example.com/products/sku-profile-drift",
+        providerId: "browser-basic",
+      });
+
+      expect(profiles.egress.profileId).toBe("leased-direct");
+      expect(profiles.identity.profileId).toBe("default");
+      expect(profiles.egress.warnings).toContain(
+        'Selection policy chose egress "leased-direct" instead of preferred "direct"; access health signals rate the preferred path as less healthy.',
+      );
+      expect(profiles.identity.warnings).toEqual([]);
+    }).pipe(
+      Effect.provide(
+        AccessProfileSelectionPolicyLive.pipe(
+          Layer.provide(
+            Layer.mergeAll(
+              AccessProfileRegistryLive,
+              AccessHealthRuntimeLive,
+              AccessProfileSelectionStrategyLive,
+              Layer.succeed(AccessProfileSelectionHealthSignalsGateway, {
+                inspect: () =>
+                  Effect.succeed({
+                    egressProfiles: {
+                      direct: {
+                        subject: {
+                          kind: "egress-profile",
+                          poolId: "direct-pool",
+                          routePolicyId: "direct-route",
+                          profileId: "direct",
+                        },
+                        successCount: 3,
+                        failureCount: 1,
+                        successStreak: 0,
+                        failureStreak: 0,
+                        score: 75,
+                        quarantinedUntil: null,
+                      },
+                      "leased-direct": {
+                        subject: {
+                          kind: "egress-profile",
+                          poolId: "leased-direct-pool",
+                          routePolicyId: "leased-direct-route",
+                          profileId: "leased-direct",
+                        },
+                        successCount: 8,
+                        failureCount: 0,
+                        successStreak: 8,
+                        failureStreak: 0,
+                        score: 100,
+                        quarantinedUntil: null,
+                      },
+                    },
+                    egressPlugins: {},
+                    identityProfiles: {
+                      default: {
+                        subject: {
+                          kind: "identity-profile",
+                          tenantId: "public",
+                          domain: "example.com",
+                          profileId: "default",
+                        },
+                        successCount: 2,
+                        failureCount: 1,
+                        successStreak: 0,
+                        failureStreak: 0,
+                        score: 70,
+                        quarantinedUntil: null,
+                      },
+                      "leased-default": {
+                        subject: {
+                          kind: "identity-profile",
+                          tenantId: "public",
+                          domain: "example.com",
+                          profileId: "leased-default",
+                        },
+                        successCount: 5,
+                        failureCount: 0,
+                        successStreak: 5,
+                        failureStreak: 0,
+                        score: 100,
+                        quarantinedUntil: null,
+                      },
+                    },
+                    identityPlugins: {},
+                    degraded: false,
+                    egressWarnings: [],
+                    identityWarnings: [],
+                  }),
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
   it.effect(
     "surfaces selected-profile quarantine diagnostics when all candidates are unhealthy",
     () =>
@@ -440,6 +638,76 @@ describe("sdk access profile policy runtime", () => {
         ),
       ),
     ),
+  );
+
+  it.effect(
+    "keeps the preferred builtin identity when only profile health score drift favors leased variants",
+    () =>
+      Effect.gen(function* () {
+        const policy = yield* AccessProfileSelectionPolicy;
+        const profiles = yield* policy.resolveProfiles({
+          url: "https://example.com/products/sku-identity-health-drift",
+          providerId: "browser-basic",
+        });
+
+        expect(profiles.egress.profileId).toBe("direct");
+        expect(profiles.identity.profileId).toBe("default");
+        expect(profiles.egress.warnings).toEqual([]);
+        expect(profiles.identity.warnings).toEqual([]);
+      }).pipe(
+        Effect.provide(
+          AccessProfileSelectionPolicyLive.pipe(
+            Layer.provide(
+              Layer.mergeAll(
+                AccessProfileRegistryLive,
+                AccessHealthRuntimeLive,
+                AccessProfileSelectionStrategyLive,
+                Layer.succeed(AccessProfileSelectionHealthSignalsGateway, {
+                  inspect: () =>
+                    Effect.succeed({
+                      egressProfiles: {},
+                      egressPlugins: {},
+                      identityProfiles: {
+                        default: {
+                          subject: {
+                            kind: "identity-profile",
+                            tenantId: "public",
+                            domain: "example.com",
+                            profileId: "default",
+                          },
+                          successCount: 1,
+                          failureCount: 4,
+                          successStreak: 0,
+                          failureStreak: 2,
+                          score: 20,
+                          quarantinedUntil: null,
+                        },
+                        "leased-default": {
+                          subject: {
+                            kind: "identity-profile",
+                            tenantId: "public",
+                            domain: "example.com",
+                            profileId: "leased-default",
+                          },
+                          successCount: 5,
+                          failureCount: 0,
+                          successStreak: 5,
+                          failureStreak: 0,
+                          score: 100,
+                          quarantinedUntil: null,
+                        },
+                      },
+                      identityPlugins: {},
+                      degraded: false,
+                      egressWarnings: [],
+                      identityWarnings: [],
+                    }),
+                }),
+              ),
+            ),
+          ),
+        ),
+      ),
   );
 
   it.effect("surfaces selected-profile diagnostics for explicit selectors", () =>

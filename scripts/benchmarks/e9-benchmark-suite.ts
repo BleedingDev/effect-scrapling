@@ -401,10 +401,22 @@ function createArtifactJsonlWriter(path: string | undefined) {
     () => undefined,
   );
   let firstFailureMessage: string | undefined;
+  const ensureParentDir = () => mkdir(dirname(resolvedPath), { recursive: true });
+
+  const appendEntry = async (entry: E9BenchmarkSuiteArtifactJsonlEntry) => {
+    await ensureParentDir();
+
+    try {
+      await appendFile(resolvedPath, `${JSON.stringify(entry)}\n`, "utf8");
+    } catch (cause) {
+      await ensureParentDir();
+      await appendFile(resolvedPath, `${JSON.stringify(entry)}\n`, "utf8");
+    }
+  };
 
   const append = (entry: E9BenchmarkSuiteArtifactJsonlEntry) => {
     queue = queue
-      .then(() => appendFile(resolvedPath, `${JSON.stringify(entry)}\n`, "utf8"))
+      .then(() => appendEntry(entry))
       .then(() => undefined)
       .catch((cause) => {
         firstFailureMessage ??= readCauseMessage(

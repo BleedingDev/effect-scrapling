@@ -1,5 +1,6 @@
 import { Effect, Layer, ServiceMap } from "effect";
 import { AccessModuleRegistry } from "./access-module-runtime.ts";
+import { resolveModeDefaultProviderId } from "./access-default-provider.ts";
 import {
   AccessProfileRegistry,
   DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
@@ -84,9 +85,10 @@ function resolveTargetDomain(url: string): Effect.Effect<string, InvalidInputErr
 }
 
 function makeFallbackEdges(browserProviderIds: ReadonlyArray<AccessProviderId>) {
-  const defaultBrowserProviderId = browserProviderIds.includes(DEFAULT_BROWSER_PROVIDER_ID)
-    ? DEFAULT_BROWSER_PROVIDER_ID
-    : browserProviderIds[0];
+  const defaultBrowserProviderId = resolveModeDefaultProviderId({
+    mode: "browser",
+    providerIds: browserProviderIds,
+  });
   if (defaultBrowserProviderId === undefined) {
     return [] as const;
   }
@@ -110,6 +112,14 @@ function buildPrograms(input: {
   readonly egressProfileIds: ReadonlyArray<string>;
   readonly identityProfileIds: ReadonlyArray<string>;
 }) {
+  const defaultHttpProviderId = resolveModeDefaultProviderId({
+    mode: "http",
+    providerIds: input.providerIdsByMode.http,
+  });
+  const defaultBrowserProviderId = resolveModeDefaultProviderId({
+    mode: "browser",
+    providerIds: input.providerIdsByMode.browser,
+  });
   const shared = {
     candidateProviderIdsByMode: input.providerIdsByMode,
     egressProfileIds: input.egressProfileIds,
@@ -127,21 +137,21 @@ function buildPrograms(input: {
     {
       programId: "access-preview",
       command: "access",
-      defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+      defaultProviderId: defaultHttpProviderId ?? DEFAULT_HTTP_PROVIDER_ID,
       fallbackEdges,
       ...shared,
     },
     {
       programId: "render-preview",
       command: "render",
-      defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+      defaultProviderId: defaultBrowserProviderId ?? DEFAULT_BROWSER_PROVIDER_ID,
       fallbackEdges: [] as const,
       ...shared,
     },
     {
       programId: "extract-run",
       command: "extract",
-      defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+      defaultProviderId: defaultHttpProviderId ?? DEFAULT_HTTP_PROVIDER_ID,
       fallbackEdges,
       ...shared,
     },
@@ -355,7 +365,14 @@ export const AccessProgramLinkerLive = Layer.effect(
             });
 
           const baseResolution = yield* resolveIntent({
-            defaultProviderId: input.defaultProviderId,
+            defaultProviderId:
+              (yield* providerRegistry.findDescriptor(input.defaultProviderId)) !== undefined
+                ? input.defaultProviderId
+                : input.defaultProviderId === DEFAULT_HTTP_PROVIDER_ID ||
+                    input.defaultProviderId === DEFAULT_BROWSER_PROVIDER_ID ||
+                    input.defaultProviderId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
+                  ? program.defaultProviderId
+                  : input.defaultProviderId,
             execution: input.execution,
           });
           const baseIntent = baseResolution.intent;
