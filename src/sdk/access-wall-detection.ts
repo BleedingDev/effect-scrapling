@@ -173,6 +173,10 @@ function normalizeComparableUrl(value?: string) {
   }
 }
 
+function matchesFinalUrlPatterns(value: string, patterns: ReadonlyArray<AccessWallPattern>) {
+  return patterns.some((pattern) => pattern.pattern.test(value));
+}
+
 export function detectAccessWall(input: {
   readonly statusCode?: number | undefined;
   readonly requestedUrl?: string | undefined;
@@ -192,6 +196,11 @@ export function detectAccessWall(input: {
       ? normalizedFinalUrl.length > 0
       : normalizedFinalUrl.length > 0 &&
         normalizedRequestedUrl !== normalizeComparableUrl(input.finalUrl);
+  const directTrapEndpointRequested =
+    normalizedRequestedUrl !== undefined &&
+    normalizedFinalUrl.length > 0 &&
+    normalizedRequestedUrl === normalizeComparableUrl(input.finalUrl) &&
+    matchesFinalUrlPatterns(normalizedFinalUrl, FINAL_URL_TRAP_PATTERNS);
 
   if (input.statusCode === 401) {
     strongSignals.add("status-401");
@@ -209,6 +218,7 @@ export function detectAccessWall(input: {
   if (
     normalizedFinalUrl.length > 0 &&
     (finalUrlChanged ||
+      directTrapEndpointRequested ||
       input.statusCode === 401 ||
       input.statusCode === 403 ||
       input.statusCode === 429)

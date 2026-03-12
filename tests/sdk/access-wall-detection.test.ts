@@ -48,6 +48,19 @@ describe("sdk access wall detection", () => {
     expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
   });
 
+  it("detects direct trap endpoints even without a redirect or blocking status", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      finalUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      title: "",
+      text: "",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(true);
+    expect(analysis.signals).toContain("url-trap");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
+  });
+
   it("detects blocked direct trap endpoints when status corroborates the trap url", () => {
     const analysis = detectAccessWall({
       requestedUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
@@ -62,10 +75,11 @@ describe("sdk access wall detection", () => {
     expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
   });
 
-  it("detects broader trap families beyond TSPD redirects", () => {
+  it("detects direct trap endpoints even when they return 200", () => {
     const analysis = detectAccessWall({
-      requestedUrl: "https://store.example.test/products/sku-1",
-      finalUrl: "https://store.example.test/_Incapsula_Resource?SWKMTFSR=1",
+      requestedUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      finalUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      statusCode: 200,
       title: "",
       text: "",
     });
@@ -73,6 +87,26 @@ describe("sdk access wall detection", () => {
     expect(analysis.likelyAccessWall).toBe(true);
     expect(analysis.signals).toContain("url-trap");
     expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
+  });
+
+  it("detects broader trap families beyond TSPD redirects", () => {
+    for (const finalUrl of [
+      "https://store.example.test/_Incapsula_Resource?SWKMTFSR=1",
+      "https://store.example.test/_Incapsula_Resource-foo",
+      "https://store.example.test/botmanager-check",
+      "https://store.example.test/akam-bm-foo",
+    ]) {
+      const analysis = detectAccessWall({
+        requestedUrl: "https://store.example.test/products/sku-1",
+        finalUrl,
+        title: "",
+        text: "",
+      });
+
+      expect(analysis.likelyAccessWall).toBe(true);
+      expect(analysis.signals).toContain("url-trap");
+      expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
+    }
   });
 
   it("does not flag ordinary pages that merely mention cookies in a footer", () => {
@@ -131,6 +165,19 @@ describe("sdk access wall detection", () => {
 
     expect(analysis.likelyAccessWall).toBe(false);
     expect(analysis.signals).not.toContain("url-trap");
+  });
+
+  it("does not misclassify blocked slugs that merely contain tspd as trap urls", () => {
+    const analysis = detectAccessWall({
+      statusCode: 403,
+      requestedUrl: "https://store.example.test/products/tspd-adapter",
+      finalUrl: "https://store.example.test/products/tspd-adapter",
+      title: "Access denied",
+      text: "Access denied",
+    });
+
+    expect(analysis.signals).not.toContain("url-trap");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("challenge");
   });
 
   it("round-trips access wall warnings", () => {
