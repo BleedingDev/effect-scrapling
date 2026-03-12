@@ -62,13 +62,13 @@ test for those benchmark runs:
     `300` milliseconds respectively
 - [`docs/artifacts/e9-benchmark-suite-fast-regression-artifact.json`](../artifacts/e9-benchmark-suite-fast-regression-artifact.json)
   reported `status: "pass"` with:
-  - `generatedAt = 2026-03-12T06:43:35.110Z`
+  - `generatedAt = 2026-03-12T07:14:57.388Z`
   - `totalAttemptCount = 640`
   - `totalSweepCount = 5`
   - `httpSuccessRate = 0.896`
-  - `browserSuccessRate = 0.863`
-  - `httpBestThroughputPagesPerMinute = 1640.791`
-  - `browserBestThroughputPagesPerMinute = 78.072`
+  - `browserSuccessRate = 0.859`
+  - `httpBestThroughputPagesPerMinute = 1453.683`
+  - `browserBestThroughputPagesPerMinute = 77.843`
   - `httpLocalFailureCount = 0`
   - `browserLocalFailureCount = 0`
 
@@ -80,7 +80,8 @@ instead:
 - `zbozi.cz` appeared in the top browser failure-domain list
 - smaller residual failures appeared on `datart.cz`, `lidl-shop.cz`, `mp.cz`,
   and `shein.com`
-- the top browser failure category was `access-wall` (`35` attempts)
+- the top browser failure category was `access-wall` (`33` attempts), followed
+  by `browser-navigation-timeout` (`3` attempts)
 - no recovered-browser allocations and zero local-failure counters
 - skipped `scrapling` and `canary` phases in the sampled preset, so a
   full-corpus run remains the right release-evidence follow-up when needed
@@ -88,12 +89,14 @@ instead:
 The benchmark follow-up therefore changes the implementation assessment in one
 important way: the current ADR seam is not only structurally implemented, but
 also validated under both focused runtime pressure and sampled live traffic.
-The sampled run does not prove release readiness. Its benchmark-driven
+That sampled live evidence still does not justify treating browser fallback as
+production-ready, and it does not prove release readiness. Its benchmark-driven
 follow-up remains concrete:
 
 - review browser failure categories and top failing domains
-- prioritize diagnostics for `ebay.com`, `zbozi.cz`, and `shein.com`
-- run the full-corpus suite when definitive release evidence is needed
+- prioritize diagnostics for `ebay.com`, `zbozi.cz`, and `lidl-shop.cz`
+- run parity and canary phases separately, or the full-corpus suite, when
+  definitive release evidence is needed
 
 ## Context
 
