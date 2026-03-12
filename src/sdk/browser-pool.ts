@@ -720,21 +720,14 @@ function appendWarningsToBrowserError<E>(
   error: E,
   warnings: ReadonlyArray<string>,
 ): BrowserError | E {
-  if (
-    warnings.length === 0 ||
-    typeof error !== "object" ||
-    error === null ||
-    !("_tag" in error) ||
-    error._tag !== "BrowserError"
-  ) {
+  if (warnings.length === 0 || !(error instanceof BrowserError)) {
     return error;
   }
 
-  const browserError = error as unknown as BrowserError;
   return new BrowserError({
-    message: browserError.message,
-    ...(browserError.details === undefined ? {} : { details: browserError.details }),
-    warnings: dedupeWarnings([...(browserError.warnings ?? []), ...warnings]),
+    message: error.message,
+    ...(error.details === undefined ? {} : { details: error.details }),
+    warnings: dedupeWarnings([...(error.warnings ?? []), ...warnings]),
   });
 }
 

@@ -89,6 +89,46 @@ describe("api app", () => {
     expect(payload).toEqual(sdkPayload);
   });
 
+  it("normalizes doctor failures through the shared API error envelope", async () => {
+    const response = await handleApiRequest(new Request("http://localhost/doctor"), undefined, {
+      modules: [
+        defineAccessModule({
+          id: "duplicate-provider-module-a",
+          providers: {
+            "duplicate-provider": {
+              id: "duplicate-provider",
+              capabilities: {
+                mode: "http",
+                rendersDom: false,
+              },
+              execute: () =>
+                Effect.die(new Error("Execution should not run during module validation")),
+            },
+          },
+        }),
+        defineAccessModule({
+          id: "duplicate-provider-module-b",
+          providers: {
+            "duplicate-provider": {
+              id: "duplicate-provider",
+              capabilities: {
+                mode: "http",
+                rendersDom: false,
+              },
+              execute: () =>
+                Effect.die(new Error("Execution should not run during module validation")),
+            },
+          },
+        }),
+      ],
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toContain("Duplicate provider id");
+  });
+
   it("maps missing access-preview URLs to a 400 API response", async () => {
     const response = await handleApiRequest(
       new Request("http://localhost/access/preview", {

@@ -153,24 +153,24 @@ export type LeasedIdentityPluginConfig = {
 
 export type EgressAllocationPlugin<Config = EmptyPluginConfig> = {
   readonly id: string;
-  readonly decodeConfig: (input: unknown) => Effect.Effect<Config, InvalidInputError>;
-  readonly acquire: (
+  decodeConfig(input: unknown): Effect.Effect<Config, InvalidInputError>;
+  acquire(
     input: EgressBrokerAcquireInput & {
       readonly profile: ResolvedEgressProfile;
       readonly config: Config;
     },
-  ) => Effect.Effect<ResolvedEgressLease, InvalidInputError | AccessResourceError>;
+  ): Effect.Effect<ResolvedEgressLease, InvalidInputError | AccessResourceError>;
 };
 
 export type IdentityAllocationPlugin<Config = EmptyPluginConfig> = {
   readonly id: string;
-  readonly decodeConfig: (input: unknown) => Effect.Effect<Config, InvalidInputError>;
-  readonly acquire: (
+  decodeConfig(input: unknown): Effect.Effect<Config, InvalidInputError>;
+  acquire(
     input: IdentityBrokerAcquireInput & {
       readonly profile: ResolvedIdentityProfile;
       readonly config: Config;
     },
-  ) => Effect.Effect<ResolvedIdentityLease, InvalidInputError | AccessResourceError>;
+  ): Effect.Effect<ResolvedIdentityLease, InvalidInputError | AccessResourceError>;
 };
 
 function invalidPlugin(message: string, details?: string) {
@@ -615,7 +615,7 @@ export class EgressPluginRegistry extends ServiceMap.Service<
   {
     readonly resolve: (
       pluginId: string,
-    ) => Effect.Effect<EgressAllocationPlugin<any>, InvalidInputError>;
+    ) => Effect.Effect<EgressAllocationPlugin<unknown>, InvalidInputError>;
   }
 >()("@effect-scrapling/sdk/EgressPluginRegistry") {}
 
@@ -624,7 +624,7 @@ export class IdentityPluginRegistry extends ServiceMap.Service<
   {
     readonly resolve: (
       pluginId: string,
-    ) => Effect.Effect<IdentityAllocationPlugin<any>, InvalidInputError>;
+    ) => Effect.Effect<IdentityAllocationPlugin<unknown>, InvalidInputError>;
   }
 >()("@effect-scrapling/sdk/IdentityPluginRegistry") {}
 
@@ -941,7 +941,7 @@ export function makeLeaseBackedIdentityPlugin(input: {
 }
 
 export function makeStaticEgressPluginRegistry(input?: {
-  readonly plugins?: Readonly<Record<string, EgressAllocationPlugin<any>>> | undefined;
+  readonly plugins?: Readonly<Record<string, EgressAllocationPlugin<unknown>>> | undefined;
 }) {
   const plugins = input?.plugins ?? {};
 
@@ -959,12 +959,12 @@ export function makeStaticEgressPluginRegistry(input?: {
   } satisfies {
     readonly resolve: (
       pluginId: string,
-    ) => Effect.Effect<EgressAllocationPlugin<any>, InvalidInputError>;
+    ) => Effect.Effect<EgressAllocationPlugin<unknown>, InvalidInputError>;
   };
 }
 
 export function makeStaticIdentityPluginRegistry(input?: {
-  readonly plugins?: Readonly<Record<string, IdentityAllocationPlugin<any>>> | undefined;
+  readonly plugins?: Readonly<Record<string, IdentityAllocationPlugin<unknown>>> | undefined;
 }) {
   const plugins = input?.plugins ?? {};
 
@@ -982,7 +982,7 @@ export function makeStaticIdentityPluginRegistry(input?: {
   } satisfies {
     readonly resolve: (
       pluginId: string,
-    ) => Effect.Effect<IdentityAllocationPlugin<any>, InvalidInputError>;
+    ) => Effect.Effect<IdentityAllocationPlugin<unknown>, InvalidInputError>;
   };
 }
 

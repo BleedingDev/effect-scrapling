@@ -64,7 +64,7 @@ describe("E4 SDK consumer example", () => {
 
   it("executes as a standalone example script", () => {
     const result = Bun.spawnSync({
-      cmd: ["bun", "run", "examples/e4-sdk-consumer.ts"],
+      cmd: [process.execPath, "run", "examples/e4-sdk-consumer.ts"],
       cwd: REPO_ROOT,
       stdout: "pipe",
       stderr: "pipe",

@@ -26,10 +26,14 @@ import {
   isInvalidInputError,
   isNetworkError,
 } from "./sdk/error-guards.ts";
-import { createSdkEngine, type CreateSdkEngineOptions, type SdkEngine } from "./sdk/engine.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
-import { type FetchClient } from "./sdk/scraper.ts";
-import { provideSdkEnvironment } from "./sdk/runtime-layer.ts";
+import {
+  createSdkEngine,
+  provideSdkEnvironment,
+  type CreateSdkEngineOptions,
+  type FetchClient,
+  type SdkEngine,
+} from "./sdk/host.ts";
 
 type ParsedArgs = {
   readonly positionals: string[];
@@ -48,8 +52,11 @@ Usage:
   effect-scrapling pack inspect --input '<json>'
   effect-scrapling pack validate --input '<json>'
   effect-scrapling pack promote --input '<json>'
+  effect-scrapling access explain --url <url> [--timeout-ms <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling render explain --url <url> [--timeout-ms <ms>] [--mode <browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--provider <browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling extract explain --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling crawl compile --input '<json>'
   effect-scrapling workflow run --input '<json>'
@@ -62,9 +69,12 @@ Usage:
 Examples:
   effect-scrapling workspace doctor
   effect-scrapling workspace config show
+  effect-scrapling access explain --url "https://example.com" --provider browser-stealth --browser-wait-until domcontentloaded
   effect-scrapling access preview --url "https://example.com"
   effect-scrapling access preview --url "https://example.com" --provider browser-stealth --browser-wait-until domcontentloaded --browser-timeout-ms 300
+  effect-scrapling render explain --url "https://example.com" --provider browser-basic --browser-wait-until load
   effect-scrapling render preview --url "https://example.com" --provider browser-basic --browser-wait-until load --browser-timeout-ms 300
+  effect-scrapling extract explain --url "https://example.com" --selector "h1"
   effect-scrapling extract run --url "https://example.com" --selector "h1"
   effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --provider browser-basic --browser-wait-until load
 `;
@@ -228,6 +238,91 @@ export type CliExecutionResult = {
 
 export type CliHostEngineOptions = Omit<CreateSdkEngineOptions, "fetchClient">;
 
+function toCliNormalizedPayload(payload: unknown) {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return payload;
+  }
+
+  const normalizedPayload = payload as Record<string, unknown>;
+  const execution =
+    typeof normalizedPayload.execution === "object" &&
+    normalizedPayload.execution !== null &&
+    !Array.isArray(normalizedPayload.execution)
+      ? (normalizedPayload.execution as Record<string, unknown>)
+      : undefined;
+
+  if (execution?.providerId === undefined) {
+    return payload;
+  }
+
+  const { providerId, ...remainingExecution } = execution;
+  return {
+    ...normalizedPayload,
+    execution: {
+      ...remainingExecution,
+      driverId: providerId,
+    },
+  };
+}
+
+function toCliDecisionTrace(trace: {
+  readonly command: string;
+  readonly programId: string;
+  readonly normalizedPayload: unknown;
+  readonly validatedUrl: string;
+  readonly defaultProviderId: string;
+  readonly candidateProviderIds: ReadonlyArray<string>;
+  readonly rejectedProviderIds: ReadonlyArray<string>;
+  readonly appliedFallbackEdgeIds: ReadonlyArray<string>;
+  readonly resolved: {
+    readonly providerId: string;
+    readonly fallback?:
+      | {
+          readonly browserOnAccessWall?:
+            | ({
+                readonly providerId: string;
+              } & Record<string, unknown>)
+            | undefined;
+        }
+      | undefined;
+  } & Record<string, unknown>;
+}) {
+  const fallbackBrowser =
+    trace.resolved.fallback?.browserOnAccessWall === undefined
+      ? undefined
+      : (() => {
+          const { providerId, ...browserOnAccessWall } =
+            trace.resolved.fallback.browserOnAccessWall;
+          return {
+            ...browserOnAccessWall,
+            driverId: providerId,
+          };
+        })();
+  const { providerId, fallback: _ignoredFallback, ...resolved } = trace.resolved;
+
+  return {
+    command: trace.command,
+    programId: trace.programId,
+    normalizedPayload: toCliNormalizedPayload(trace.normalizedPayload),
+    validatedUrl: trace.validatedUrl,
+    defaultDriverId: trace.defaultProviderId,
+    candidateDriverIds: trace.candidateProviderIds,
+    rejectedDriverIds: trace.rejectedProviderIds,
+    appliedFallbackEdgeIds: trace.appliedFallbackEdgeIds,
+    resolved: {
+      ...resolved,
+      driverId: providerId,
+      ...(fallbackBrowser === undefined
+        ? {}
+        : {
+            fallback: {
+              browserOnAccessWall: fallbackBrowser,
+            },
+          }),
+    },
+  };
+}
+
 function toCliErrorResult(error: unknown): CliExecutionResult {
   if (isInvalidInputError(error)) {
     return {
@@ -317,7 +412,7 @@ export async function executeCli(
   engineOptions?: CliHostEngineOptions,
 ): Promise<CliExecutionResult> {
   const parsed = parseArgs(args);
-  const [command, subcommand, action] = parsed.positionals;
+  const [command, subcommand, action, extra] = parsed.positionals;
 
   try {
     if (!command || command === "help" || command === "--help" || command === "-h") {
@@ -334,6 +429,7 @@ export async function executeCli(
     }
 
     if (command === "workspace" && subcommand === "config" && action === "show") {
+      assertNoExtraAction(extra, ["workspace", "config", "show"]);
       const config = await runEffect(provideSdkEnvironment(showWorkspaceConfig()));
       return { exitCode: 0, output: encodeCliJson(config) };
     }
@@ -404,6 +500,36 @@ export async function executeCli(
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
+    if (command === "access" && subcommand === "explain") {
+      assertNoExtraAction(action, ["access", "explain"]);
+      assertAllowedOptions(
+        parsed.options,
+        [
+          "url",
+          "timeout-ms",
+          "mode",
+          "provider",
+          "egress-profile",
+          "egress-config",
+          "identity-profile",
+          "identity-config",
+          "http-user-agent",
+          "browser-runtime-profile",
+          "browser-wait-until",
+          "browser-timeout-ms",
+          "browser-user-agent",
+        ],
+        ["access", "explain"],
+      );
+      const payload = normalizeCliPayload("access", parsed.options);
+      const result = await withAccessEngine(
+        (engine) => engine.explainAccessPreview(payload),
+        fetchClient,
+        engineOptions,
+      );
+      return { exitCode: 0, output: encodeCliJson(toCliDecisionTrace(result)) };
+    }
+
     if (command === "render" && subcommand === "preview") {
       assertNoExtraAction(action, ["render", "preview"]);
       assertAllowedOptions(
@@ -431,6 +557,35 @@ export async function executeCli(
         engineOptions,
       );
       return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "render" && subcommand === "explain") {
+      assertNoExtraAction(action, ["render", "explain"]);
+      assertAllowedOptions(
+        parsed.options,
+        [
+          "url",
+          "timeout-ms",
+          "mode",
+          "provider",
+          "egress-profile",
+          "egress-config",
+          "identity-profile",
+          "identity-config",
+          "browser-runtime-profile",
+          "browser-wait-until",
+          "browser-timeout-ms",
+          "browser-user-agent",
+        ],
+        ["render", "explain"],
+      );
+      const payload = normalizeCliPayload("render", parsed.options);
+      const result = await withAccessEngine(
+        (engine) => engine.explainRenderPreview(payload),
+        fetchClient,
+        engineOptions,
+      );
+      return { exitCode: 0, output: encodeCliJson(toCliDecisionTrace(result)) };
     }
 
     if ((command === "extract" && subcommand === "run") || command === "scrape") {
@@ -473,6 +628,40 @@ export async function executeCli(
         engineOptions,
       );
       return { exitCode: 0, output: encodeCliJson(result) };
+    }
+
+    if (command === "extract" && subcommand === "explain") {
+      assertNoExtraAction(action, ["extract", "explain"]);
+      assertAllowedOptions(
+        parsed.options,
+        [
+          "url",
+          "selector",
+          "attr",
+          "all",
+          "limit",
+          "timeout-ms",
+          "mode",
+          "provider",
+          "egress-profile",
+          "egress-config",
+          "identity-profile",
+          "identity-config",
+          "http-user-agent",
+          "browser-runtime-profile",
+          "browser-wait-until",
+          "browser-timeout-ms",
+          "browser-user-agent",
+        ],
+        ["extract", "explain"],
+      );
+      const payload = normalizeCliPayload("extract", parsed.options);
+      const result = await withAccessEngine(
+        (engine) => engine.explainExtractRun(payload),
+        fetchClient,
+        engineOptions,
+      );
+      return { exitCode: 0, output: encodeCliJson(toCliDecisionTrace(result)) };
     }
 
     if (command === "crawl" && subcommand === "compile") {

@@ -35,7 +35,7 @@ describe("E1 foundation-core consumer example", () => {
 
   it("executes as a standalone example script", () => {
     const result = Bun.spawnSync({
-      cmd: ["bun", "run", "examples/e1-foundation-core-consumer.ts"],
+      cmd: [process.execPath, "run", "examples/e1-foundation-core-consumer.ts"],
       cwd: REPO_ROOT,
       stdout: "pipe",
       stderr: "pipe",

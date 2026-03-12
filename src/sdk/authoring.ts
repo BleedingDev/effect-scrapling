@@ -43,6 +43,7 @@ function normalizeExecutionPayload(payload: JsonObject): JsonObject | undefined 
   const executionPayload = decodeJsonObject('"execution"', payload.execution);
   assertAllowedKeys('"execution"', executionPayload, [
     "mode",
+    "driverId",
     "providerId",
     "egress",
     "identity",
@@ -96,11 +97,22 @@ function normalizeExecutionPayload(payload: JsonObject): JsonObject | undefined 
     assertAllowedKeys('"execution.fallback"', fallbackPayload, ["browserOnAccessWall"]);
   }
 
+  if (
+    executionPayload.driverId !== undefined &&
+    executionPayload.providerId !== undefined &&
+    executionPayload.driverId !== executionPayload.providerId
+  ) {
+    throw new InvalidInputError({
+      message: '"execution" contains conflicting driver selection fields',
+      details: '"execution.driverId" and "execution.providerId" must match when both are provided.',
+    });
+  }
+
+  const selectedProviderId = executionPayload.driverId ?? executionPayload.providerId;
+
   return {
     ...(executionPayload.mode === undefined ? {} : { mode: executionPayload.mode }),
-    ...(executionPayload.providerId === undefined
-      ? {}
-      : { providerId: executionPayload.providerId }),
+    ...(selectedProviderId === undefined ? {} : { providerId: selectedProviderId }),
     ...(egressPayload === undefined ? {} : { egress: egressPayload }),
     ...(identityPayload === undefined ? {} : { identity: identityPayload }),
     ...(executionPayload.browserRuntimeProfileId === undefined

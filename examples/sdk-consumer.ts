@@ -1,7 +1,10 @@
 import { Effect } from "effect";
 import {
+  type AccessEngineDecisionTrace,
+  type AccessEngineLinkSnapshot,
   type AccessPreviewResponse,
   createEngine,
+  defineAccessModule,
   type ExtractRunResponse,
   type FetchClient,
 } from "effect-scrapling/sdk";
@@ -31,10 +34,13 @@ export const consumerExamplePrerequisites = [
 export const consumerExamplePitfalls = [
   "SDK commands validate payloads before any fetch happens.",
   "Malformed payloads fail with InvalidInputError and should be handled explicitly.",
+  "Explain and link-inspection output is for diagnostics and assembly visibility, not for mutating engine internals.",
   "Import from effect-scrapling/sdk instead of src/sdk/* private paths.",
 ] as const;
 
 export type ConsumerExampleResult = {
+  readonly explain: AccessEngineDecisionTrace;
+  readonly linking: AccessEngineLinkSnapshot;
   readonly preview: AccessPreviewResponse;
   readonly extract: ExtractRunResponse;
   readonly expectedError: {
@@ -72,22 +78,71 @@ const mockFetch: FetchClient = async (input, _init) => {
   return response;
 };
 
+const SyntheticHttpDriverModule = defineAccessModule({
+  id: "sdk-consumer-synthetic-http-module",
+  drivers: {
+    "consumer-http": {
+      id: "consumer-http",
+      capabilities: {
+        mode: "http",
+        rendersDom: false,
+      },
+      execute: ({ url }) =>
+        Effect.succeed({
+          url,
+          finalUrl: url,
+          status: 200,
+          contentType: "text/html; charset=utf-8",
+          contentLength: 104,
+          html: "<html><body><h1>Effect Scrapling</h1><p>Consumer contract example</p></body></html>",
+          durationMs: 4,
+          timings: {
+            requestCount: 1,
+            redirectCount: 0,
+            blockedRequestCount: 0,
+          },
+          warnings: [],
+        }),
+    },
+  },
+});
+
 export function runConsumerExample(): Effect.Effect<ConsumerExampleResult, never, never> {
   return Effect.acquireUseRelease(
     createEngine({
       fetchClient: mockFetch,
+      modules: [SyntheticHttpDriverModule],
     }),
     (engine) =>
       Effect.all({
+        explain: engine
+          .explainAccessPreview({
+            url: "https://consumer.example/articles/effect-scrapling",
+            execution: {
+              driverId: "consumer-http",
+            },
+          })
+          .pipe(Effect.orDie) as Effect.Effect<AccessEngineDecisionTrace, never, never>,
+        linking: engine.inspectLinkSnapshot().pipe(Effect.orDie) as Effect.Effect<
+          AccessEngineLinkSnapshot,
+          never,
+          never
+        >,
         preview: engine
           .accessPreview({
             url: "https://consumer.example/articles/effect-scrapling",
+            execution: {
+              driverId: "consumer-http",
+            },
           })
           .pipe(Effect.orDie) as Effect.Effect<AccessPreviewResponse, never, never>,
         extract: engine
           .extractRun({
             url: "https://consumer.example/articles/effect-scrapling",
             selector: "h1",
+            execution: {
+              driverId: "consumer-http",
+            },
           })
           .pipe(Effect.orDie) as Effect.Effect<ExtractRunResponse, never, never>,
         expectedError: engine.accessPreview({}).pipe(

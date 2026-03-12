@@ -125,6 +125,27 @@ describe("sdk access transport binding", () => {
     expect(toFetchTransportProxyConfig(resolved)).toBe("socks5://127.0.0.1:9050");
   });
 
+  it("allows native wireguard bindings without forcing a proxy bridge at activation time", () => {
+    const binding = createActivatedWireGuardTransportBinding({
+      endpoint: "wg://edge-native",
+      interfaceName: "wg-native0",
+      exitNodeId: "exit-edge-native",
+    });
+
+    expect(binding).toEqual({
+      kind: "wireguard",
+      routeKind: "wireguard",
+      endpoint: "wg://edge-native",
+      interfaceName: "wg-native0",
+      exitNodeId: "exit-edge-native",
+      diagnostics: {
+        routeKind: "wireguard",
+      },
+    });
+    expect(toFetchTransportProxyConfig(binding)).toBeUndefined();
+    expect(toBrowserTransportProxyConfig(binding)).toBeUndefined();
+  });
+
   it("keeps wireguard route kinds fail-closed even when no routeConfig is present", () => {
     expect(
       resolveTransportBinding({

@@ -110,6 +110,7 @@ export const AccessExecutionFallbackSchema = Schema.Struct({
 
 export const AccessExecutionProfileSchema = Schema.Struct({
   mode: Schema.optional(AccessModeInputSchema),
+  driverId: Schema.optional(AccessProviderIdInputSchema),
   providerId: Schema.optional(AccessProviderIdInputSchema),
   egress: Schema.optional(AccessProfileSelectorSchema),
   identity: Schema.optional(AccessProfileSelectorSchema),

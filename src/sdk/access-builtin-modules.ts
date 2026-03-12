@@ -104,9 +104,9 @@ export const TorAccessRuntimeModuleId = "builtin-tor-access";
 
 export function makeAccessCoreRuntimeModule(input: {
   readonly leasedEgressPluginId: string;
-  readonly leasedEgressPlugin: EgressAllocationPlugin<any>;
+  readonly leasedEgressPlugin: EgressAllocationPlugin<unknown>;
   readonly leasedIdentityPluginId: string;
-  readonly leasedIdentityPlugin: IdentityAllocationPlugin<any>;
+  readonly leasedIdentityPlugin: IdentityAllocationPlugin<unknown>;
 }) {
   return {
     id: AccessCoreRuntimeModuleId,

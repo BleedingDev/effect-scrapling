@@ -11,8 +11,12 @@ import {
   isNetworkError,
 } from "./sdk/error-guards.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
-import { createEngine, type AccessEngine, type CreateAccessEngineOptions } from "./sdk/engine.ts";
-import { type FetchClient } from "./sdk/scraper.ts";
+import {
+  createEngine,
+  type AccessEngine,
+  type CreateAccessEngineOptions,
+  type FetchClient,
+} from "./sdk/host.ts";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), {
@@ -145,7 +149,10 @@ function hasCustomEngineAssembly(options: ApiHostEngineOptions | undefined) {
 }
 
 function getSharedApiEngine() {
-  sharedApiEnginePromise ??= Effect.runPromise(createEngine());
+  sharedApiEnginePromise ??= Effect.runPromise(createEngine()).catch((error) => {
+    sharedApiEnginePromise = undefined;
+    throw error;
+  });
   return sharedApiEnginePromise;
 }
 
@@ -229,7 +236,13 @@ export async function handleApiRequest(
   }
 
   if (req.method === "GET" && url.pathname === "/doctor") {
-    return json(await withAccessEngine((engine) => engine.runDoctor(), fetchClient, engineOptions));
+    try {
+      return json(
+        await withAccessEngine((engine) => engine.runDoctor(), fetchClient, engineOptions),
+      );
+    } catch (error) {
+      return toErrorResponse(error);
+    }
   }
 
   if (req.method === "POST" && url.pathname === "/access/preview") {

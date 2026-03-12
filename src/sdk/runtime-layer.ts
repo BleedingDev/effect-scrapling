@@ -228,7 +228,14 @@ const ProvidedAccessProgramLinkerLive = AccessProgramLinkerLive.pipe(
 );
 
 const ProvidedAccessExecutionRuntimeLive = AccessExecutionRuntimeLive.pipe(
-  Layer.provide(ProvidedAccessProgramLinkerLive),
+  Layer.provide(
+    Layer.mergeAll(
+      ProvidedAccessProgramLinkerLive,
+      ProvidedAccessProviderRegistryLive,
+      ProvidedAccessSelectionPolicyLive,
+      ProvidedAccessProfileSelectionPolicyLive,
+    ),
+  ),
 );
 
 const ProvidedAccessResourceKernelLive = AccessResourceKernelLive.pipe(
@@ -279,7 +286,10 @@ export const SdkRuntimeLive = Layer.mergeAll(SdkRuntimeDependenciesLive, SdkRunt
 
 export const SdkEnvironmentLive = Layer.mergeAll(SdkRuntimeLive, FetchServiceLive);
 
-function contextServiceLayer<I, S>(tag: ServiceMap.Key<I, S>, context: ServiceMap.ServiceMap<any>) {
+function contextServiceLayer<I, S, R>(
+  tag: ServiceMap.Key<I, S>,
+  context: ServiceMap.ServiceMap<R | I>,
+) {
   return Layer.succeed(tag, ServiceMap.get(context, tag));
 }
 
@@ -287,16 +297,16 @@ function singleServiceContext<I, S>(tag: ServiceMap.Key<I, S>, service: S) {
   return ServiceMap.make(tag, service);
 }
 
-function overrideServiceContext<I, S>(
+function overrideServiceContext<I, S, R>(
   tag: ServiceMap.Key<I, S>,
-  overrides: ServiceMap.ServiceMap<any>,
+  overrides: ServiceMap.ServiceMap<R>,
 ) {
   return ServiceMap.getOrUndefined(overrides, tag);
 }
 
-const rebuildDerivedRuntimeServices = (
-  context: ServiceMap.ServiceMap<any>,
-  overrides: ServiceMap.ServiceMap<any>,
+const rebuildDerivedRuntimeServices = <ROverrides>(
+  context: ServiceMap.ServiceMap<SdkRuntimeServices | ROverrides>,
+  overrides: ServiceMap.ServiceMap<ROverrides>,
 ) =>
   Effect.gen(function* () {
     const overriddenSelectionHealthSignals = overrideServiceContext(
@@ -548,7 +558,17 @@ const rebuildDerivedRuntimeServices = (
       overriddenAccessExecutionRuntime === undefined
         ? yield* Layer.build(
             AccessExecutionRuntimeLive.pipe(
-              Layer.provide(contextServiceLayer(AccessProgramLinker, resolvedAccessProgramLinker)),
+              Layer.provide(
+                Layer.mergeAll(
+                  contextServiceLayer(AccessProgramLinker, resolvedAccessProgramLinker),
+                  contextServiceLayer(AccessProviderRegistry, providerRegistryContext),
+                  contextServiceLayer(AccessSelectionPolicy, resolvedSelectionPolicy),
+                  contextServiceLayer(
+                    AccessProfileSelectionPolicy,
+                    resolvedAccessProfileSelectionPolicy,
+                  ),
+                ),
+              ),
             ),
           )
         : singleServiceContext(AccessExecutionRuntime, overriddenAccessExecutionRuntime);
@@ -621,7 +641,7 @@ const rebuildDerivedRuntimeServices = (
     );
   });
 
-function buildSdkRuntimeContext(overrides?: Layer.Layer<any, any, any>) {
+function buildSdkRuntimeContext<ROut, E, RIn>(overrides?: Layer.Layer<ROut, E, RIn>) {
   if (overrides === undefined) {
     return Layer.build(Layer.fresh(SdkRuntimeLive));
   }
@@ -632,15 +652,12 @@ function buildSdkRuntimeContext(overrides?: Layer.Layer<any, any, any>) {
       Effect.provide(defaults),
     );
     const seededContext = ServiceMap.merge(defaults, overrideContext);
-    const rebuiltDerived = yield* rebuildDerivedRuntimeServices(
-      seededContext as ServiceMap.ServiceMap<any>,
-      overrideContext as ServiceMap.ServiceMap<any>,
-    );
+    const rebuiltDerived = yield* rebuildDerivedRuntimeServices(seededContext, overrideContext);
     return ServiceMap.merge(ServiceMap.merge(seededContext, rebuiltDerived), overrideContext);
   });
 }
 
-function buildSdkEnvironmentContext(overrides?: Layer.Layer<any, any, any>) {
+function buildSdkEnvironmentContext<ROut, E, RIn>(overrides?: Layer.Layer<ROut, E, RIn>) {
   return Effect.gen(function* () {
     const runtimeContext = yield* buildSdkRuntimeContext(overrides);
     const fetchService = ServiceMap.getOrUndefined(runtimeContext, FetchService);
@@ -653,8 +670,8 @@ function buildSdkEnvironmentContext(overrides?: Layer.Layer<any, any, any>) {
   });
 }
 
-export function makeSdkRuntimeHandle(
-  overrides?: Layer.Layer<any, any, any>,
+export function makeSdkRuntimeHandle<ROut, E, RIn>(
+  overrides?: Layer.Layer<ROut, E, RIn>,
 ): Effect.Effect<SdkRuntimeHandle, never, Scope.Scope> {
   return Effect.gen(function* () {
     const runtimeContext = yield* buildSdkRuntimeContext(overrides);
@@ -673,7 +690,7 @@ export function makeSdkRuntimeHandle(
   }) as Effect.Effect<SdkRuntimeHandle, never, Scope.Scope>;
 }
 
-function buildSdkEnvironmentContextFromRuntime(runtimeContext: ServiceMap.ServiceMap<any>) {
+function buildSdkEnvironmentContextFromRuntime<R>(runtimeContext: ServiceMap.ServiceMap<R>) {
   return Effect.gen(function* () {
     const fetchService = ServiceMap.getOrUndefined(runtimeContext, FetchService);
     if (fetchService !== undefined) {
@@ -685,9 +702,9 @@ function buildSdkEnvironmentContextFromRuntime(runtimeContext: ServiceMap.Servic
   });
 }
 
-export function provideSdkRuntime<A, E, R>(
+export function provideSdkRuntime<A, E, R, ROut, E2, RIn>(
   effect: Effect.Effect<A, E, R>,
-  overrides?: Layer.Layer<any, any, any>,
+  overrides?: Layer.Layer<ROut, E2, RIn>,
 ): Effect.Effect<A, E, WithoutSdkRuntime<R>> {
   return Effect.scoped(
     Effect.gen(function* () {
@@ -697,9 +714,9 @@ export function provideSdkRuntime<A, E, R>(
   ) as Effect.Effect<A, E, WithoutSdkRuntime<R>>;
 }
 
-export function provideSdkEnvironment<A, E, R>(
+export function provideSdkEnvironment<A, E, R, ROut, E2, RIn>(
   effect: Effect.Effect<A, E, R>,
-  overrides?: Layer.Layer<any, any, any>,
+  overrides?: Layer.Layer<ROut, E2, RIn>,
 ): Effect.Effect<A, E, WithoutSdkEnvironment<R>> {
   return Effect.scoped(
     Effect.gen(function* () {

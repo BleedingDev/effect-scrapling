@@ -71,7 +71,7 @@ describe("E1 capability slice verification", () => {
 
   it("executes as a standalone example script", () => {
     const result = Bun.spawnSync({
-      cmd: ["bun", "run", "examples/e1-capability-slice.ts"],
+      cmd: [process.execPath, "run", "examples/e1-capability-slice.ts"],
       cwd: REPO_ROOT,
       stdout: "pipe",
       stderr: "pipe",

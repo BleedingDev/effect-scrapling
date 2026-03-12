@@ -53,7 +53,7 @@ describe("E2 SDK consumer example", () => {
 
   it("executes as a standalone example script", () => {
     const result = Bun.spawnSync({
-      cmd: ["bun", "run", EXAMPLE_PATH],
+      cmd: [process.execPath, "run", EXAMPLE_PATH],
       cwd: REPO_ROOT,
       stdout: "pipe",
       stderr: "pipe",

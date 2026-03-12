@@ -18,7 +18,7 @@ export function makeEgressBroker(pluginRegistry: {
   readonly resolve: (
     pluginId: string,
   ) => Effect.Effect<
-    import("./access-allocation-plugin-runtime.ts").EgressAllocationPlugin,
+    import("./access-allocation-plugin-runtime.ts").EgressAllocationPlugin<unknown>,
     InvalidInputError
   >;
 }) {
@@ -44,7 +44,7 @@ export function makeIdentityBroker(pluginRegistry: {
   readonly resolve: (
     pluginId: string,
   ) => Effect.Effect<
-    import("./access-allocation-plugin-runtime.ts").IdentityAllocationPlugin,
+    import("./access-allocation-plugin-runtime.ts").IdentityAllocationPlugin<unknown>,
     InvalidInputError
   >;
 }) {

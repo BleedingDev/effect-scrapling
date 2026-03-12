@@ -136,7 +136,7 @@ export function createActivatedTorTransportBinding(input: {
 }
 
 export function createActivatedWireGuardTransportBinding(input: {
-  readonly proxyUrl: string;
+  readonly proxyUrl?: string | undefined;
   readonly proxyHeaders?: Readonly<Record<string, string>> | undefined;
   readonly bypass?: string | undefined;
   readonly endpoint?: string | undefined;
@@ -156,7 +156,9 @@ export function createActivatedWireGuardTransportBinding(input: {
     ...(asNonEmptyString(input.exitNodeId) === undefined
       ? {}
       : { exitNodeId: asNonEmptyString(input.exitNodeId) }),
-    proxyUrl: input.proxyUrl,
+    ...(asNonEmptyString(input.proxyUrl) === undefined
+      ? {}
+      : { proxyUrl: asNonEmptyString(input.proxyUrl) }),
     ...(nonEmptyRecord(input.proxyHeaders) === undefined
       ? {}
       : { proxyHeaders: nonEmptyRecord(input.proxyHeaders) }),

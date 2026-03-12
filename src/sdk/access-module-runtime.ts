@@ -14,8 +14,10 @@ import { type AccessProviderId } from "./schemas.ts";
 export type AccessRuntimeModule = {
   readonly id: string;
   readonly providers?: Readonly<Record<AccessProviderId, AccessProvider>> | undefined;
-  readonly egressPlugins?: Readonly<Record<string, EgressAllocationPlugin<any>>> | undefined;
-  readonly identityPlugins?: Readonly<Record<string, IdentityAllocationPlugin<any>>> | undefined;
+  readonly egressPlugins?: Readonly<Record<string, EgressAllocationPlugin<unknown>>> | undefined;
+  readonly identityPlugins?:
+    | Readonly<Record<string, IdentityAllocationPlugin<unknown>>>
+    | undefined;
   readonly egressProfiles?: Readonly<Record<string, ResolvedEgressProfile>> | undefined;
   readonly identityProfiles?: Readonly<Record<string, ResolvedIdentityProfile>> | undefined;
 };
@@ -28,8 +30,8 @@ export type AccessRuntimeModuleComposition = {
   readonly modules: ReadonlyArray<AccessRuntimeModule>;
   readonly providers: Readonly<Record<AccessProviderId, AccessProvider>>;
   readonly providerDescriptors: Readonly<Record<AccessProviderId, AccessProviderDescriptor>>;
-  readonly egressPlugins: Readonly<Record<string, EgressAllocationPlugin<any>>>;
-  readonly identityPlugins: Readonly<Record<string, IdentityAllocationPlugin<any>>>;
+  readonly egressPlugins: Readonly<Record<string, EgressAllocationPlugin<unknown>>>;
+  readonly identityPlugins: Readonly<Record<string, IdentityAllocationPlugin<unknown>>>;
   readonly egressProfiles: Readonly<Record<string, ResolvedEgressProfile>>;
   readonly identityProfiles: Readonly<Record<string, ResolvedIdentityProfile>>;
 };
@@ -151,13 +153,13 @@ export function composeAccessRuntimeModules(
         ]),
       ),
     ) as Readonly<Record<AccessProviderId, AccessProviderDescriptor>>;
-    const egressPlugins = yield* mergeContributionRecord<EgressAllocationPlugin<any>>({
+    const egressPlugins = yield* mergeContributionRecord<EgressAllocationPlugin<unknown>>({
       contributionName: "egress plugin",
       modules: normalizedModules,
       readRecord: (module) => module.egressPlugins,
       readEmbeddedId: (plugin) => plugin.id,
     });
-    const identityPlugins = yield* mergeContributionRecord<IdentityAllocationPlugin<any>>({
+    const identityPlugins = yield* mergeContributionRecord<IdentityAllocationPlugin<unknown>>({
       contributionName: "identity plugin",
       modules: normalizedModules,
       readRecord: (module) => module.identityPlugins,

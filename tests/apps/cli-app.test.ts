@@ -147,6 +147,29 @@ describe("cli app", () => {
     expect(payload.data.finalUrl).toBe("https://example.com/browser-only");
   });
 
+  it("emits driver-centric decision traces for CLI explain commands", async () => {
+    const result = await executeCli([
+      "access",
+      "explain",
+      "--url",
+      "https://example.com/browser-only",
+      "--provider",
+      "browser-basic",
+      "--browser-wait-until",
+      "domcontentloaded",
+    ]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.command).toBe("access preview");
+    expect(payload.defaultDriverId).toBe("http-basic");
+    expect(payload.resolved.driverId).toBe("browser-basic");
+    expect(Array.isArray(payload.candidateDriverIds)).toBe(true);
+    expect("providerId" in payload.resolved).toBe(false);
+    expect(payload.normalizedPayload.execution.driverId).toBe("browser-basic");
+    expect("providerId" in payload.normalizedPayload.execution).toBe(false);
+  });
+
   it("runs doctor through the CLI boundary with the expected JSON envelope", async () => {
     const result = await executeCli(["doctor"]);
     const payload = JSON.parse(result.output);
@@ -186,6 +209,15 @@ describe("cli app", () => {
     expect(payload.data.runConfigDefaults.mode).toBe("http");
     expect(payload.data.runConfigDefaults.render).toBe("never");
     expect(payload.warnings).toEqual([]);
+  });
+
+  it("rejects extra positional segments on workspace config show", async () => {
+    const result = await executeCli(["workspace", "config", "show", "extra"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(2);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toContain("Unexpected positional segment");
   });
 
   it("supports the scrape alias for extract run", async () => {

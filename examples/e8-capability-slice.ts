@@ -1,4 +1,5 @@
 import { Effect, Schema } from "effect";
+import { resolve } from "node:path";
 import { BaselineCorpusArtifactSchema } from "@effect-scrapling/foundation-core/baseline-corpus-runtime";
 import { IncumbentComparisonArtifactSchema } from "@effect-scrapling/foundation-core/incumbent-comparison-runtime";
 import {
@@ -6,7 +7,7 @@ import {
   ExtractRunResponseSchema,
   RenderPreviewResponseSchema,
   provideSdkRuntime,
-} from "../src/sdk/index.ts";
+} from "../src/sdk/host.ts";
 import {
   CrawlCompileEnvelopeSchema,
   E8BenchmarkRunEnvelopeSchema,
@@ -65,6 +66,7 @@ const SYNTHETIC_BROWSER_HTML = `
     </body>
   </html>
 `;
+const REPO_ROOT = resolve(import.meta.dir, "..");
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 
@@ -298,7 +300,7 @@ function withSyntheticPlaywright<A, E, R>(effect: Effect.Effect<A, E, R>): Effec
 }
 
 async function readJsonFile(path: string) {
-  return Bun.file(path).json();
+  return Bun.file(resolve(REPO_ROOT, path)).json();
 }
 
 export function runE8CapabilitySlice() {

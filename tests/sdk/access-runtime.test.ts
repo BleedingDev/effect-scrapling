@@ -293,56 +293,74 @@ function resolveExecutionWithMockLinker(input: {
       },
     ],
   });
-  const seenCommands: Array<"access" | "render" | "extract"> = [];
+  let specializeCalled = false;
+  const providerRegistry = makeProviderRegistry(input.irProviders);
+  const providerRegistryLayer = Layer.succeed(AccessProviderRegistry, providerRegistry);
+  const selectionPolicyLayer = Layer.succeed(
+    AccessSelectionPolicy,
+    makeStaticAccessSelectionPolicy({
+      providerRegistry: makeDescriptorRegistry(input.irProviders),
+      defaultHttpProviderId: "managed-http",
+      defaultBrowserProviderId: "managed-browser",
+    }),
+  );
 
   return Effect.gen(function* () {
     const runtime = yield* AccessExecutionRuntime;
     const plan = yield* runtime.resolve(input.executionInput);
     return {
       plan,
-      seenCommand: seenCommands[0],
+      specializeCalled,
     };
   }).pipe(
     Effect.provide(
       AccessExecutionRuntimeLive.pipe(
         Layer.provide(
-          Layer.succeed(AccessProgramLinker, {
-            inspectIr: () => Effect.succeed(ir),
-            listPrograms: () => Effect.succeed([]),
-            specialize: (specialization) =>
-              Effect.sync(() => {
-                seenCommands.push(specialization.command);
-                return {
-                  ir,
-                  program:
-                    ir.programs.find((program) => program.command === specialization.command) ??
-                    ir.programs[0]!,
-                  intent: makeMockExecutionIntent(
-                    specialization.command === "render" ? "render" : "access",
+          Layer.mergeAll(
+            Layer.succeed(AccessProgramLinker, {
+              inspectIr: () => Effect.succeed(ir),
+              listPrograms: () => Effect.succeed([]),
+              specialize: () =>
+                Effect.sync(() => {
+                  specializeCalled = true;
+                  return {
+                    ir,
+                    program: ir.programs[0]!,
+                    intent: makeMockExecutionIntent("access"),
+                    trace: {
+                      programId: "access-preview",
+                      command: "access" as const,
+                      selectedProviderId: "managed-http",
+                      selectedMode: "http" as const,
+                      candidateProviderIds: ["managed-http"],
+                      rejectedProviderIds: [],
+                      appliedFallbackEdgeIds: [],
+                      scoringDimensions: [],
+                    },
+                  };
+                }),
+            }),
+            providerRegistryLayer,
+            selectionPolicyLayer,
+            AccessProfileSelectionPolicyLive.pipe(
+              Layer.provide(
+                Layer.mergeAll(
+                  AccessProfileRegistryLive,
+                  AccessProfileSelectionStrategyLive,
+                  AccessProfileSelectionHealthSignalsGatewayLive.pipe(
+                    Layer.provide(AccessHealthRuntimeLive),
                   ),
-                  trace: {
-                    programId:
-                      specialization.command === "render" ? "render-preview" : "access-preview",
-                    command: specialization.command,
-                    selectedProviderId:
-                      specialization.command === "render" ? "managed-browser" : "managed-http",
-                    selectedMode: specialization.command === "render" ? "browser" : "http",
-                    candidateProviderIds:
-                      specialization.command === "render" ? ["managed-browser"] : ["managed-http"],
-                    rejectedProviderIds: [],
-                    appliedFallbackEdgeIds: [],
-                    scoringDimensions: [],
-                  },
-                };
-              }),
-          }),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     ),
   ) as Effect.Effect<
     {
       readonly plan: ResolvedExecutionPlan;
-      readonly seenCommand: "access" | "render" | "extract" | undefined;
+      readonly specializeCalled: boolean;
     },
     InvalidInputError,
     never
@@ -656,6 +674,13 @@ describe("sdk access runtime", () => {
       const resolved = yield* resolveExecutionWithMockLinker({
         irProviders: [
           {
+            id: "managed-http",
+            capabilities: {
+              mode: "http",
+              rendersDom: false,
+            },
+          },
+          {
             id: "managed-browser",
             capabilities: {
               mode: "browser",
@@ -671,7 +696,7 @@ describe("sdk access runtime", () => {
         },
       });
 
-      expect(resolved.seenCommand).toBe("access");
+      expect(resolved.specializeCalled).toBe(false);
       expect(resolved.plan.mode).toBe("http");
     }),
   );
@@ -698,7 +723,7 @@ describe("sdk access runtime", () => {
         },
       });
 
-      expect(resolved.seenCommand).toBe("render");
+      expect(resolved.specializeCalled).toBe(false);
       expect(resolved.plan.mode).toBe("browser");
     }),
   );
@@ -732,7 +757,7 @@ describe("sdk access runtime", () => {
         },
       });
 
-      expect(resolved.seenCommand).toBe("render");
+      expect(resolved.specializeCalled).toBe(false);
       expect(resolved.plan.mode).toBe("browser");
     }),
   );
@@ -1046,7 +1071,7 @@ describe("sdk access runtime", () => {
         },
       });
 
-      expect(resolved.seenCommand).toBe("render");
+      expect(resolved.specializeCalled).toBe(false);
       expect(resolved.plan.mode).toBe("browser");
     }),
   );
