@@ -817,6 +817,169 @@ describe("e9 benchmark suite", () => {
     expect(artifact.summary?.topForbiddenFailureDomains).toEqual([]);
   });
 
+  it("classifies Cloudflare-style 403 redirects into challenge benchmark failures", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-cloudflare-403",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 403,
+                redirected: true,
+                challengeDetected: true,
+                observedChallengeSignals: ["status-403"],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://boozt.example/shop?__cf_chl_rt_tk=abc123&__cf_chl_tk=def456",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-challenge");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-challenge",
+      count: 1,
+    });
+    expect(artifact.summary?.topChallengeFailureDomains).toEqual([
+      { key: "boozt.example", count: 1 },
+    ]);
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([]);
+  });
+
+  it("does not let locally inferred 429 status override runner-reported challenge signals", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-rate-limited-challenge",
+            domain: "challenge.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://challenge.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 429,
+                redirected: true,
+                challengeDetected: true,
+                observedChallengeSignals: ["url-challenge"],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                finalUrl: "https://challenge.example/challenge?flow=bot-check",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-challenge");
+    expect(artifact.browserCorpus.attempts[0]?.observedChallengeSignals).toContain("url-challenge");
+    expect(artifact.browserCorpus.attempts[0]?.observedChallengeSignals).not.toContain(
+      "status-429",
+    );
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-challenge",
+      count: 1,
+    });
+    expect(artifact.summary?.topRateLimitFailureDomains).toEqual([]);
+  });
+
+  it("classifies locally detected 429 Cloudflare challenge redirects as challenge benchmark failures", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-local-cloudflare-429",
+            domain: "challenge.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://challenge.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 429,
+                redirected: true,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                finalUrl:
+                  "https://challenge.example/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1?__cf_chl_rt_tk=abc123",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-challenge");
+    expect(artifact.browserCorpus.attempts[0]?.observedChallengeSignals).toContain("status-429");
+    expect(artifact.browserCorpus.attempts[0]?.observedChallengeSignals).toContain("url-challenge");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-challenge",
+      count: 1,
+    });
+    expect(artifact.summary?.topRateLimitFailureDomains).toEqual([]);
+    expect(artifact.summary?.topChallengeFailureDomains).toEqual([
+      { key: "challenge.example", count: 1 },
+    ]);
+  });
+
   it("keeps weak challenge-hint 403 walls in the generic access-wall benchmark category", async () => {
     const artifact = await runE9BenchmarkSuite(
       {

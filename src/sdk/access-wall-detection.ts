@@ -14,6 +14,10 @@ const STRONG_FINAL_URL_PATTERNS: ReadonlyArray<AccessWallPattern> = [
   },
   {
     signal: "url-challenge",
+    pattern: /(?:[?&])__cf_chl_[a-z0-9_]+=|\/cdn-cgi\/challenge-platform(?:\/|$)/iu,
+  },
+  {
+    signal: "url-challenge",
     pattern:
       /\b(captcha|challenge|verify|verification|human-check|security-check|bot-check|access-denied|attention-required|blocked|forbidden)\b/iu,
   },
@@ -268,16 +272,16 @@ export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWa
     return undefined;
   }
 
-  if (hasAnySignal(observedSignals, RATE_LIMIT_SIGNALS)) {
-    return "rate-limit";
-  }
-
   if (hasAnySignal(observedSignals, TRAP_SIGNALS)) {
     return "trap";
   }
 
   if (hasAnySignal(observedSignals, EXPLICIT_CHALLENGE_SIGNALS)) {
     return "challenge";
+  }
+
+  if (hasAnySignal(observedSignals, RATE_LIMIT_SIGNALS)) {
+    return "rate-limit";
   }
 
   if (hasAnySignal(observedSignals, STRONG_CONSENT_SIGNALS)) {

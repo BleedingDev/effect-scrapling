@@ -21,6 +21,38 @@ describe("sdk access wall detection", () => {
     expect(analysis.signals).toContain("title-challenge");
   });
 
+  it("detects Cloudflare challenge redirects from challenge query parameters", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/products/sku-1",
+      finalUrl:
+        "https://store.example.test/products/sku-1?__cf_chl_rt_tk=abc123&__cf_chl_tk=def456",
+      statusCode: 403,
+      title: "",
+      text: "",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(true);
+    expect(analysis.signals).toContain("status-403");
+    expect(analysis.signals).toContain("url-challenge");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("challenge");
+  });
+
+  it("classifies explicit challenge redirects ahead of rate-limit status when both are present", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/products/sku-1",
+      finalUrl:
+        "https://store.example.test/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1?__cf_chl_rt_tk=abc123",
+      statusCode: 429,
+      title: "",
+      text: "",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(true);
+    expect(analysis.signals).toContain("status-429");
+    expect(analysis.signals).toContain("url-challenge");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("challenge");
+  });
+
   it("detects consent interstitials from privacy copy without domain-specific rules", () => {
     const analysis = detectAccessWall({
       requestedUrl: "https://store.example.test/category/chairs",
@@ -143,6 +175,18 @@ describe("sdk access wall detection", () => {
     expect(analysis.signals).not.toContain("url-consent");
   });
 
+  it("does not flag ordinary Cloudflare cdn-cgi asset paths as challenge urls", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/products/sku-1",
+      finalUrl: "https://store.example.test/cdn-cgi/image/width=400/products/sku-1.png",
+      title: "SKU 1",
+      text: "<main>Product image</main>",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(false);
+    expect(analysis.signals).not.toContain("url-challenge");
+  });
+
   it("does not flag ordinary content whose slug and title mention challenge keywords", () => {
     const analysis = detectAccessWall({
       requestedUrl: "https://store.example.test/products/challenge-cup",
@@ -233,6 +277,7 @@ describe("sdk access wall detection", () => {
     expect(classifyAccessWallKind(["status-403", "text-consent", "title-consent"])).toBe("consent");
     expect(classifyAccessWallKind(["status-403"])).toBe("forbidden");
     expect(classifyAccessWallKind(["status-401"])).toBe("forbidden");
+    expect(classifyAccessWallKind(["status-429", "url-challenge"])).toBe("challenge");
     expect(classifyAccessWallKind(["status-403", "text-privacy"])).toBeUndefined();
     expect(classifyAccessWallKind(["status-403", "text-cookies"])).toBeUndefined();
     expect(classifyAccessWallKind(["status-403", "title-challenge-hint"])).toBeUndefined();

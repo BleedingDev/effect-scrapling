@@ -606,6 +606,8 @@ const ADAPTIVE_STOP_MAX_CHALLENGE_DELTA = 0.01;
 const DEFAULT_HTTP_USER_AGENT = "effect-scrapling-benchmark/1.0";
 const DEFAULT_BROWSER_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+const STATUS_ACCESS_WALL_SIGNALS = new Set(["status-401", "status-403", "status-429"]);
+
 function compareStrings(left: string, right: string) {
   if (left < right) {
     return -1;
@@ -968,14 +970,19 @@ function buildAttempt(input: {
   readonly page: FrozenPage;
   readonly result: AttemptResult;
 }) {
-  const observedChallengeSignals =
-    input.result.observedChallengeSignals.length > 0
-      ? input.result.observedChallengeSignals
-      : detectChallengeSignals({
-          requestedUrl: input.page.url,
-          statusCode: input.result.statusCode,
-          finalUrl: input.result.finalUrl,
-        });
+  const locallyDetectedChallengeSignals = detectChallengeSignals({
+    requestedUrl: input.page.url,
+    statusCode: input.result.statusCode,
+    finalUrl: input.result.finalUrl,
+  });
+  const augmentedLocalSignals =
+    input.result.observedChallengeSignals.length === 0
+      ? locallyDetectedChallengeSignals
+      : locallyDetectedChallengeSignals.filter((signal) => !STATUS_ACCESS_WALL_SIGNALS.has(signal));
+  const observedChallengeSignals = mergeChallengeSignals(
+    input.result.observedChallengeSignals,
+    augmentedLocalSignals,
+  );
   const challengeDetected = input.result.challengeDetected || observedChallengeSignals.length > 0;
   const timings = buildAttemptTimings(input.result);
   const success =
