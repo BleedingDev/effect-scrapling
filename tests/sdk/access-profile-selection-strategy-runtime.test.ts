@@ -563,292 +563,296 @@ describe("sdk access profile selection strategy", () => {
       }),
   );
 
-  it.effect("reroutes only egress when plugin scores moderately favor leased alternatives", () =>
-    Effect.gen(function* () {
-      const egressDecision = yield* strategy.selectEgressProfileId({
-        availableProfiles: [
-          {
-            allocationMode: "static",
-            pluginId: "direct-egress",
-            profileId: DEFAULT_EGRESS_PROFILE_ID,
-            poolId: "direct-pool",
-            routePolicyId: "direct-route",
-            routeKind: "direct",
-            routeKey: "direct",
-            requestHeaders: {},
-            warnings: [],
-          },
-          {
-            allocationMode: "leased",
-            pluginId: "leased-egress",
-            profileId: DEFAULT_LEASED_EGRESS_PROFILE_ID,
-            poolId: "leased-pool",
-            routePolicyId: "leased-route",
-            routeKind: "direct",
-            routeKey: "leased-direct",
-            requestHeaders: {},
-            warnings: [],
-          },
-        ],
-        healthSignals: {
-          egressProfiles: {},
-          egressPlugins: {
-            [accessProfileSelectionEgressPluginKey({
+  it.effect(
+    "keeps direct egress when plugin scores only moderately favor leased alternatives",
+    () =>
+      Effect.gen(function* () {
+        const egressDecision = yield* strategy.selectEgressProfileId({
+          availableProfiles: [
+            {
+              allocationMode: "static",
+              pluginId: "direct-egress",
+              profileId: DEFAULT_EGRESS_PROFILE_ID,
               poolId: "direct-pool",
               routePolicyId: "direct-route",
-              pluginId: "direct-egress",
-            })]: {
-              subject: {
-                kind: "egress-plugin",
+              routeKind: "direct",
+              routeKey: "direct",
+              requestHeaders: {},
+              warnings: [],
+            },
+            {
+              allocationMode: "leased",
+              pluginId: "leased-egress",
+              profileId: DEFAULT_LEASED_EGRESS_PROFILE_ID,
+              poolId: "leased-pool",
+              routePolicyId: "leased-route",
+              routeKind: "direct",
+              routeKey: "leased-direct",
+              requestHeaders: {},
+              warnings: [],
+            },
+          ],
+          healthSignals: {
+            egressProfiles: {},
+            egressPlugins: {
+              [accessProfileSelectionEgressPluginKey({
                 poolId: "direct-pool",
                 routePolicyId: "direct-route",
                 pluginId: "direct-egress",
+              })]: {
+                subject: {
+                  kind: "egress-plugin",
+                  poolId: "direct-pool",
+                  routePolicyId: "direct-route",
+                  pluginId: "direct-egress",
+                },
+                successCount: 3,
+                failureCount: 1,
+                successStreak: 0,
+                failureStreak: 0,
+                score: 75,
+                quarantinedUntil: null,
               },
-              successCount: 3,
-              failureCount: 1,
-              successStreak: 0,
-              failureStreak: 0,
-              score: 75,
-              quarantinedUntil: null,
-            },
-            [accessProfileSelectionEgressPluginKey({
-              poolId: "leased-pool",
-              routePolicyId: "leased-route",
-              pluginId: "leased-egress",
-            })]: {
-              subject: {
-                kind: "egress-plugin",
+              [accessProfileSelectionEgressPluginKey({
                 poolId: "leased-pool",
                 routePolicyId: "leased-route",
                 pluginId: "leased-egress",
+              })]: {
+                subject: {
+                  kind: "egress-plugin",
+                  poolId: "leased-pool",
+                  routePolicyId: "leased-route",
+                  pluginId: "leased-egress",
+                },
+                successCount: 8,
+                failureCount: 0,
+                successStreak: 8,
+                failureStreak: 0,
+                score: 100,
+                quarantinedUntil: null,
               },
-              successCount: 8,
-              failureCount: 0,
-              successStreak: 8,
-              failureStreak: 0,
-              score: 100,
-              quarantinedUntil: null,
             },
+            identityProfiles: {},
+            identityPlugins: {},
+            degraded: false,
+            egressWarnings: [],
+            identityWarnings: [],
           },
-          identityProfiles: {},
-          identityPlugins: {},
-          degraded: false,
-          egressWarnings: [],
-          identityWarnings: [],
-        },
-      });
-      const identityDecision = yield* strategy.selectIdentityProfileId({
-        providerId: "browser-basic",
-        availableProfiles: [
-          {
-            allocationMode: "static",
-            pluginId: "default-identity",
-            profileId: DEFAULT_IDENTITY_PROFILE_ID,
-            tenantId: "public",
-            browserRuntimeProfileId: "patchright-default",
-            httpUserAgent: "ua",
-            browserUserAgent: "ua",
-            warnings: [],
-          },
-          {
-            allocationMode: "leased",
-            pluginId: "leased-identity",
-            profileId: DEFAULT_LEASED_IDENTITY_PROFILE_ID,
-            tenantId: "public",
-            browserRuntimeProfileId: "patchright-default",
-            httpUserAgent: "ua",
-            browserUserAgent: "ua",
-            warnings: [],
-          },
-        ],
-        healthSignals: {
-          egressProfiles: {},
-          egressPlugins: {},
-          identityProfiles: {},
-          identityPlugins: {
-            [accessProfileSelectionIdentityPluginKey({
-              tenantId: "public",
+        });
+        const identityDecision = yield* strategy.selectIdentityProfileId({
+          providerId: "browser-basic",
+          availableProfiles: [
+            {
+              allocationMode: "static",
               pluginId: "default-identity",
-            })]: {
-              subject: {
-                kind: "identity-plugin",
-                tenantId: "public",
-                domain: "example.com",
-                pluginId: "default-identity",
-              },
-              successCount: 2,
-              failureCount: 1,
-              successStreak: 0,
-              failureStreak: 0,
-              score: 66.67,
-              quarantinedUntil: null,
-            },
-            [accessProfileSelectionIdentityPluginKey({
+              profileId: DEFAULT_IDENTITY_PROFILE_ID,
               tenantId: "public",
-              pluginId: "leased-identity",
-            })]: {
-              subject: {
-                kind: "identity-plugin",
-                tenantId: "public",
-                domain: "example.com",
-                pluginId: "leased-identity",
-              },
-              successCount: 5,
-              failureCount: 0,
-              successStreak: 5,
-              failureStreak: 0,
-              score: 100,
-              quarantinedUntil: null,
+              browserRuntimeProfileId: "patchright-default",
+              httpUserAgent: "ua",
+              browserUserAgent: "ua",
+              warnings: [],
             },
+            {
+              allocationMode: "leased",
+              pluginId: "leased-identity",
+              profileId: DEFAULT_LEASED_IDENTITY_PROFILE_ID,
+              tenantId: "public",
+              browserRuntimeProfileId: "patchright-default",
+              httpUserAgent: "ua",
+              browserUserAgent: "ua",
+              warnings: [],
+            },
+          ],
+          healthSignals: {
+            egressProfiles: {},
+            egressPlugins: {},
+            identityProfiles: {},
+            identityPlugins: {
+              [accessProfileSelectionIdentityPluginKey({
+                tenantId: "public",
+                pluginId: "default-identity",
+              })]: {
+                subject: {
+                  kind: "identity-plugin",
+                  tenantId: "public",
+                  domain: "example.com",
+                  pluginId: "default-identity",
+                },
+                successCount: 2,
+                failureCount: 1,
+                successStreak: 0,
+                failureStreak: 0,
+                score: 66.67,
+                quarantinedUntil: null,
+              },
+              [accessProfileSelectionIdentityPluginKey({
+                tenantId: "public",
+                pluginId: "leased-identity",
+              })]: {
+                subject: {
+                  kind: "identity-plugin",
+                  tenantId: "public",
+                  domain: "example.com",
+                  pluginId: "leased-identity",
+                },
+                successCount: 5,
+                failureCount: 0,
+                successStreak: 5,
+                failureStreak: 0,
+                score: 100,
+                quarantinedUntil: null,
+              },
+            },
+            degraded: false,
+            egressWarnings: [],
+            identityWarnings: [],
           },
-          degraded: false,
-          egressWarnings: [],
-          identityWarnings: [],
-        },
-      });
+        });
 
-      expect(egressDecision.profileId).toBe(DEFAULT_LEASED_EGRESS_PROFILE_ID);
-      expect(egressDecision.rationale).toBe("health-signals");
-      expect(identityDecision.profileId).toBe(DEFAULT_IDENTITY_PROFILE_ID);
-      expect(identityDecision.rationale).toBe("preferred");
-    }),
+        expect(egressDecision.profileId).toBe(DEFAULT_EGRESS_PROFILE_ID);
+        expect(egressDecision.rationale).toBe("preferred");
+        expect(identityDecision.profileId).toBe(DEFAULT_IDENTITY_PROFILE_ID);
+        expect(identityDecision.rationale).toBe("preferred");
+      }),
   );
 
-  it.effect("reroutes only egress when profile scores moderately favor leased alternatives", () =>
-    Effect.gen(function* () {
-      const egressDecision = yield* strategy.selectEgressProfileId({
-        availableProfiles: [
-          {
-            allocationMode: "static",
-            pluginId: "direct-egress",
-            profileId: DEFAULT_EGRESS_PROFILE_ID,
-            poolId: "direct-pool",
-            routePolicyId: "direct-route",
-            routeKind: "direct",
-            routeKey: "direct",
-            requestHeaders: {},
-            warnings: [],
-          },
-          {
-            allocationMode: "leased",
-            pluginId: "leased-egress",
-            profileId: DEFAULT_LEASED_EGRESS_PROFILE_ID,
-            poolId: "leased-pool",
-            routePolicyId: "leased-route",
-            routeKind: "direct",
-            routeKey: "leased-direct",
-            requestHeaders: {},
-            warnings: [],
-          },
-        ],
-        healthSignals: {
-          egressProfiles: {
-            [DEFAULT_EGRESS_PROFILE_ID]: {
-              subject: {
-                kind: "egress-profile",
-                poolId: "direct-pool",
-                routePolicyId: "direct-route",
-                profileId: DEFAULT_EGRESS_PROFILE_ID,
-              },
-              successCount: 3,
-              failureCount: 1,
-              successStreak: 0,
-              failureStreak: 0,
-              score: 75,
-              quarantinedUntil: null,
+  it.effect(
+    "keeps direct egress when profile scores only moderately favor leased alternatives",
+    () =>
+      Effect.gen(function* () {
+        const egressDecision = yield* strategy.selectEgressProfileId({
+          availableProfiles: [
+            {
+              allocationMode: "static",
+              pluginId: "direct-egress",
+              profileId: DEFAULT_EGRESS_PROFILE_ID,
+              poolId: "direct-pool",
+              routePolicyId: "direct-route",
+              routeKind: "direct",
+              routeKey: "direct",
+              requestHeaders: {},
+              warnings: [],
             },
-            [DEFAULT_LEASED_EGRESS_PROFILE_ID]: {
-              subject: {
-                kind: "egress-profile",
-                poolId: "leased-pool",
-                routePolicyId: "leased-route",
-                profileId: DEFAULT_LEASED_EGRESS_PROFILE_ID,
-              },
-              successCount: 8,
-              failureCount: 0,
-              successStreak: 8,
-              failureStreak: 0,
-              score: 100,
-              quarantinedUntil: null,
+            {
+              allocationMode: "leased",
+              pluginId: "leased-egress",
+              profileId: DEFAULT_LEASED_EGRESS_PROFILE_ID,
+              poolId: "leased-pool",
+              routePolicyId: "leased-route",
+              routeKind: "direct",
+              routeKey: "leased-direct",
+              requestHeaders: {},
+              warnings: [],
             },
-          },
-          egressPlugins: {},
-          identityProfiles: {},
-          identityPlugins: {},
-          degraded: false,
-          egressWarnings: [],
-          identityWarnings: [],
-        },
-      });
-      const identityDecision = yield* strategy.selectIdentityProfileId({
-        providerId: "browser-basic",
-        availableProfiles: [
-          {
-            allocationMode: "static",
-            pluginId: "default-identity",
-            profileId: DEFAULT_IDENTITY_PROFILE_ID,
-            tenantId: "public",
-            browserRuntimeProfileId: "patchright-default",
-            httpUserAgent: "ua",
-            browserUserAgent: "ua",
-            warnings: [],
-          },
-          {
-            allocationMode: "leased",
-            pluginId: "leased-identity",
-            profileId: DEFAULT_LEASED_IDENTITY_PROFILE_ID,
-            tenantId: "public",
-            browserRuntimeProfileId: "patchright-default",
-            httpUserAgent: "ua",
-            browserUserAgent: "ua",
-            warnings: [],
-          },
-        ],
-        healthSignals: {
-          egressProfiles: {},
-          egressPlugins: {},
-          identityProfiles: {
-            [DEFAULT_IDENTITY_PROFILE_ID]: {
-              subject: {
-                kind: "identity-profile",
-                tenantId: "public",
-                domain: "example.com",
-                profileId: DEFAULT_IDENTITY_PROFILE_ID,
+          ],
+          healthSignals: {
+            egressProfiles: {
+              [DEFAULT_EGRESS_PROFILE_ID]: {
+                subject: {
+                  kind: "egress-profile",
+                  poolId: "direct-pool",
+                  routePolicyId: "direct-route",
+                  profileId: DEFAULT_EGRESS_PROFILE_ID,
+                },
+                successCount: 3,
+                failureCount: 1,
+                successStreak: 0,
+                failureStreak: 0,
+                score: 75,
+                quarantinedUntil: null,
               },
-              successCount: 2,
-              failureCount: 1,
-              successStreak: 0,
-              failureStreak: 0,
-              score: 70,
-              quarantinedUntil: null,
-            },
-            [DEFAULT_LEASED_IDENTITY_PROFILE_ID]: {
-              subject: {
-                kind: "identity-profile",
-                tenantId: "public",
-                domain: "example.com",
-                profileId: DEFAULT_LEASED_IDENTITY_PROFILE_ID,
+              [DEFAULT_LEASED_EGRESS_PROFILE_ID]: {
+                subject: {
+                  kind: "egress-profile",
+                  poolId: "leased-pool",
+                  routePolicyId: "leased-route",
+                  profileId: DEFAULT_LEASED_EGRESS_PROFILE_ID,
+                },
+                successCount: 8,
+                failureCount: 0,
+                successStreak: 8,
+                failureStreak: 0,
+                score: 100,
+                quarantinedUntil: null,
               },
-              successCount: 5,
-              failureCount: 0,
-              successStreak: 5,
-              failureStreak: 0,
-              score: 100,
-              quarantinedUntil: null,
             },
+            egressPlugins: {},
+            identityProfiles: {},
+            identityPlugins: {},
+            degraded: false,
+            egressWarnings: [],
+            identityWarnings: [],
           },
-          identityPlugins: {},
-          degraded: false,
-          egressWarnings: [],
-          identityWarnings: [],
-        },
-      });
+        });
+        const identityDecision = yield* strategy.selectIdentityProfileId({
+          providerId: "browser-basic",
+          availableProfiles: [
+            {
+              allocationMode: "static",
+              pluginId: "default-identity",
+              profileId: DEFAULT_IDENTITY_PROFILE_ID,
+              tenantId: "public",
+              browserRuntimeProfileId: "patchright-default",
+              httpUserAgent: "ua",
+              browserUserAgent: "ua",
+              warnings: [],
+            },
+            {
+              allocationMode: "leased",
+              pluginId: "leased-identity",
+              profileId: DEFAULT_LEASED_IDENTITY_PROFILE_ID,
+              tenantId: "public",
+              browserRuntimeProfileId: "patchright-default",
+              httpUserAgent: "ua",
+              browserUserAgent: "ua",
+              warnings: [],
+            },
+          ],
+          healthSignals: {
+            egressProfiles: {},
+            egressPlugins: {},
+            identityProfiles: {
+              [DEFAULT_IDENTITY_PROFILE_ID]: {
+                subject: {
+                  kind: "identity-profile",
+                  tenantId: "public",
+                  domain: "example.com",
+                  profileId: DEFAULT_IDENTITY_PROFILE_ID,
+                },
+                successCount: 2,
+                failureCount: 1,
+                successStreak: 0,
+                failureStreak: 0,
+                score: 70,
+                quarantinedUntil: null,
+              },
+              [DEFAULT_LEASED_IDENTITY_PROFILE_ID]: {
+                subject: {
+                  kind: "identity-profile",
+                  tenantId: "public",
+                  domain: "example.com",
+                  profileId: DEFAULT_LEASED_IDENTITY_PROFILE_ID,
+                },
+                successCount: 5,
+                failureCount: 0,
+                successStreak: 5,
+                failureStreak: 0,
+                score: 100,
+                quarantinedUntil: null,
+              },
+            },
+            identityPlugins: {},
+            degraded: false,
+            egressWarnings: [],
+            identityWarnings: [],
+          },
+        });
 
-      expect(egressDecision.profileId).toBe(DEFAULT_LEASED_EGRESS_PROFILE_ID);
-      expect(egressDecision.rationale).toBe("health-signals");
-      expect(identityDecision.profileId).toBe(DEFAULT_IDENTITY_PROFILE_ID);
-      expect(identityDecision.rationale).toBe("preferred");
-    }),
+        expect(egressDecision.profileId).toBe(DEFAULT_EGRESS_PROFILE_ID);
+        expect(egressDecision.rationale).toBe("preferred");
+        expect(identityDecision.profileId).toBe(DEFAULT_IDENTITY_PROFILE_ID);
+        expect(identityDecision.rationale).toBe("preferred");
+      }),
   );
 
   it.effect("reroutes to leased builtin profiles when plugin score drift is decisively worse", () =>

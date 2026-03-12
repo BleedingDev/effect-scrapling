@@ -91,12 +91,29 @@ function inferExecutionCommand(input: {
     return input.command;
   }
 
-  if (input.execution?.mode === "browser" || input.execution?.browser !== undefined) {
+  if (
+    input.execution?.mode === "browser" ||
+    input.execution?.browser !== undefined ||
+    input.execution?.browserRuntimeProfileId !== undefined
+  ) {
     return "render";
   }
 
   if (input.execution?.mode === "http" || input.execution?.http !== undefined) {
     return "access";
+  }
+
+  const explicitExecutionProvider = input.execution?.providerId;
+  if (explicitExecutionProvider !== undefined) {
+    const explicitProviderDescriptor = input.ir.providers.find(
+      (provider) => provider.id === explicitExecutionProvider,
+    );
+    if (explicitProviderDescriptor?.capabilities.mode === "browser") {
+      return "render";
+    }
+    if (explicitProviderDescriptor?.capabilities.mode === "http") {
+      return "access";
+    }
   }
 
   return shouldInferBrowserCommand({

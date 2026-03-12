@@ -19,49 +19,49 @@
   "measurements": {
     "referencePackValidation": {
       "samples": 1,
-      "minMs": 94.504,
-      "meanMs": 94.504,
-      "p95Ms": 94.504,
-      "maxMs": 94.504
+      "minMs": 210.548,
+      "meanMs": 210.548,
+      "p95Ms": 210.548,
+      "maxMs": 210.548
     },
     "scraplingParity": {
       "samples": 1,
-      "minMs": 1469.899,
-      "meanMs": 1469.899,
-      "p95Ms": 1469.899,
-      "maxMs": 1469.899
+      "minMs": 778.643,
+      "meanMs": 778.643,
+      "p95Ms": 778.643,
+      "maxMs": 778.643
     },
     "highFrictionCanary": {
       "samples": 1,
-      "minMs": 17.237,
-      "meanMs": 17.237,
-      "p95Ms": 17.237,
-      "maxMs": 17.237
+      "minMs": 132.553,
+      "meanMs": 132.553,
+      "p95Ms": 132.553,
+      "maxMs": 132.553
     },
     "launchReadiness": {
       "samples": 1,
-      "minMs": 4.599,
-      "meanMs": 4.599,
-      "p95Ms": 4.599,
-      "maxMs": 4.599
+      "minMs": 91.912,
+      "meanMs": 91.912,
+      "p95Ms": 91.912,
+      "maxMs": 91.912
     },
     "total": {
       "samples": 1,
-      "minMs": 353.367,
-      "meanMs": 353.367,
-      "p95Ms": 353.367,
-      "maxMs": 353.367
+      "minMs": 1077.142,
+      "meanMs": 1077.142,
+      "p95Ms": 1077.142,
+      "maxMs": 1077.142
     },
-    "heapDeltaKiB": 8124.998
+    "heapDeltaKiB": 3269.046
   },
   "baselinePath": "/Users/satan/side/experiments/effect-scrapling/docs/artifacts/e9-performance-budget-baseline.json",
   "deltas": {
-    "referencePackValidationP95Ms": -22.347,
-    "scraplingParityP95Ms": 1162.351,
-    "highFrictionCanaryP95Ms": -14.984,
-    "launchReadinessP95Ms": -8.745,
-    "totalP95Ms": -49.886,
-    "heapDeltaKiB": 511.532
+    "referencePackValidationP95Ms": 93.697,
+    "scraplingParityP95Ms": 471.095,
+    "highFrictionCanaryP95Ms": 100.332,
+    "launchReadinessP95Ms": 78.568,
+    "totalP95Ms": 673.889,
+    "heapDeltaKiB": -4344.42
   },
   "status": "pass"
 }

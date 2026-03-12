@@ -39,8 +39,8 @@ export type AccessProfileSelectionDecision = {
   readonly rationale: AccessProfileSelectionDecisionRationale;
 };
 
-const EGRESS_PLUGIN_SCORE_DRIFT_TOLERANCE = 20;
-const EGRESS_HEALTH_SCORE_DRIFT_TOLERANCE = 20;
+const EGRESS_PLUGIN_SCORE_DRIFT_TOLERANCE = 35;
+const EGRESS_HEALTH_SCORE_DRIFT_TOLERANCE = 35;
 const IDENTITY_PLUGIN_SCORE_DRIFT_TOLERANCE = 35;
 const IDENTITY_HEALTH_SCORE_DRIFT_TOLERANCE = 35;
 

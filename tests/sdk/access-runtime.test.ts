@@ -676,6 +676,67 @@ describe("sdk access runtime", () => {
     }),
   );
 
+  it.effect("infers the render command from a known browser execution provider", () =>
+    Effect.gen(function* () {
+      const resolved = yield* resolveExecutionWithMockLinker({
+        irProviders: [
+          {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+          },
+        ],
+        executionInput: {
+          url: "https://example.com/provider-driven-render-command",
+          defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          defaultTimeoutMs: 900,
+          execution: {
+            providerId: "managed-browser",
+          },
+        },
+      });
+
+      expect(resolved.seenCommand).toBe("render");
+      expect(resolved.plan.mode).toBe("browser");
+    }),
+  );
+
+  it.effect("infers the render command from browser runtime profile hints alone", () =>
+    Effect.gen(function* () {
+      const resolved = yield* resolveExecutionWithMockLinker({
+        irProviders: [
+          {
+            id: "managed-browser",
+            capabilities: {
+              mode: "browser",
+              rendersDom: true,
+            },
+          },
+          {
+            id: "managed-http",
+            capabilities: {
+              mode: "http",
+              rendersDom: false,
+            },
+          },
+        ],
+        executionInput: {
+          url: "https://example.com/runtime-profile-render-command",
+          defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          defaultTimeoutMs: 900,
+          execution: {
+            browserRuntimeProfileId: "patchright-default",
+          },
+        },
+      });
+
+      expect(resolved.seenCommand).toBe("render");
+      expect(resolved.plan.mode).toBe("browser");
+    }),
+  );
+
   it.effect("requires explicit mode for custom providers", () =>
     Effect.gen(function* () {
       const failure = yield* resolveExecution({
