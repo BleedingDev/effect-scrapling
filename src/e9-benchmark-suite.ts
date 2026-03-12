@@ -314,6 +314,7 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   topTimeoutFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topNavigationHttpErrorFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topHeaderReadFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topBrowserResponseFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topMixedRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkDomainFailureMixItemSchema)),
   topBrowserFailureCategories: Schema.Array(BenchmarkReportItemSchema),
   topBrowserRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
@@ -378,6 +379,11 @@ type BrowserBenchmarkProfile = Schema.Schema.Type<typeof BrowserBenchmarkProfile
 type BenchmarkFailureCategory = NonNullable<
   Schema.Schema.Type<typeof BenchmarkAttemptSchema>["failureCategory"]
 >;
+
+const browserResponseFailureCategories = [
+  "browser-navigation-http-error",
+  "browser-header-read-failed",
+] as const satisfies readonly BenchmarkFailureCategory[];
 type BenchmarkExecutionMetadata = Schema.Schema.Type<typeof BenchmarkExecutionMetadataSchema>;
 export type E9BenchmarkSuiteArtifact = Schema.Schema.Type<typeof E9BenchmarkSuiteArtifactSchema>;
 export type E9BenchmarkSuiteProgressEvent =
@@ -2613,6 +2619,23 @@ function buildDomainBreakdownForFailureCategory(
   );
 }
 
+function buildDomainBreakdownForFailureCategories(
+  attempts: ReadonlyArray<BenchmarkAttempt>,
+  categories: ReadonlyArray<BenchmarkFailureCategory>,
+  limit: number,
+) {
+  const categorySet = new Set(categories);
+  return buildCountBreakdown(
+    attempts
+      .filter((attempt) => {
+        const category = attempt.failureCategory;
+        return category !== undefined && categorySet.has(category);
+      })
+      .map((attempt) => attempt.domain),
+    limit,
+  );
+}
+
 function buildMixedDomainFailureBreakdown(
   attempts: ReadonlyArray<BenchmarkAttempt>,
   limit: number,
@@ -2855,6 +2878,11 @@ function buildSuiteSummary(input: {
       "browser-header-read-failed",
       5,
     ),
+    topBrowserResponseFailureDomains: buildDomainBreakdownForFailureCategories(
+      browserRemoteFailures,
+      browserResponseFailureCategories,
+      5,
+    ),
     topMixedRemoteFailureDomains: buildMixedDomainFailureBreakdown(remoteFailures, 5),
     topBrowserFailureCategories: buildCountBreakdown(
       browserFailures.map((attempt) => attempt.failureCategory ?? "unknown-error"),
@@ -3017,10 +3045,33 @@ function buildSuiteRecommendations(input: {
   const topNavigationHttpErrorFailureDomains =
     input.summary.topNavigationHttpErrorFailureDomains ?? [];
   const topHeaderReadFailureDomains = input.summary.topHeaderReadFailureDomains ?? [];
+  const topBrowserResponseFailureDomains =
+    input.summary.topBrowserResponseFailureDomains ??
+    mergeCountBreakdowns([topNavigationHttpErrorFailureDomains, topHeaderReadFailureDomains], 5);
   const topMixedRemoteFailureDomains = input.summary.topMixedRemoteFailureDomains ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureCategories =
     input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
+  const topBrowserRemoteFailureCategoryKeys = new Set(
+    topBrowserRemoteFailureCategories.map((entry) => entry.key),
+  );
+  const topNavigationHttpErrorFailureDomainKeys = new Set(
+    topNavigationHttpErrorFailureDomains.map((entry) => entry.key),
+  );
+  const topHeaderReadFailureDomainKeys = new Set(
+    topHeaderReadFailureDomains.map((entry) => entry.key),
+  );
+  const overlappingBrowserResponseFailureDomains = topBrowserResponseFailureDomains.filter(
+    (entry) =>
+      topNavigationHttpErrorFailureDomainKeys.has(entry.key) &&
+      topHeaderReadFailureDomainKeys.has(entry.key),
+  );
+  const hasCombinedBrowserResponseSideSignal =
+    topBrowserRemoteFailureCategoryKeys.has("browser-navigation-http-error") &&
+    topBrowserRemoteFailureCategoryKeys.has("browser-header-read-failed") &&
+    topNavigationHttpErrorFailureDomains.length > 0 &&
+    topHeaderReadFailureDomains.length > 0 &&
+    overlappingBrowserResponseFailureDomains.length > 0;
 
   if (input.summary.sampled) {
     recommendations.push("Use the full-corpus preset when you need definitive release evidence.");
@@ -3080,6 +3131,10 @@ function buildSuiteRecommendations(input: {
 
   const topRemoteFailureCategory =
     topRemoteFailureCategories[0]?.key ?? input.summary.topBrowserFailureCategories[0]?.key;
+  const shouldEmitCombinedBrowserResponseSideRecommendation =
+    hasCombinedBrowserResponseSideSignal &&
+    topRemoteFailureCategory !== "browser-navigation-http-error" &&
+    topRemoteFailureCategory !== "browser-header-read-failed";
   switch (topRemoteFailureCategory) {
     case "access-wall-challenge":
       recommendations.push(
@@ -3183,10 +3238,17 @@ function buildSuiteRecommendations(input: {
     );
   }
 
+  if (shouldEmitCombinedBrowserResponseSideRecommendation) {
+    recommendations.push(
+      `Browser response-handling failures remain concentrated on: ${formatTopDomains(overlappingBrowserResponseFailureDomains)}.`,
+    );
+  }
+
   if (
     topRemoteFailureCategory !== "browser-navigation-http-error" &&
-    topRemoteFailureCategories.some((entry) => entry.key === "browser-navigation-http-error") &&
-    topNavigationHttpErrorFailureDomains.length > 0
+    topBrowserRemoteFailureCategoryKeys.has("browser-navigation-http-error") &&
+    topNavigationHttpErrorFailureDomains.length > 0 &&
+    !shouldEmitCombinedBrowserResponseSideRecommendation
   ) {
     recommendations.push(
       `Browser navigation HTTP errors remain concentrated on: ${formatTopDomains(topNavigationHttpErrorFailureDomains)}.`,
@@ -3195,8 +3257,9 @@ function buildSuiteRecommendations(input: {
 
   if (
     topRemoteFailureCategory !== "browser-header-read-failed" &&
-    topBrowserRemoteFailureCategories.some((entry) => entry.key === "browser-header-read-failed") &&
-    topHeaderReadFailureDomains.length > 0
+    topBrowserRemoteFailureCategoryKeys.has("browser-header-read-failed") &&
+    topHeaderReadFailureDomains.length > 0 &&
+    !shouldEmitCombinedBrowserResponseSideRecommendation
   ) {
     recommendations.push(
       `Browser header-read failures remain concentrated on: ${formatTopDomains(topHeaderReadFailureDomains)}.`,
