@@ -66,11 +66,11 @@ const WEAK_TITLE_PATTERNS: ReadonlyArray<AccessWallPattern> = [
     pattern: /\bprivacy\b/iu,
   },
   {
-    signal: "title-consent",
+    signal: "title-consent-hint",
     pattern: /\bconsent\b/iu,
   },
   {
-    signal: "title-challenge",
+    signal: "title-challenge-hint",
     pattern: /\b(challenge|captcha|verify|human|robot)\b/iu,
   },
 ];
@@ -85,7 +85,7 @@ const WEAK_TEXT_PATTERNS: ReadonlyArray<AccessWallPattern> = [
     pattern: /\bprivacy\b/iu,
   },
   {
-    signal: "text-consent",
+    signal: "text-consent-hint",
     pattern: /\bconsent\b/iu,
   },
   {
@@ -242,16 +242,16 @@ export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWa
     return "rate-limit";
   }
 
+  if (hasAnySignal(observedSignals, TRAP_SIGNALS)) {
+    return "trap";
+  }
+
   if (hasAnySignal(observedSignals, EXPLICIT_CHALLENGE_SIGNALS)) {
     return "challenge";
   }
 
   if (hasAnySignal(observedSignals, STRONG_CONSENT_SIGNALS)) {
     return "consent";
-  }
-
-  if (hasAnySignal(observedSignals, TRAP_SIGNALS)) {
-    return "trap";
   }
 
   if (hasAnySignal(observedSignals, STATUS_CHALLENGE_SIGNALS)) {

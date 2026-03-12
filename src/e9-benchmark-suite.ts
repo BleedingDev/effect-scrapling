@@ -294,6 +294,8 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   browserBestEffectiveThroughputPagesPerMinute: NonNegativeNumberSchema,
   topHttpFailureDomains: Schema.Array(BenchmarkReportItemSchema),
   topBrowserFailureDomains: Schema.Array(BenchmarkReportItemSchema),
+  topRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topRemoteFailureCategories: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserFailureCategories: Schema.Array(BenchmarkReportItemSchema),
   topLocalFailureCategories: Schema.Array(BenchmarkReportItemSchema),
 });
@@ -943,21 +945,34 @@ function buildAttempt(input: {
   readonly page: FrozenPage;
   readonly result: AttemptResult;
 }) {
+  const observedChallengeSignals =
+    input.result.observedChallengeSignals.length > 0
+      ? input.result.observedChallengeSignals
+      : detectChallengeSignals({
+          requestedUrl: input.page.url,
+          statusCode: input.result.statusCode,
+          finalUrl: input.result.finalUrl,
+        });
+  const challengeDetected = input.result.challengeDetected || observedChallengeSignals.length > 0;
   const timings = buildAttemptTimings(input.result);
   const success =
     input.result.error === undefined &&
     input.result.statusCode !== undefined &&
     input.result.statusCode < 400 &&
-    !input.result.challengeDetected &&
+    !challengeDetected &&
     input.result.contentBytes > 0;
 
   const blocked =
-    input.result.challengeDetected ||
+    challengeDetected ||
     input.result.error !== undefined ||
     input.result.statusCode === 403 ||
     input.result.statusCode === 429;
   const failureCategory = classifyAttemptFailureCategory({
-    result: input.result,
+    result: {
+      ...input.result,
+      challengeDetected,
+      observedChallengeSignals,
+    },
     success,
   });
 
@@ -975,8 +990,8 @@ function buildAttempt(input: {
     success,
     blocked,
     redirected: input.result.redirected,
-    challengeDetected: input.result.challengeDetected,
-    observedChallengeSignals: input.result.observedChallengeSignals,
+    challengeDetected,
+    observedChallengeSignals,
     durationMs: timings.totalWallMs,
     contentBytes: Math.max(0, Math.round(input.result.contentBytes)),
     titlePresent: input.result.titlePresent,
@@ -1724,7 +1739,15 @@ async function createEffectHttpRunner(input: { readonly timeoutMs: number }): Pr
             },
           }).pipe(sdkEnvironment.provide),
         );
-        const challengeSignals = readAccessWallSignalsFromWarnings(response.warnings);
+        const warningSignals = readAccessWallSignalsFromWarnings(response.warnings);
+        const challengeSignals =
+          warningSignals.length > 0
+            ? warningSignals
+            : detectChallengeSignals({
+                requestedUrl: page.url,
+                statusCode: response.data.status,
+                finalUrl: response.data.finalUrl,
+              });
 
         return {
           statusCode: response.data.status,
@@ -2517,6 +2540,9 @@ function buildSuiteSummary(input: {
   const browserLocalFailures = browserFailures.filter((attempt) =>
     isLocalFailureCategory(attempt.failureCategory),
   );
+  const remoteFailures = [...httpFailures, ...browserFailures].filter(
+    (attempt) => !isLocalFailureCategory(attempt.failureCategory),
+  );
   const browserRecoveredBrowserAllocationCount = input.browserCorpus.attempts.filter((attempt) =>
     hasRecoveredBrowserAllocationWarning(attempt.warnings),
   ).length;
@@ -2584,6 +2610,14 @@ function buildSuiteSummary(input: {
       browserFailures.map((attempt) => attempt.domain),
       5,
     ),
+    topRemoteFailureDomains: buildCountBreakdown(
+      remoteFailures.map((attempt) => attempt.domain),
+      5,
+    ),
+    topRemoteFailureCategories: buildCountBreakdown(
+      remoteFailures.map((attempt) => attempt.failureCategory ?? "unknown-error"),
+      5,
+    ),
     topBrowserFailureCategories: buildCountBreakdown(
       browserFailures.map((attempt) => attempt.failureCategory ?? "unknown-error"),
       5,
@@ -2601,6 +2635,7 @@ function buildSuiteWarnings(input: {
   readonly summary: Schema.Schema.Type<typeof E9BenchmarkSuiteSummarySchema>;
 }) {
   const warnings = new Array<string>();
+  const topRemoteFailureCategories = input.summary.topRemoteFailureCategories ?? [];
 
   if (input.summary.skippedPhases.length > 0) {
     warnings.push(`Skipped phases: ${input.summary.skippedPhases.join(", ")}.`);
@@ -2656,6 +2691,13 @@ function buildSuiteWarnings(input: {
     );
   }
 
+  const topRemoteFailureCategory = topRemoteFailureCategories[0];
+  if (topRemoteFailureCategory !== undefined && topRemoteFailureCategory.count > 0) {
+    warnings.push(
+      `Top remote failure category: ${topRemoteFailureCategory.key} (${topRemoteFailureCategory.count} attempts).`,
+    );
+  }
+
   const topLocalFailureCategory = input.summary.topLocalFailureCategories[0];
   if (topLocalFailureCategory !== undefined && topLocalFailureCategory.count > 0) {
     warnings.push(
@@ -2670,6 +2712,8 @@ function buildSuiteRecommendations(input: {
   readonly summary: Schema.Schema.Type<typeof E9BenchmarkSuiteSummarySchema>;
 }) {
   const recommendations = new Array<string>();
+  const topRemoteFailureDomains = input.summary.topRemoteFailureDomains ?? [];
+  const topRemoteFailureCategories = input.summary.topRemoteFailureCategories ?? [];
 
   if (input.summary.sampled) {
     recommendations.push("Use the full-corpus preset when you need definitive release evidence.");
@@ -2693,35 +2737,36 @@ function buildSuiteRecommendations(input: {
     );
   }
 
-  if (input.summary.topBrowserFailureDomains.length > 0) {
+  if (topRemoteFailureDomains.length > 0) {
     recommendations.push(
-      `Prioritize diagnostics for ${input.summary.topBrowserFailureDomains
+      `Prioritize diagnostics for ${topRemoteFailureDomains
         .slice(0, 3)
         .map((entry) => entry.key)
         .join(", ")}.`,
     );
   }
 
-  const topBrowserFailureCategory = input.summary.topBrowserFailureCategories[0]?.key;
-  switch (topBrowserFailureCategory) {
+  const topRemoteFailureCategory =
+    topRemoteFailureCategories[0]?.key ?? input.summary.topBrowserFailureCategories[0]?.key;
+  switch (topRemoteFailureCategory) {
     case "access-wall-challenge":
       recommendations.push(
-        "Top browser failures are challenge walls; prioritize identity or egress tuning and challenge-redirect diagnostics on the worst domains.",
+        "Top remote failures are challenge walls; prioritize identity or egress tuning and challenge-redirect diagnostics on the worst domains.",
       );
       break;
     case "access-wall-consent":
       recommendations.push(
-        "Top browser failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
+        "Top remote failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
       );
       break;
     case "access-wall-rate-limit":
       recommendations.push(
-        "Top browser failures are rate limits; review pacing, concurrency and egress rotation before comparing site success rates.",
+        "Top remote failures are rate limits; review pacing, concurrency and egress rotation before comparing site success rates.",
       );
       break;
     case "access-wall-trap":
       recommendations.push(
-        "Top browser failures are trap or interstitial endpoints; recognize and bail out on known trap URLs before treating them as generic content failures.",
+        "Top remote failures are trap or interstitial endpoints; recognize and bail out on known trap URLs before treating them as generic content failures.",
       );
       break;
   }

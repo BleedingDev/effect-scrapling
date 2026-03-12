@@ -295,6 +295,56 @@ describe("e9 benchmark suite", () => {
     expect(decoded.highFrictionCanary.artifact?.status).toBe("pass");
   });
 
+  it("decodes legacy artifacts that do not yet carry top remote failure categories", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/p/1",
+            pageType: "product",
+            title: "Alpha Product",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 200,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 10,
+                contentBytes: 1_024,
+                titlePresent: true,
+                finalUrl: "https://alpha.example/p/1",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    const legacyArtifact = JSON.parse(JSON.stringify(artifact)) as Record<string, unknown>;
+    const summary = legacyArtifact.summary as Record<string, unknown> | undefined;
+    expect(summary).toBeDefined();
+    delete summary?.topRemoteFailureCategories;
+
+    const decoded = Schema.decodeUnknownSync(E9BenchmarkSuiteArtifactSchema)(legacyArtifact);
+    expect(decoded.summary?.topRemoteFailureCategories).toBeUndefined();
+  });
+
   it("treats skipped subbenchmarks as neutral for fast regression presets", async () => {
     const artifact = await runE9BenchmarkSuite(
       {
@@ -465,12 +515,77 @@ describe("e9 benchmark suite", () => {
     );
 
     expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-consent");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-consent",
+      count: 1,
+    });
+    expect(artifact.summary?.topRemoteFailureDomains?.[0]).toEqual({
+      key: "zbozi.example",
+      count: 1,
+    });
     expect(artifact.summary?.topBrowserFailureCategories[0]).toEqual({
       key: "access-wall-consent",
       count: 1,
     });
     expect(artifact.recommendations).toContain(
-      "Top browser failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
+      "Top remote failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
+    );
+  });
+
+  it("uses remote failure categories for consent recommendations even without browser attempts", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http"],
+        httpProfiles: ["effect-http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-http-consent",
+            domain: "zbozi.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://zbozi.example/search?q=chair",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 403,
+                redirected: true,
+                challengeDetected: true,
+                observedChallengeSignals: ["status-403", "text-consent", "url-consent"],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                finalUrl: "https://cmp.example.test/consent?returnUrl=%2Fsearch",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.httpCorpus.attempts[0]?.failureCategory).toBe("access-wall-consent");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-consent",
+      count: 1,
+    });
+    expect(artifact.summary?.topRemoteFailureDomains?.[0]).toEqual({
+      key: "zbozi.example",
+      count: 1,
+    });
+    expect(artifact.recommendations).toContain("Prioritize diagnostics for zbozi.example.");
+    expect(artifact.recommendations).toContain(
+      "Top remote failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
     );
   });
 
@@ -517,12 +632,75 @@ describe("e9 benchmark suite", () => {
     );
 
     expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-trap");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-trap",
+      count: 1,
+    });
+    expect(artifact.summary?.topRemoteFailureDomains?.[0]).toEqual({
+      key: "datart.example",
+      count: 1,
+    });
     expect(artifact.summary?.topBrowserFailureCategories[0]).toEqual({
       key: "access-wall-trap",
       count: 1,
     });
     expect(artifact.recommendations).toContain(
-      "Top browser failures are trap or interstitial endpoints; recognize and bail out on known trap URLs before treating them as generic content failures.",
+      "Top remote failures are trap or interstitial endpoints; recognize and bail out on known trap URLs before treating them as generic content failures.",
+    );
+  });
+
+  it("infers rate-limit walls from status codes even when runner warnings are missing", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http"],
+        httpProfiles: ["effect-http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-rate-limit",
+            domain: "glami.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://glami.example/bench",
+            pageType: "listing",
+            title: "Bench",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 429,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 1_024,
+                titlePresent: true,
+                finalUrl: "https://glami.example/bench",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.httpCorpus.attempts[0]?.success).toBe(false);
+    expect(artifact.httpCorpus.attempts[0]?.challengeDetected).toBe(true);
+    expect(artifact.httpCorpus.attempts[0]?.observedChallengeSignals).toEqual(["status-429"]);
+    expect(artifact.httpCorpus.attempts[0]?.failureCategory).toBe("access-wall-rate-limit");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-rate-limit",
+      count: 1,
+    });
+    expect(artifact.recommendations).toContain(
+      "Top remote failures are rate limits; review pacing, concurrency and egress rotation before comparing site success rates.",
     );
   });
 
@@ -1939,6 +2117,8 @@ describe("e9 benchmark suite", () => {
             browserBestEffectiveThroughputPagesPerMinute: 0,
             topHttpFailureDomains: [],
             topBrowserFailureDomains: [],
+            topRemoteFailureDomains: [],
+            topRemoteFailureCategories: [],
             topBrowserFailureCategories: [],
             topLocalFailureCategories: [],
           },
@@ -1989,6 +2169,8 @@ describe("e9 benchmark suite", () => {
         browserBestEffectiveThroughputPagesPerMinute: 0,
         topHttpFailureDomains: [],
         topBrowserFailureDomains: [],
+        topRemoteFailureDomains: [],
+        topRemoteFailureCategories: [],
         topBrowserFailureCategories: [],
         topLocalFailureCategories: [],
       },

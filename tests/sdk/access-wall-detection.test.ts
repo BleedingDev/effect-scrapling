@@ -127,8 +127,23 @@ describe("sdk access wall detection", () => {
     ).toBe("consent");
     expect(classifyAccessWallKind(["status-403", "url-challenge"])).toBe("challenge");
     expect(classifyAccessWallKind(["status-403", "text-consent", "title-consent"])).toBe("consent");
+    expect(classifyAccessWallKind(["status-429"])).toBe("rate-limit");
     expect(classifyAccessWallKind(["text-cookies", "text-privacy"])).toBeUndefined();
-    expect(classifyAccessWallKind(["url-challenge", "url-trap"])).toBe("challenge");
+    expect(classifyAccessWallKind(["url-challenge", "url-trap"])).toBe("trap");
+  });
+
+  it("keeps weak hint-only walls generic instead of over-specializing them", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/product/chair",
+      finalUrl: "https://cmp.example.test/preferences",
+      title: "Consent",
+      text: "Cookies required to continue.",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(true);
+    expect(analysis.signals).toContain("title-consent-hint");
+    expect(analysis.signals).toContain("text-cookies");
+    expect(classifyAccessWallKind(analysis.signals)).toBeUndefined();
   });
 
   it("extracts normalized document titles", () => {
