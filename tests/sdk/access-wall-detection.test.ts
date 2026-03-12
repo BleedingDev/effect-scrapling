@@ -48,10 +48,24 @@ describe("sdk access wall detection", () => {
     expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
   });
 
-  it("detects direct trap endpoints even without a redirect hop", () => {
+  it("detects blocked direct trap endpoints when status corroborates the trap url", () => {
     const analysis = detectAccessWall({
       requestedUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
       finalUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      statusCode: 403,
+      title: "",
+      text: "",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(true);
+    expect(analysis.signals).toContain("url-trap");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
+  });
+
+  it("detects broader trap families beyond TSPD redirects", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/products/sku-1",
+      finalUrl: "https://store.example.test/_Incapsula_Resource?SWKMTFSR=1",
       title: "",
       text: "",
     });
@@ -107,6 +121,18 @@ describe("sdk access wall detection", () => {
     expect(analysis.signals).not.toContain("url-challenge");
   });
 
+  it("does not flag ordinary urls that merely contain tspd in a product slug", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://store.example.test/products/tspd-adapter",
+      finalUrl: "https://store.example.test/products/tspd-adapter",
+      title: "TSPD Adapter",
+      text: "<main>USB-C TSPD adapter</main>",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(false);
+    expect(analysis.signals).not.toContain("url-trap");
+  });
+
   it("round-trips access wall warnings", () => {
     expect(
       readAccessWallSignalsFromWarnings(toAccessWallWarnings(["url-consent", "text-consent"])),
@@ -127,6 +153,7 @@ describe("sdk access wall detection", () => {
     ).toBe("consent");
     expect(classifyAccessWallKind(["status-403", "url-challenge"])).toBe("challenge");
     expect(classifyAccessWallKind(["status-403", "text-consent", "title-consent"])).toBe("consent");
+    expect(classifyAccessWallKind(["status-403"])).toBeUndefined();
     expect(classifyAccessWallKind(["status-429"])).toBe("rate-limit");
     expect(classifyAccessWallKind(["text-cookies", "text-privacy"])).toBeUndefined();
     expect(classifyAccessWallKind(["url-challenge", "url-trap"])).toBe("trap");

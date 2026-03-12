@@ -9,7 +9,8 @@ type AccessWallPattern = {
 const STRONG_FINAL_URL_PATTERNS: ReadonlyArray<AccessWallPattern> = [
   {
     signal: "url-trap",
-    pattern: /(?:^|[/?#&=_-])(tspd)(?:$|[/?#&=_-])/iu,
+    pattern:
+      /(?:^|[/?#&=_])tspd(?:$|[/?#&=_])|(?:^|[/?#&=_-])(?:_incapsula_resource|distil_r_captcha|botmanager)(?:$|[/?#&=_-])|(?:^|[/?#&=_-])akam[-_/](?:bm|challenge|s?bot)(?:$|[/?#&=_-])/iu,
   },
   {
     signal: "url-challenge",
@@ -104,7 +105,6 @@ export type AccessWallKind = "challenge" | "consent" | "rate-limit" | "trap";
 const TRAP_SIGNALS = new Set(["url-trap"]);
 const RATE_LIMIT_SIGNALS = new Set(["status-429"]);
 const EXPLICIT_CHALLENGE_SIGNALS = new Set(["text-challenge", "title-challenge", "url-challenge"]);
-const STATUS_CHALLENGE_SIGNALS = new Set(["status-401", "status-403"]);
 const STRONG_CONSENT_SIGNALS = new Set(["text-consent", "title-consent", "url-consent"]);
 const WEAK_CONSENT_SIGNALS = new Set([
   "text-cookies",
@@ -206,7 +206,13 @@ export function detectAccessWall(input: {
   if (finalUrlChanged) {
     collectSignals(strongSignals, normalizedFinalUrl, REDIRECT_ONLY_FINAL_URL_PATTERNS);
   }
-  if (normalizedFinalUrl.length > 0) {
+  if (
+    normalizedFinalUrl.length > 0 &&
+    (finalUrlChanged ||
+      input.statusCode === 401 ||
+      input.statusCode === 403 ||
+      input.statusCode === 429)
+  ) {
     collectSignals(strongSignals, normalizedFinalUrl, FINAL_URL_TRAP_PATTERNS);
   }
   collectSignals(strongSignals, normalizedTitle, STRONG_TITLE_PATTERNS);
@@ -252,10 +258,6 @@ export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWa
 
   if (hasAnySignal(observedSignals, STRONG_CONSENT_SIGNALS)) {
     return "consent";
-  }
-
-  if (hasAnySignal(observedSignals, STATUS_CHALLENGE_SIGNALS)) {
-    return "challenge";
   }
 
   if (hasAnySignal(observedSignals, WEAK_CONSENT_SIGNALS)) {

@@ -340,9 +340,14 @@ describe("e9 benchmark suite", () => {
     const summary = legacyArtifact.summary as Record<string, unknown> | undefined;
     expect(summary).toBeDefined();
     delete summary?.topRemoteFailureCategories;
+    delete summary?.topRemoteFailureDomains;
 
     const decoded = Schema.decodeUnknownSync(E9BenchmarkSuiteArtifactSchema)(legacyArtifact);
     expect(decoded.summary?.topRemoteFailureCategories).toBeUndefined();
+    expect(decoded.summary?.topRemoteFailureDomains).toBeUndefined();
+
+    const recommendations = decoded.recommendations ?? [];
+    expect(recommendations).toContain("Prioritize diagnostics for alpha.example.");
   });
 
   it("treats skipped subbenchmarks as neutral for fast regression presets", async () => {
@@ -519,10 +524,6 @@ describe("e9 benchmark suite", () => {
       key: "access-wall-consent",
       count: 1,
     });
-    expect(artifact.summary?.topRemoteFailureDomains?.[0]).toEqual({
-      key: "zbozi.example",
-      count: 1,
-    });
     expect(artifact.summary?.topBrowserFailureCategories[0]).toEqual({
       key: "access-wall-consent",
       count: 1,
@@ -579,10 +580,6 @@ describe("e9 benchmark suite", () => {
       key: "access-wall-consent",
       count: 1,
     });
-    expect(artifact.summary?.topRemoteFailureDomains?.[0]).toEqual({
-      key: "zbozi.example",
-      count: 1,
-    });
     expect(artifact.recommendations).toContain("Prioritize diagnostics for zbozi.example.");
     expect(artifact.recommendations).toContain(
       "Top remote failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
@@ -634,10 +631,6 @@ describe("e9 benchmark suite", () => {
     expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-trap");
     expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
       key: "access-wall-trap",
-      count: 1,
-    });
-    expect(artifact.summary?.topRemoteFailureDomains?.[0]).toEqual({
-      key: "datart.example",
       count: 1,
     });
     expect(artifact.summary?.topBrowserFailureCategories[0]).toEqual({
@@ -2117,7 +2110,6 @@ describe("e9 benchmark suite", () => {
             browserBestEffectiveThroughputPagesPerMinute: 0,
             topHttpFailureDomains: [],
             topBrowserFailureDomains: [],
-            topRemoteFailureDomains: [],
             topRemoteFailureCategories: [],
             topBrowserFailureCategories: [],
             topLocalFailureCategories: [],
@@ -2169,7 +2161,6 @@ describe("e9 benchmark suite", () => {
         browserBestEffectiveThroughputPagesPerMinute: 0,
         topHttpFailureDomains: [],
         topBrowserFailureDomains: [],
-        topRemoteFailureDomains: [],
         topRemoteFailureCategories: [],
         topBrowserFailureCategories: [],
         topLocalFailureCategories: [],

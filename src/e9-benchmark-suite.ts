@@ -2501,6 +2501,29 @@ function buildCountBreakdown(
     .map(([key, count]) => Schema.decodeUnknownSync(BenchmarkReportItemSchema)({ key, count }));
 }
 
+function mergeCountBreakdowns(
+  values: ReadonlyArray<ReadonlyArray<Schema.Schema.Type<typeof BenchmarkReportItemSchema>>>,
+  limit: number,
+): ReadonlyArray<Schema.Schema.Type<typeof BenchmarkReportItemSchema>> {
+  const counts = new Map<string, number>();
+  for (const entries of values) {
+    for (const entry of entries) {
+      counts.set(entry.key, (counts.get(entry.key) ?? 0) + entry.count);
+    }
+  }
+
+  return [...counts.entries()]
+    .sort((left, right) => {
+      const countOrder = right[1] - left[1];
+      if (countOrder !== 0) {
+        return countOrder;
+      }
+      return compareStrings(left[0], right[0]);
+    })
+    .slice(0, limit)
+    .map(([key, count]) => Schema.decodeUnknownSync(BenchmarkReportItemSchema)({ key, count }));
+}
+
 function buildSuiteSummary(input: {
   readonly corpus: E9BenchmarkSuiteArtifact["corpus"];
   readonly httpCorpus: Schema.Schema.Type<typeof BenchmarkPhaseArtifactSchema>;
@@ -2712,7 +2735,15 @@ function buildSuiteRecommendations(input: {
   readonly summary: Schema.Schema.Type<typeof E9BenchmarkSuiteSummarySchema>;
 }) {
   const recommendations = new Array<string>();
-  const topRemoteFailureDomains = input.summary.topRemoteFailureDomains ?? [];
+  const topRemoteFailureDomains =
+    input.summary.topRemoteFailureDomains ??
+    mergeCountBreakdowns(
+      [
+        input.summary.topHttpFailureDomains,
+        input.summary.topBrowserFailureDomains,
+      ],
+      5,
+    );
   const topRemoteFailureCategories = input.summary.topRemoteFailureCategories ?? [];
 
   if (input.summary.sampled) {
