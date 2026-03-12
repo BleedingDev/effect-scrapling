@@ -183,6 +183,7 @@ const BenchmarkAttemptSchema = Schema.Struct({
       "access-wall",
       "access-wall-challenge",
       "access-wall-consent",
+      "access-wall-forbidden",
       "access-wall-rate-limit",
       "access-wall-trap",
       "http-error",
@@ -300,6 +301,7 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   topRemoteFailureCategories: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topChallengeFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topConsentFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topForbiddenFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topTrapFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topRateLimitFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topTimeoutFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
@@ -1213,6 +1215,8 @@ function classifyAccessWallFailureCategory(
       return "access-wall-challenge";
     case "consent":
       return "access-wall-consent";
+    case "forbidden":
+      return "access-wall-forbidden";
     case "rate-limit":
       return "access-wall-rate-limit";
     case "trap":
@@ -2734,6 +2738,11 @@ function buildSuiteSummary(input: {
       "access-wall-consent",
       5,
     ),
+    topForbiddenFailureDomains: buildDomainBreakdownForFailureCategory(
+      remoteFailures,
+      "access-wall-forbidden",
+      5,
+    ),
     topTrapFailureDomains: buildDomainBreakdownForFailureCategory(
       remoteFailures,
       "access-wall-trap",
@@ -2889,6 +2898,7 @@ function buildSuiteRecommendations(input: {
   const topRemoteFailureCategories = input.summary.topRemoteFailureCategories ?? [];
   const topChallengeFailureDomains = input.summary.topChallengeFailureDomains ?? [];
   const topConsentFailureDomains = input.summary.topConsentFailureDomains ?? [];
+  const topForbiddenFailureDomains = input.summary.topForbiddenFailureDomains ?? [];
   const topTrapFailureDomains = input.summary.topTrapFailureDomains ?? [];
   const topRateLimitFailureDomains = input.summary.topRateLimitFailureDomains ?? [];
   const topTimeoutFailureDomains = input.summary.topTimeoutFailureDomains ?? [];
@@ -2966,6 +2976,16 @@ function buildSuiteRecommendations(input: {
       if (topConsentFailureDomains.length > 0) {
         recommendations.push(
           `Consent-heavy domains to inspect first: ${formatTopDomains(topConsentFailureDomains)}.`,
+        );
+      }
+      break;
+    case "access-wall-forbidden":
+      recommendations.push(
+        "Top remote failures are explicit forbidden walls; inspect domain-specific 401/403 blocking behavior before treating them as generic challenge regressions.",
+      );
+      if (topForbiddenFailureDomains.length > 0) {
+        recommendations.push(
+          `Forbidden-wall domains to inspect first: ${formatTopDomains(topForbiddenFailureDomains)}.`,
         );
       }
       break;

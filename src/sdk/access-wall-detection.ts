@@ -106,10 +106,11 @@ export type AccessWallAnalysis = {
   readonly likelyAccessWall: boolean;
 };
 
-export type AccessWallKind = "challenge" | "consent" | "rate-limit" | "trap";
+export type AccessWallKind = "challenge" | "consent" | "forbidden" | "rate-limit" | "trap";
 
 const TRAP_SIGNALS = new Set(["url-trap"]);
 const RATE_LIMIT_SIGNALS = new Set(["status-429"]);
+const FORBIDDEN_SIGNALS = new Set(["status-401", "status-403"]);
 const EXPLICIT_CHALLENGE_SIGNALS = new Set(["text-challenge", "title-challenge", "url-challenge"]);
 const STRONG_CONSENT_SIGNALS = new Set(["text-consent", "title-consent", "url-consent"]);
 const CONSENT_HINT_SIGNALS = new Set(["text-consent-hint", "title-consent-hint"]);
@@ -120,6 +121,7 @@ const WEAK_CONSENT_SIGNALS = new Set([
   "title-cookies",
   "title-privacy",
 ]);
+const WEAK_CHALLENGE_HINT_SIGNALS = new Set(["title-challenge-hint"]);
 
 function dedupeAndSortSignals(signals: ReadonlyArray<string>) {
   return [...new Set(signals)].sort(compareStrings);
@@ -284,6 +286,7 @@ export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWa
 
   const consentHintCount = countSignals(observedSignals, CONSENT_HINT_SIGNALS);
   const weakConsentCount = countSignals(observedSignals, WEAK_CONSENT_SIGNALS);
+  const weakChallengeHintCount = countSignals(observedSignals, WEAK_CHALLENGE_HINT_SIGNALS);
   if (
     (consentHintCount >= 1 && weakConsentCount >= 2) ||
     (consentHintCount >= 1 && weakConsentCount + consentHintCount >= 3)
@@ -291,8 +294,12 @@ export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWa
     return "consent";
   }
 
-  if (weakConsentCount > 0 || consentHintCount > 0) {
+  if (weakConsentCount > 0 || consentHintCount > 0 || weakChallengeHintCount > 0) {
     return undefined;
+  }
+
+  if (hasAnySignal(observedSignals, FORBIDDEN_SIGNALS)) {
+    return "forbidden";
   }
 
   return undefined;

@@ -551,6 +551,322 @@ describe("e9 benchmark suite", () => {
     );
   });
 
+  it("classifies bare 403 walls into a dedicated forbidden benchmark category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-forbidden",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 403,
+                redirected: false,
+                challengeDetected: true,
+                observedChallengeSignals: ["status-403"],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://boozt.example/shop",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-forbidden");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-forbidden",
+      count: 1,
+    });
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([
+      { key: "boozt.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Top remote failures are explicit forbidden walls; inspect domain-specific 401/403 blocking behavior before treating them as generic challenge regressions.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Forbidden-wall domains to inspect first: boozt.example.",
+    );
+  });
+
+  it("classifies inferred bare 403 walls into a dedicated forbidden benchmark category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-inferred-forbidden",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 403,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://boozt.example/shop",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.observedChallengeSignals).toEqual(["status-403"]);
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-forbidden");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-forbidden",
+      count: 1,
+    });
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([
+      { key: "boozt.example", count: 1 },
+    ]);
+  });
+
+  it("classifies bare 401 walls into a dedicated forbidden benchmark category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-forbidden-401",
+            domain: "auth.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://auth.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 401,
+                redirected: false,
+                challengeDetected: true,
+                observedChallengeSignals: ["status-401"],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://auth.example/shop",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-forbidden");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-forbidden",
+      count: 1,
+    });
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([
+      { key: "auth.example", count: 1 },
+    ]);
+  });
+
+  it("classifies inferred bare 401 walls into a dedicated forbidden benchmark category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-inferred-forbidden-401",
+            domain: "auth.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://auth.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 401,
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://auth.example/shop",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.observedChallengeSignals).toEqual(["status-401"]);
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-forbidden");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-forbidden",
+      count: 1,
+    });
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([
+      { key: "auth.example", count: 1 },
+    ]);
+  });
+
+  it("keeps weak-hint 403 walls in the generic access-wall benchmark category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-generic-403",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 403,
+                redirected: false,
+                challengeDetected: true,
+                observedChallengeSignals: ["status-403", "text-cookies"],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://boozt.example/shop",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall",
+      count: 1,
+    });
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([]);
+  });
+
+  it("keeps weak challenge-hint 403 walls in the generic access-wall benchmark category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-generic-403-challenge-hint",
+            domain: "verify.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://verify.example/shop",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 403,
+                redirected: false,
+                challengeDetected: true,
+                observedChallengeSignals: ["status-403", "title-challenge-hint"],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://verify.example/shop",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall");
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall",
+      count: 1,
+    });
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([]);
+  });
+
   it("uses remote failure categories for consent recommendations even without browser attempts", async () => {
     const artifact = await runE9BenchmarkSuite(
       {

@@ -231,7 +231,11 @@ describe("sdk access wall detection", () => {
     );
     expect(classifyAccessWallKind(["status-403", "url-challenge"])).toBe("challenge");
     expect(classifyAccessWallKind(["status-403", "text-consent", "title-consent"])).toBe("consent");
-    expect(classifyAccessWallKind(["status-403"])).toBeUndefined();
+    expect(classifyAccessWallKind(["status-403"])).toBe("forbidden");
+    expect(classifyAccessWallKind(["status-401"])).toBe("forbidden");
+    expect(classifyAccessWallKind(["status-403", "text-privacy"])).toBeUndefined();
+    expect(classifyAccessWallKind(["status-403", "text-cookies"])).toBeUndefined();
+    expect(classifyAccessWallKind(["status-403", "title-challenge-hint"])).toBeUndefined();
     expect(classifyAccessWallKind(["status-429"])).toBe("rate-limit");
     expect(classifyAccessWallKind(["text-cookies", "text-privacy"])).toBeUndefined();
     expect(classifyAccessWallKind(["url-challenge", "url-trap"])).toBe("trap");
