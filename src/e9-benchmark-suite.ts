@@ -302,6 +302,7 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   topConsentFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topTrapFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topRateLimitFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topTimeoutFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserFailureCategories: Schema.Array(BenchmarkReportItemSchema),
   topBrowserRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRemoteFailureCategories: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
@@ -2743,6 +2744,11 @@ function buildSuiteSummary(input: {
       "access-wall-rate-limit",
       5,
     ),
+    topTimeoutFailureDomains: buildDomainBreakdownForFailureCategory(
+      remoteFailures,
+      "browser-navigation-timeout",
+      5,
+    ),
     topBrowserFailureCategories: buildCountBreakdown(
       browserFailures.map((attempt) => attempt.failureCategory ?? "unknown-error"),
       5,
@@ -2885,7 +2891,10 @@ function buildSuiteRecommendations(input: {
   const topConsentFailureDomains = input.summary.topConsentFailureDomains ?? [];
   const topTrapFailureDomains = input.summary.topTrapFailureDomains ?? [];
   const topRateLimitFailureDomains = input.summary.topRateLimitFailureDomains ?? [];
+  const topTimeoutFailureDomains = input.summary.topTimeoutFailureDomains ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
+  const topBrowserRemoteFailureCategories =
+    input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
 
   if (input.summary.sampled) {
     recommendations.push("Use the full-corpus preset when you need definitive release evidence.");
@@ -2980,6 +2989,26 @@ function buildSuiteRecommendations(input: {
         );
       }
       break;
+    case "browser-navigation-timeout":
+      recommendations.push(
+        "Top remote failures are browser navigation timeouts; prioritize timeout stratification, wait-condition tuning and domain-specific retry diagnostics before judging fallback quality.",
+      );
+      if (topTimeoutFailureDomains.length > 0) {
+        recommendations.push(
+          `Timeout-heavy domains to inspect first: ${formatTopDomains(topTimeoutFailureDomains)}.`,
+        );
+      }
+      break;
+  }
+
+  if (
+    topRemoteFailureCategory !== "browser-navigation-timeout" &&
+    topBrowserRemoteFailureCategories.some((entry) => entry.key === "browser-navigation-timeout") &&
+    topTimeoutFailureDomains.length > 0
+  ) {
+    recommendations.push(
+      `Browser navigation timeouts remain concentrated on: ${formatTopDomains(topTimeoutFailureDomains)}.`,
+    );
   }
 
   if (

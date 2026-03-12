@@ -464,9 +464,18 @@ describe("e9 benchmark suite", () => {
       key: "browser-navigation-timeout",
       count: 1,
     });
+    expect(artifact.summary?.topTimeoutFailureDomains).toEqual([
+      { key: "alpha.example", count: 1 },
+    ]);
     expect(artifact.summary?.skippedPhases).toContain("http");
     expect(artifact.recommendations).toContain(
       "Review browser failure categories and top failing domains before treating browser fallback as production-ready.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Top remote failures are browser navigation timeouts; prioritize timeout stratification, wait-condition tuning and domain-specific retry diagnostics before judging fallback quality.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Timeout-heavy domains to inspect first: alpha.example.",
     );
   });
 
@@ -751,6 +760,239 @@ describe("e9 benchmark suite", () => {
     ]);
     expect(artifact.recommendations).toContain(
       "Challenge-heavy domains to inspect first: ebay.example, shein.example.",
+    );
+  });
+
+  it("surfaces timeout-heavy domains separately from mixed remote failure domains", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-timeout-a",
+            domain: "sportisimo.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://sportisimo.example/a",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-timeout-b",
+            domain: "bonami.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://bonami.example/b",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-timeout-c",
+            domain: "ebay.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://ebay.example/c",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-consent-a",
+            domain: "zbozi.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://zbozi.example/d",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => {
+                if (page.domain === "sportisimo.example") {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error:
+                      "Browser access failed :: navigation: TimeoutError: goto: Timeout 20000ms exceeded",
+                  };
+                }
+
+                if (page.domain === "bonami.example") {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error: "patchright navigation failed: Timeout 30000ms exceeded",
+                  };
+                }
+
+                if (page.domain === "ebay.example") {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error:
+                      "Browser access failed :: navigation: TimeoutError: goto: Timeout 20000ms exceeded",
+                  };
+                }
+
+                return {
+                  statusCode: 200,
+                  redirected: true,
+                  challengeDetected: true,
+                  observedChallengeSignals: ["text-consent", "title-consent"],
+                  durationMs: 50,
+                  contentBytes: 0,
+                  titlePresent: false,
+                  finalUrl: "https://zbozi.example/consent",
+                };
+              },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "browser-navigation-timeout",
+      count: 3,
+    });
+    expect(artifact.summary?.topTimeoutFailureDomains).toEqual([
+      { key: "bonami.example", count: 1 },
+      { key: "ebay.example", count: 1 },
+      { key: "sportisimo.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Top remote failures are browser navigation timeouts; prioritize timeout stratification, wait-condition tuning and domain-specific retry diagnostics before judging fallback quality.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Timeout-heavy domains to inspect first: bonami.example, ebay.example, sportisimo.example.",
+    );
+  });
+
+  it("keeps timeout-heavy browser domains visible when challenge walls remain the top remote category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-challenge-a",
+            domain: "ebay.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://ebay.example/a",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-challenge-b",
+            domain: "shein.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://shein.example/b",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-timeout-a",
+            domain: "sportisimo.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://sportisimo.example/c",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => {
+                if (page.domain === "ebay.example") {
+                  return {
+                    statusCode: 200,
+                    redirected: true,
+                    challengeDetected: true,
+                    observedChallengeSignals: ["url-challenge"],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    finalUrl: "https://ebay.example/challenge",
+                  };
+                }
+
+                if (page.domain === "shein.example") {
+                  return {
+                    statusCode: 200,
+                    redirected: true,
+                    challengeDetected: true,
+                    observedChallengeSignals: ["text-challenge"],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    finalUrl: "https://shein.example/challenge",
+                  };
+                }
+
+                return {
+                  redirected: false,
+                  challengeDetected: false,
+                  observedChallengeSignals: [],
+                  durationMs: 50,
+                  contentBytes: 0,
+                  titlePresent: false,
+                  error: "patchright navigation failed: Timeout 30000ms exceeded",
+                };
+              },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-challenge",
+      count: 2,
+    });
+    expect(artifact.summary?.topTimeoutFailureDomains).toEqual([
+      { key: "sportisimo.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Challenge-heavy domains to inspect first: ebay.example, shein.example.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser navigation timeouts remain concentrated on: sportisimo.example.",
     );
   });
 
