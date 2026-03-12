@@ -204,6 +204,7 @@ const BenchmarkAttemptSchema = Schema.Struct({
       "browser-title-read-failed",
       "browser-closed",
       "browser-crash",
+      "local-access-health-quarantine",
       "local-selection",
       "local-egress-config",
       "local-identity-config",
@@ -1171,6 +1172,7 @@ async function resolveBenchmarkExecutionPlan(input: {
 
 function isLocalFailureCategory(category: BenchmarkFailureCategory | undefined) {
   return (
+    category === "local-access-health-quarantine" ||
     category === "local-selection" ||
     category === "local-egress-config" ||
     category === "local-identity-config" ||
@@ -1189,6 +1191,10 @@ function isLocalConfigFailureCategory(category: string | undefined) {
     category === "local-egress-config" ||
     category === "local-identity-config"
   );
+}
+
+function isLocalAccessHealthFailureCategory(category: string | undefined) {
+  return category === "local-access-health-quarantine";
 }
 
 function hasRecoveredBrowserAllocationWarning(warnings: ReadonlyArray<string> | undefined) {
@@ -1355,6 +1361,14 @@ function classifyAttemptFailureCategory(input: {
     error.includes("execution context/provider mode mismatch")
   ) {
     return "local-selection";
+  }
+
+  if (
+    error.includes("accessquarantinederror") ||
+    error.includes("currently quarantined in access health state") ||
+    error.includes("quarantineduntil=")
+  ) {
+    return "local-access-health-quarantine";
   }
 
   if (
@@ -2888,6 +2902,10 @@ function buildSuiteRecommendations(input: {
     if (isLocalConfigFailureCategory(topLocalFailureCategory)) {
       recommendations.push(
         "Fix local selection/plugin configuration failures before comparing remote-site success or throughput across browser sweeps.",
+      );
+    } else if (isLocalAccessHealthFailureCategory(topLocalFailureCategory)) {
+      recommendations.push(
+        "Clear or isolate access-health quarantine carryover before interpreting remote-failure or throughput trends from the affected lane.",
       );
     } else {
       recommendations.push(

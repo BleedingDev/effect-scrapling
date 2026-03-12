@@ -990,6 +990,130 @@ describe("e9 benchmark suite", () => {
     );
   });
 
+  it("classifies access-health quarantine short-circuits as local failures", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/p/1",
+            pageType: "product",
+            title: "Alpha Product",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 0.5,
+                contentBytes: 0,
+                titlePresent: false,
+                error: `Browser access failed for ${page.url} :: subject=["domain","alpha.example"] quarantinedUntil=2026-03-09T23:00:00.000Z`,
+                warnings: [
+                  'Domain "alpha.example" is currently quarantined in access health state.',
+                ],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe(
+      "local-access-health-quarantine",
+    );
+    expect(artifact.browserCorpus.sweeps[0]?.localFailureCount).toBe(1);
+    expect(artifact.browserCorpus.sweeps[0]?.effectiveAttemptCount).toBe(0);
+    expect(artifact.summary?.browserLocalFailureCount).toBe(1);
+    expect(artifact.summary?.browserRemoteFailureCount).toBeUndefined();
+    expect(artifact.summary?.topLocalFailureCategories[0]).toEqual({
+      key: "local-access-health-quarantine",
+      count: 1,
+    });
+    expect(artifact.summary?.topRemoteFailureCategories).toEqual([]);
+    expect(artifact.summary?.topBrowserRemoteFailureCategories).toBeUndefined();
+    expect(artifact.status).toBe("warn");
+    expect(artifact.recommendations).toContain(
+      "Clear or isolate access-health quarantine carryover before interpreting remote-failure or throughput trends from the affected lane.",
+    );
+  });
+
+  it("uses lane-agnostic quarantine guidance for http-only local access-health failures", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http"],
+        httpProfiles: ["effect-http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-http-quarantine",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/p/1",
+            pageType: "product",
+            title: "Alpha Product",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 0.5,
+                contentBytes: 0,
+                titlePresent: false,
+                error: `HTTP access failed for ${page.url} :: subject=["domain","alpha.example"] quarantinedUntil=2026-03-09T23:00:00.000Z`,
+                warnings: [
+                  'Domain "alpha.example" is currently quarantined in access health state.',
+                ],
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.httpCorpus.attempts[0]?.failureCategory).toBe("local-access-health-quarantine");
+    expect(artifact.httpCorpus.sweeps[0]?.localFailureCount).toBe(1);
+    expect(artifact.httpCorpus.sweeps[0]?.effectiveAttemptCount).toBe(0);
+    expect(artifact.summary?.httpLocalFailureCount).toBe(1);
+    expect(artifact.summary?.browserLocalFailureCount).toBe(0);
+    expect(artifact.summary?.browserRemoteFailureCount).toBeUndefined();
+    expect(artifact.summary?.topLocalFailureCategories[0]).toEqual({
+      key: "local-access-health-quarantine",
+      count: 1,
+    });
+    expect(artifact.summary?.topRemoteFailureCategories).toEqual([]);
+    expect(artifact.status).toBe("warn");
+    expect(artifact.recommendations).toContain(
+      "Clear or isolate access-health quarantine carryover before interpreting remote-failure or throughput trends from the affected lane.",
+    );
+  });
+
   it("preserves remote browser guidance when local and remote browser failures mix", async () => {
     const artifact = await runE9BenchmarkSuite(
       {
