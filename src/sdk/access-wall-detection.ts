@@ -9,8 +9,7 @@ type AccessWallPattern = {
 const STRONG_FINAL_URL_PATTERNS: ReadonlyArray<AccessWallPattern> = [
   {
     signal: "url-trap",
-    pattern:
-      /(?:^|[/?#&=_-])(tspd|_incapsula_resource|distil_r_captcha|botmanager|akam[-_/](?:bm|challenge|s?bot))(?:$|[/?#&=_-])/iu,
+    pattern: /(?:^|[/?#&=_-])(tspd)(?:$|[/?#&=_-])/iu,
   },
   {
     signal: "url-challenge",
@@ -23,6 +22,13 @@ const STRONG_FINAL_URL_PATTERNS: ReadonlyArray<AccessWallPattern> = [
       /(?:^|[/?#&=_-])(consent|gdpr|optanon|onetrust|trustarc|cookie[-_/](?:settings|preferences|consent|policy)|privacy[-_/](?:choices|center|preferences|settings)|consent[-_/](?:preferences|settings|choices|manager)|preferences?[-_/](?:center|settings|choices))(?:$|[/?#&=_-])/iu,
   },
 ];
+
+const FINAL_URL_TRAP_PATTERNS = STRONG_FINAL_URL_PATTERNS.filter(
+  (pattern) => pattern.signal === "url-trap",
+);
+const REDIRECT_ONLY_FINAL_URL_PATTERNS = STRONG_FINAL_URL_PATTERNS.filter(
+  (pattern) => pattern.signal !== "url-trap",
+);
 
 const STRONG_TITLE_PATTERNS: ReadonlyArray<AccessWallPattern> = [
   {
@@ -97,22 +103,15 @@ export type AccessWallKind = "challenge" | "consent" | "rate-limit" | "trap";
 
 const TRAP_SIGNALS = new Set(["url-trap"]);
 const RATE_LIMIT_SIGNALS = new Set(["status-429"]);
-const CHALLENGE_SIGNALS = new Set([
-  "status-401",
-  "status-403",
-  "text-challenge",
-  "title-challenge",
-  "url-challenge",
-]);
-const CONSENT_SIGNALS = new Set([
-  "text-consent",
+const EXPLICIT_CHALLENGE_SIGNALS = new Set(["text-challenge", "title-challenge", "url-challenge"]);
+const STATUS_CHALLENGE_SIGNALS = new Set(["status-401", "status-403"]);
+const STRONG_CONSENT_SIGNALS = new Set(["text-consent", "title-consent", "url-consent"]);
+const WEAK_CONSENT_SIGNALS = new Set([
   "text-cookies",
   "text-gdpr",
   "text-privacy",
-  "title-consent",
   "title-cookies",
   "title-privacy",
-  "url-consent",
 ]);
 
 function dedupeAndSortSignals(signals: ReadonlyArray<string>) {
@@ -205,7 +204,10 @@ export function detectAccessWall(input: {
   }
 
   if (finalUrlChanged) {
-    collectSignals(strongSignals, normalizedFinalUrl, STRONG_FINAL_URL_PATTERNS);
+    collectSignals(strongSignals, normalizedFinalUrl, REDIRECT_ONLY_FINAL_URL_PATTERNS);
+  }
+  if (normalizedFinalUrl.length > 0) {
+    collectSignals(strongSignals, normalizedFinalUrl, FINAL_URL_TRAP_PATTERNS);
   }
   collectSignals(strongSignals, normalizedTitle, STRONG_TITLE_PATTERNS);
   collectSignals(strongSignals, normalizedText, STRONG_TEXT_PATTERNS);
@@ -236,20 +238,28 @@ export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWa
     return undefined;
   }
 
-  if (hasAnySignal(observedSignals, TRAP_SIGNALS)) {
-    return "trap";
-  }
-
   if (hasAnySignal(observedSignals, RATE_LIMIT_SIGNALS)) {
     return "rate-limit";
   }
 
-  if (hasAnySignal(observedSignals, CHALLENGE_SIGNALS)) {
+  if (hasAnySignal(observedSignals, EXPLICIT_CHALLENGE_SIGNALS)) {
     return "challenge";
   }
 
-  if (hasAnySignal(observedSignals, CONSENT_SIGNALS)) {
+  if (hasAnySignal(observedSignals, STRONG_CONSENT_SIGNALS)) {
     return "consent";
+  }
+
+  if (hasAnySignal(observedSignals, TRAP_SIGNALS)) {
+    return "trap";
+  }
+
+  if (hasAnySignal(observedSignals, STATUS_CHALLENGE_SIGNALS)) {
+    return "challenge";
+  }
+
+  if (hasAnySignal(observedSignals, WEAK_CONSENT_SIGNALS)) {
+    return undefined;
   }
 
   return undefined;

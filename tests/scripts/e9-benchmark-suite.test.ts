@@ -417,7 +417,7 @@ describe("e9 benchmark suite", () => {
     );
   });
 
-  it("classifies consent walls into a dedicated benchmark failure category", async () => {
+  it("classifies consent walls into a dedicated benchmark failure category even when they return 403", async () => {
     const artifact = await runE9BenchmarkSuite(
       {
         generatedAt: "2026-03-09T22:00:00.000Z",
@@ -443,10 +443,15 @@ describe("e9 benchmark suite", () => {
             profile: "effect-browser",
             createRunner: async () => ({
               runPage: async () => ({
-                statusCode: 200,
+                statusCode: 403,
                 redirected: true,
                 challengeDetected: true,
-                observedChallengeSignals: ["text-consent", "title-consent", "url-consent"],
+                observedChallengeSignals: [
+                  "status-403",
+                  "text-consent",
+                  "title-consent",
+                  "url-consent",
+                ],
                 durationMs: 50,
                 contentBytes: 20_000,
                 titlePresent: true,
@@ -496,7 +501,7 @@ describe("e9 benchmark suite", () => {
             createRunner: async () => ({
               runPage: async () => ({
                 statusCode: 200,
-                redirected: true,
+                redirected: false,
                 challengeDetected: true,
                 observedChallengeSignals: ["url-trap"],
                 durationMs: 50,

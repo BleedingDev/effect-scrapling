@@ -48,6 +48,19 @@ describe("sdk access wall detection", () => {
     expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
   });
 
+  it("detects direct trap endpoints even without a redirect hop", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      finalUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      title: "",
+      text: "",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(true);
+    expect(analysis.signals).toContain("url-trap");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
+  });
+
   it("does not flag ordinary pages that merely mention cookies in a footer", () => {
     const analysis = detectAccessWall({
       requestedUrl: "https://store.example.test/products/sku-1",
@@ -113,6 +126,9 @@ describe("sdk access wall detection", () => {
       classifyAccessWallKind(["text-cookies", "text-consent", "title-consent", "url-consent"]),
     ).toBe("consent");
     expect(classifyAccessWallKind(["status-403", "url-challenge"])).toBe("challenge");
+    expect(classifyAccessWallKind(["status-403", "text-consent", "title-consent"])).toBe("consent");
+    expect(classifyAccessWallKind(["text-cookies", "text-privacy"])).toBeUndefined();
+    expect(classifyAccessWallKind(["url-challenge", "url-trap"])).toBe("challenge");
   });
 
   it("extracts normalized document titles", () => {
