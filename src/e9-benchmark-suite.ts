@@ -2738,10 +2738,7 @@ function buildSuiteRecommendations(input: {
   const topRemoteFailureDomains =
     input.summary.topRemoteFailureDomains ??
     mergeCountBreakdowns(
-      [
-        input.summary.topHttpFailureDomains,
-        input.summary.topBrowserFailureDomains,
-      ],
+      [input.summary.topHttpFailureDomains, input.summary.topBrowserFailureDomains],
       5,
     );
   const topRemoteFailureCategories = input.summary.topRemoteFailureCategories ?? [];

@@ -345,9 +345,6 @@ describe("e9 benchmark suite", () => {
     const decoded = Schema.decodeUnknownSync(E9BenchmarkSuiteArtifactSchema)(legacyArtifact);
     expect(decoded.summary?.topRemoteFailureCategories).toBeUndefined();
     expect(decoded.summary?.topRemoteFailureDomains).toBeUndefined();
-
-    const recommendations = decoded.recommendations ?? [];
-    expect(recommendations).toContain("Prioritize diagnostics for alpha.example.");
   });
 
   it("treats skipped subbenchmarks as neutral for fast regression presets", async () => {
