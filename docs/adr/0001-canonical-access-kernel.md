@@ -54,31 +54,31 @@ test for those benchmark runs:
 
 - [`docs/artifacts/e3-access-runtime-scorecard.json`](../artifacts/e3-access-runtime-scorecard.json)
   reported `status: "pass"` with:
-  - `generatedAt = 2026-03-12T05:28:02.547Z`
-  - `baselineAccess.p95Ms = 0.67`
-  - `candidateAccess.p95Ms = 7.2`
-  - `retryRecovery.p95Ms = 260.582`
+  - `generatedAt = 2026-03-12T06:18:02.319Z`
+  - `baselineAccess.p95Ms = 0.785`
+  - `candidateAccess.p95Ms = 8.568`
+  - `retryRecovery.p95Ms = 261.158`
   - all three metrics stayed inside the current budgets of `25`, `50`, and
     `300` milliseconds respectively
 - [`docs/artifacts/e9-benchmark-suite-fast-regression-artifact.json`](../artifacts/e9-benchmark-suite-fast-regression-artifact.json)
   reported `status: "pass"` with:
-  - `generatedAt = 2026-03-12T05:28:06.802Z`
+  - `generatedAt = 2026-03-12T06:30:06.250Z`
   - `totalAttemptCount = 640`
   - `totalSweepCount = 5`
-  - `httpSuccessRate = 0.898`
+  - `httpSuccessRate = 0.896`
   - `browserSuccessRate = 0.867`
-  - `httpBestThroughputPagesPerMinute = 791.617`
-  - `browserBestThroughputPagesPerMinute = 80.279`
+  - `httpBestThroughputPagesPerMinute = 1571.659`
+  - `browserBestThroughputPagesPerMinute = 89.993`
   - `httpLocalFailureCount = 0`
   - `browserLocalFailureCount = 0`
 
 Relative to the previously committed fast-regression artifact generated at
-`2026-03-12T02:51:45.844Z`, the sampled live suite moved as follows:
+`2026-03-12T05:28:06.802Z`, the sampled live suite moved as follows:
 
-- HTTP success rate improved from `0.893` to `0.898`
-- browser success rate improved from `0.844` to `0.867`
-- best HTTP throughput moved from `922.659` to `791.617` pages per minute
-- best browser throughput improved from `60.901` to `80.279` pages per minute
+- HTTP success rate moved from `0.898` to `0.896`
+- browser success rate stayed at `0.867`
+- best HTTP throughput improved from `791.617` to `1571.659` pages per minute
+- best browser throughput improved from `80.279` to `89.993` pages per minute
 
 The sampled live artifact does not surface direct evidence of local kernel or
 runtime faults. Its observed failures cluster on external domain behavior
