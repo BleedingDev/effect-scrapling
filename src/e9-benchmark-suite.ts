@@ -305,6 +305,8 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   topTrapFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topRateLimitFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topTimeoutFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topNavigationHttpErrorFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topHeaderReadFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserFailureCategories: Schema.Array(BenchmarkReportItemSchema),
   topBrowserRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRemoteFailureCategories: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
@@ -2758,6 +2760,16 @@ function buildSuiteSummary(input: {
       "browser-navigation-timeout",
       5,
     ),
+    topNavigationHttpErrorFailureDomains: buildDomainBreakdownForFailureCategory(
+      remoteFailures,
+      "browser-navigation-http-error",
+      5,
+    ),
+    topHeaderReadFailureDomains: buildDomainBreakdownForFailureCategory(
+      remoteFailures,
+      "browser-header-read-failed",
+      5,
+    ),
     topBrowserFailureCategories: buildCountBreakdown(
       browserFailures.map((attempt) => attempt.failureCategory ?? "unknown-error"),
       5,
@@ -2902,6 +2914,9 @@ function buildSuiteRecommendations(input: {
   const topTrapFailureDomains = input.summary.topTrapFailureDomains ?? [];
   const topRateLimitFailureDomains = input.summary.topRateLimitFailureDomains ?? [];
   const topTimeoutFailureDomains = input.summary.topTimeoutFailureDomains ?? [];
+  const topNavigationHttpErrorFailureDomains =
+    input.summary.topNavigationHttpErrorFailureDomains ?? [];
+  const topHeaderReadFailureDomains = input.summary.topHeaderReadFailureDomains ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureCategories =
     input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
@@ -3019,6 +3034,26 @@ function buildSuiteRecommendations(input: {
         );
       }
       break;
+    case "browser-navigation-http-error":
+      recommendations.push(
+        "Top remote failures are browser navigation HTTP errors; inspect site-specific 4xx/5xx responses, redirect handling and fetch-versus-browser parity before treating them as generic access walls.",
+      );
+      if (topNavigationHttpErrorFailureDomains.length > 0) {
+        recommendations.push(
+          `HTTP-error-heavy domains to inspect first: ${formatTopDomains(topNavigationHttpErrorFailureDomains)}.`,
+        );
+      }
+      break;
+    case "browser-header-read-failed":
+      recommendations.push(
+        "Top remote failures are browser header-read faults; inspect site-specific response handling and header extraction before judging browser fallback quality.",
+      );
+      if (topHeaderReadFailureDomains.length > 0) {
+        recommendations.push(
+          `Header-read-heavy domains to inspect first: ${formatTopDomains(topHeaderReadFailureDomains)}.`,
+        );
+      }
+      break;
   }
 
   if (
@@ -3028,6 +3063,36 @@ function buildSuiteRecommendations(input: {
   ) {
     recommendations.push(
       `Browser navigation timeouts remain concentrated on: ${formatTopDomains(topTimeoutFailureDomains)}.`,
+    );
+  }
+
+  if (
+    topRemoteFailureCategory !== "access-wall-forbidden" &&
+    topRemoteFailureCategories.some((entry) => entry.key === "access-wall-forbidden") &&
+    topForbiddenFailureDomains.length > 0
+  ) {
+    recommendations.push(
+      `Explicit 401/403 blocking remains concentrated on: ${formatTopDomains(topForbiddenFailureDomains)}.`,
+    );
+  }
+
+  if (
+    topRemoteFailureCategory !== "browser-navigation-http-error" &&
+    topRemoteFailureCategories.some((entry) => entry.key === "browser-navigation-http-error") &&
+    topNavigationHttpErrorFailureDomains.length > 0
+  ) {
+    recommendations.push(
+      `Browser navigation HTTP errors remain concentrated on: ${formatTopDomains(topNavigationHttpErrorFailureDomains)}.`,
+    );
+  }
+
+  if (
+    topRemoteFailureCategory !== "browser-header-read-failed" &&
+    topBrowserRemoteFailureCategories.some((entry) => entry.key === "browser-header-read-failed") &&
+    topHeaderReadFailureDomains.length > 0
+  ) {
+    recommendations.push(
+      `Browser header-read failures remain concentrated on: ${formatTopDomains(topHeaderReadFailureDomains)}.`,
     );
   }
 

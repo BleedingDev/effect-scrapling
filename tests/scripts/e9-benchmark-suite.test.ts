@@ -1312,6 +1312,353 @@ describe("e9 benchmark suite", () => {
     );
   });
 
+  it("keeps forbidden-heavy domains visible when challenge walls remain the top remote category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["http"],
+        httpProfiles: ["effect-http"],
+        httpConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-challenge-a",
+            domain: "ebay.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://ebay.example/a",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-challenge-b",
+            domain: "shein.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://shein.example/b",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-forbidden",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/c",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        httpProfileFactories: [
+          {
+            profile: "effect-http",
+            createRunner: async () => ({
+              runPage: async (page) => {
+                if (page.domain === "boozt.example") {
+                  return {
+                    statusCode: 403,
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 20_000,
+                    titlePresent: true,
+                    finalUrl: page.url,
+                  };
+                }
+
+                return {
+                  statusCode: 200,
+                  redirected: true,
+                  challengeDetected: true,
+                  observedChallengeSignals: ["url-challenge"],
+                  durationMs: 50,
+                  contentBytes: 0,
+                  titlePresent: false,
+                  finalUrl: `${page.url}/challenge`,
+                };
+              },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall-challenge",
+      count: 2,
+    });
+    expect(artifact.summary?.topForbiddenFailureDomains).toEqual([
+      { key: "boozt.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Challenge-heavy domains to inspect first: ebay.example, shein.example.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Explicit 401/403 blocking remains concentrated on: boozt.example.",
+    );
+  });
+
+  it("keeps browser HTTP and header-read domains visible when access walls remain the top browser category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-access-wall-a",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/a",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-access-wall-b",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/b",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-http-error",
+            domain: "datart.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.example/c",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-header-read",
+            domain: "datart.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.example/d",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => {
+                if (page.url.endsWith("/c")) {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error:
+                      "Browser access failed :: navigation: HTTP 404 from https://datart.example/c",
+                  };
+                }
+
+                if (page.url.endsWith("/d")) {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error:
+                      "Browser access failed for https://datart.example/d :: header-read: Error: HTTP 404",
+                  };
+                }
+
+                return {
+                  statusCode: 403,
+                  redirected: false,
+                  challengeDetected: true,
+                  observedChallengeSignals: ["status-403", "text-cookies"],
+                  durationMs: 50,
+                  contentBytes: 20_000,
+                  titlePresent: true,
+                  finalUrl: page.url,
+                };
+              },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topBrowserRemoteFailureCategories?.[0]).toEqual({
+      key: "access-wall",
+      count: 2,
+    });
+    expect(artifact.summary?.topNavigationHttpErrorFailureDomains).toEqual([
+      { key: "datart.example", count: 1 },
+    ]);
+    expect(artifact.summary?.topHeaderReadFailureDomains).toEqual([
+      { key: "datart.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Browser navigation HTTP errors remain concentrated on: datart.example.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Browser header-read failures remain concentrated on: datart.example.",
+    );
+  });
+
+  it("surfaces browser navigation HTTP error domains when they become the top remote category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-http-error-a",
+            domain: "datart.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.example/a",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-http-error-b",
+            domain: "tesla.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://tesla.example/b",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                error: `Browser access failed :: navigation: HTTP 404 from ${page.url}`,
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "browser-navigation-http-error",
+      count: 2,
+    });
+    expect(artifact.summary?.topNavigationHttpErrorFailureDomains).toEqual([
+      { key: "datart.example", count: 1 },
+      { key: "tesla.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Top remote failures are browser navigation HTTP errors; inspect site-specific 4xx/5xx responses, redirect handling and fetch-versus-browser parity before treating them as generic access walls.",
+    );
+    expect(artifact.recommendations).toContain(
+      "HTTP-error-heavy domains to inspect first: datart.example, tesla.example.",
+    );
+  });
+
+  it("surfaces browser header-read domains when they become the top remote category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-header-read-a",
+            domain: "datart.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.example/a",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-header-read-b",
+            domain: "tesla.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://tesla.example/b",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => ({
+                redirected: false,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                error: `Browser access failed for ${page.url} :: header-read: Error: HTTP 404`,
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topRemoteFailureCategories?.[0]).toEqual({
+      key: "browser-header-read-failed",
+      count: 2,
+    });
+    expect(artifact.summary?.topHeaderReadFailureDomains).toEqual([
+      { key: "datart.example", count: 1 },
+      { key: "tesla.example", count: 1 },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Top remote failures are browser header-read faults; inspect site-specific response handling and header extraction before judging browser fallback quality.",
+    );
+    expect(artifact.recommendations).toContain(
+      "Header-read-heavy domains to inspect first: datart.example, tesla.example.",
+    );
+    expect(artifact.recommendations).not.toContain(
+      "Browser header-read failures remain concentrated on: datart.example, tesla.example.",
+    );
+  });
+
   it("classifies trap interstitials separately from generic empty-content failures", async () => {
     const artifact = await runE9BenchmarkSuite(
       {
