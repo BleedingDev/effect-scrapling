@@ -457,6 +457,8 @@ function executeBrowserProvider(
               }),
             );
             let gotoDurationMs = performance.now() - gotoStartedAt;
+            let loadStateDurationMs = 0;
+            let loadStateMeasured = false;
 
             if (!response) {
               return yield* Effect.fail(new Error("navigation-response-missing"));
@@ -512,19 +514,32 @@ function executeBrowserProvider(
                     },
                   };
             challengeWarnings = [...mediationResolution.warnings];
+            const effectivePostClearanceStrategy =
+              mediationResolution.currentPageRefreshRequired &&
+              mediationResolution.postClearanceStrategy === "reuse-current"
+                ? "reload-target"
+                : mediationResolution.postClearanceStrategy;
             const shouldFollowUpNavigation =
               mediationResolution.followUpNavigationRequired ||
               (mediationResolution.currentPageRefreshRequired &&
-                mediationResolution.postClearanceStrategy === "reload-target");
+                effectivePostClearanceStrategy === "reload-target");
             const shouldRefreshCurrentPage =
               mediationResolution.currentPageRefreshRequired && !shouldFollowUpNavigation;
 
             if (shouldRefreshCurrentPage || shouldFollowUpNavigation) {
-              challengeWarnings = [
-                ...challengeWarnings,
-                `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
-                `cloudflare-solver:post-clearance-strategy:${mediationResolution.postClearanceStrategy}`,
-              ];
+              challengeWarnings =
+                effectivePostClearanceStrategy === mediationResolution.postClearanceStrategy
+                  ? [
+                      ...challengeWarnings,
+                      `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
+                      `cloudflare-solver:post-clearance-strategy:${effectivePostClearanceStrategy}`,
+                    ]
+                  : [
+                      ...challengeWarnings,
+                      "cloudflare-solver:post-clearance-strategy-fallback:reload-target",
+                      `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
+                      `cloudflare-solver:post-clearance-strategy:${effectivePostClearanceStrategy}`,
+                    ];
               if (shouldRefreshCurrentPage) {
                 const mediatedDomReadStartedAt = performance.now();
                 html = yield* runPageStage("dom-read", () => page.content());
@@ -550,6 +565,8 @@ function executeBrowserProvider(
               const followUpNavigationDurationMs = performance.now() - followUpNavigationStartedAt;
               gotoDurationMs += followUpNavigationDurationMs;
               if (shouldAttemptPostClearanceNetworkSettle(context.browser.waitUntil)) {
+                loadStateMeasured = true;
+                const postClearanceLoadStateStartedAt = performance.now();
                 const postClearanceLoadStateReached = yield* runPageStage("load-state", () =>
                   page.waitForLoadState("networkidle", {
                     timeout: context.browser.timeoutMs,
@@ -560,6 +577,7 @@ function executeBrowserProvider(
                     onSuccess: () => true,
                   }),
                 );
+                loadStateDurationMs += performance.now() - postClearanceLoadStateStartedAt;
                 if (!postClearanceLoadStateReached) {
                   challengeWarnings = [
                     ...challengeWarnings,
@@ -647,6 +665,9 @@ function executeBrowserProvider(
                 blockedRequestCount,
                 routeRegistrationDurationMs: roundTiming(routeRegistrationDurationMs),
                 gotoDurationMs: roundTiming(gotoDurationMs),
+                ...(loadStateMeasured
+                  ? { loadStateDurationMs: roundTiming(loadStateDurationMs) }
+                  : {}),
                 domReadDurationMs: roundTiming(domReadDurationMs),
                 headerReadDurationMs: roundTiming(headerReadDurationMs),
               },

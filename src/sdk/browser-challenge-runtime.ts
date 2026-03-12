@@ -16,7 +16,6 @@ const CLEARANCE_POLL_INTERVAL_MS = 250;
 const MANAGED_SPINNER_POLL_INTERVAL_MS = 500;
 const MAX_EMBEDDED_ATTEMPT_CLEARANCE_WINDOW_MS = 750;
 const MAX_MANAGED_ATTEMPT_CLEARANCE_WINDOW_MS = 10_000;
-const INITIAL_CHALLENGE_EMERGENCE_WINDOW_MS = 2_000;
 const MAX_TRANSIENT_CONTENT_READ_ATTEMPTS = 3;
 
 export type CloudflareChallengeType = "non-interactive" | "managed" | "interactive" | "embedded";
@@ -343,8 +342,7 @@ async function resolveInitialChallengeState(
     return initialState;
   }
 
-  const emergenceDeadlineAt =
-    Date.now() + Math.max(1, Math.min(timeoutMs, INITIAL_CHALLENGE_EMERGENCE_WINDOW_MS));
+  const emergenceDeadlineAt = Date.now() + Math.max(1, timeoutMs);
   await waitForNetworkSettle(page, timeoutMs);
   let candidateState = await readChallengeState(page);
   while (
@@ -442,28 +440,58 @@ export async function resolveBrowserChallenges(input: {
       repeatedSignatureCount =
         currentSignature === previousSignature ? repeatedSignatureCount + 1 : 0;
       previousSignature = currentSignature;
-      const clearanceObserved = await waitForChallengeToClear(input.page, deadlineAt);
+      const waitedChallengeType = currentType;
+      const clearanceObserved = await waitForChallengeToClear(input.page, attemptDeadlineAt);
+      if (clearanceObserved) {
+        return {
+          detected: true,
+          followUpNavigationRequired: true,
+          currentPageRefreshRequired: true,
+          challengeType: currentType,
+          resolutionKind: "wait",
+          attemptCount,
+          warnings: [...warnings, toSolverWarning(`clearance-observed:${currentType}`)],
+        };
+      }
+
+      const stateAfterWait = await readChallengeState(input.page);
+      if (isChallengeCleared(stateAfterWait)) {
+        return {
+          detected: true,
+          followUpNavigationRequired: true,
+          currentPageRefreshRequired: true,
+          challengeType: currentType,
+          resolutionKind: "wait",
+          attemptCount,
+          warnings: [...warnings, toSolverWarning(`clearance-observed:${currentType}`)],
+        };
+      }
+
+      currentType = stateAfterWait.type ?? currentType;
+      const nextSignature = buildChallengeSignature(stateAfterWait);
+      const stateChanged = nextSignature !== currentSignature;
+      repeatedSignatureCount = nextSignature === previousSignature ? repeatedSignatureCount + 1 : 0;
+      previousSignature = nextSignature;
+      warnings.push(toSolverWarning(`clearance-missing:${waitedChallengeType}`));
+      if (stateChanged) {
+        observedStateChange = true;
+        warnings.push(toSolverWarning(`state-changed:${currentType}`));
+      }
+      if (attemptIndex + 1 < maxAttempts && Date.now() < deadlineAt) {
+        warnings.push(toSolverWarning(`retrying:${currentType}`));
+        continue;
+      }
+
       return {
         detected: true,
-        followUpNavigationRequired: clearanceObserved,
-        currentPageRefreshRequired: clearanceObserved,
+        followUpNavigationRequired: false,
+        currentPageRefreshRequired: stateChanged,
         challengeType: currentType,
         resolutionKind: "wait",
-        ...(clearanceObserved
-          ? {}
-          : {
-              failureReason:
-                Date.now() >= deadlineAt ? ("budget-exhausted" as const) : ("no-progress" as const),
-            }),
+        failureReason:
+          Date.now() >= deadlineAt ? ("budget-exhausted" as const) : ("no-progress" as const),
         attemptCount,
-        warnings: [
-          ...warnings,
-          toSolverWarning(
-            clearanceObserved
-              ? `clearance-observed:${currentType}`
-              : `clearance-missing:${currentType}`,
-          ),
-        ],
+        warnings,
       };
     }
 
@@ -525,16 +553,35 @@ export async function resolveBrowserChallenges(input: {
 
     try {
       await dispatchTurnstileClick(input.page, targetBoundingBox);
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === "missing-mouse") {
+        return {
+          detected: true,
+          followUpNavigationRequired: false,
+          currentPageRefreshRequired: false,
+          challengeType: currentType,
+          resolutionKind: "click",
+          failureReason: "unsupported-surface",
+          attemptCount,
+          warnings: [...warnings, toSolverWarning("unsupported-page-api")],
+        };
+      }
+      warnings.push(toSolverWarning(`click-failed:${currentType}`));
+      if (attemptIndex + 1 < maxAttempts && Date.now() < deadlineAt) {
+        warnings.push(toSolverWarning(`retrying:${currentType}`));
+        await pause(input.page, CLEARANCE_POLL_INTERVAL_MS);
+        continue;
+      }
       return {
         detected: true,
         followUpNavigationRequired: false,
         currentPageRefreshRequired: false,
         challengeType: currentType,
         resolutionKind: "click",
-        failureReason: "unsupported-surface",
+        failureReason:
+          Date.now() >= deadlineAt ? ("budget-exhausted" as const) : ("no-progress" as const),
         attemptCount,
-        warnings: [...warnings, toSolverWarning("unsupported-page-api")],
+        warnings,
       };
     }
 

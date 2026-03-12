@@ -510,6 +510,7 @@ describe("sdk access provider runtime", () => {
           );
           expect(result.mediation?.evidence.postNavigation?.status).toBe(200);
           expect(result.mediation?.evidence.postNavigation?.title).toBe("Final");
+          expect(result.timings.loadStateDurationMs).toBeDefined();
           expect(gotoWaitUntil).toEqual(["domcontentloaded", "domcontentloaded"]);
           expect(loadStateCalls).toEqual(expect.arrayContaining(["networkidle"]));
           expect(loadStateCalls.at(-1)).toBe("networkidle");
@@ -597,6 +598,171 @@ describe("sdk access provider runtime", () => {
                 route: async () => undefined,
                 close: async () => undefined,
               }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+            getSnapshot: () =>
+              Effect.succeed({
+                limits: {
+                  maxContexts: 1,
+                  maxPages: 1,
+                  maxQueue: 1,
+                },
+                activeContexts: 0,
+                activePages: 0,
+                queuedRequests: 0,
+                maxObservedActiveContexts: 0,
+                maxObservedActivePages: 0,
+                maxObservedQueuedRequests: 0,
+              }),
+            setTestConfig: () => Effect.void,
+            close: () => Effect.void,
+            resetForTests: () => Effect.void,
+          }),
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+      }),
+  );
+
+  it.effect(
+    "falls back to reload-target when a mediator requests current-page refresh under reuse-current",
+    () =>
+      Effect.suspend(() => {
+        let gotoCount = 0;
+
+        return Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("browser-stealth");
+          const result = yield* provider.execute({
+            url: "https://example.com/reuse-current-refresh",
+            context: {
+              targetUrl: "https://example.com/reuse-current-refresh",
+              targetDomain: "example.com",
+              providerId: "browser-stealth",
+              mode: "browser",
+              timeoutMs: 5_000,
+              egress: {
+                allocationMode: "static",
+                pluginId: "test-egress",
+                profileId: "direct",
+                poolId: "direct-pool",
+                routePolicyId: "direct-route",
+                routeKind: "direct",
+                routeKey: "direct",
+                egressKey: "direct",
+                requestHeaders: {},
+                warnings: [],
+                release: Effect.void,
+              },
+              identity: {
+                allocationMode: "static",
+                pluginId: "test-identity",
+                profileId: "persona-a",
+                tenantId: "tenant-a",
+                identityKey: "identity-a",
+                browserRuntimeProfileId: "patchright-stealth",
+                browserUserAgent: "Identity Agent",
+                warnings: [],
+                release: Effect.void,
+              },
+              browser: {
+                runtimeProfileId: "patchright-stealth",
+                waitUntil: "domcontentloaded",
+                timeoutMs: 5_000,
+                userAgent: "Browser Agent",
+                poolKey: "browser-stealth::patchright-stealth::direct::identity-a",
+                challengeHandling: {
+                  solveCloudflare: true,
+                },
+              },
+              warnings: [],
+            },
+          });
+
+          expect(gotoCount).toBe(2);
+          expect(result.status).toBe(200);
+          expect(result.contentType).toBe("text/html; charset=utf-8");
+          expect(result.warnings).toEqual(
+            expect.arrayContaining([
+              "cloudflare-solver:post-clearance-strategy-fallback:reload-target",
+              "cloudflare-solver:post-clearance-strategy:reload-target",
+            ]),
+          );
+        }).pipe(
+          Effect.provide(makeAccessProviderRegistryLive()),
+          Effect.provideService(BrowserMediationRuntime, {
+            mediate: () =>
+              Effect.succeed({
+                policy: {
+                  mode: "solve",
+                  vendors: ["cloudflare"],
+                  maxAttempts: 4,
+                  timeBudgetMs: 60_000,
+                  postClearanceStrategy: "reuse-current",
+                  captureEvidence: true,
+                },
+                outcome: {
+                  kind: "challenge",
+                  status: "cleared",
+                  vendor: "cloudflare",
+                  resolutionKind: "wait",
+                  attemptCount: 0,
+                  evidence: {
+                    signals: [],
+                  },
+                  timings: {},
+                },
+                followUpNavigationRequired: false,
+                currentPageRefreshRequired: true,
+                postClearanceStrategy: "reuse-current",
+                warnings: [],
+              }),
+          }),
+          Effect.provideService(BrowserRuntime, {
+            readPoolLimits: () => ({
+              maxContexts: 1,
+              maxPages: 1,
+              maxQueue: 1,
+            }),
+            withPage: (_options, use) =>
+              use({
+                goto: async () => {
+                  gotoCount += 1;
+                  return gotoCount === 1
+                    ? {
+                        status: () => 403,
+                        allHeaders: async () => ({
+                          "content-type": "text/html; charset=us-ascii",
+                        }),
+                        request: () => ({
+                          url: () => "https://example.com/reuse-current-refresh",
+                          redirectedFrom: () => null,
+                        }),
+                      }
+                    : {
+                        status: () => 200,
+                        allHeaders: async () => ({
+                          "content-type": "text/html; charset=utf-8",
+                        }),
+                        request: () => ({
+                          url: () => "https://example.com/reuse-current-refresh",
+                          redirectedFrom: () => null,
+                        }),
+                      };
+                },
+                content: async () =>
+                  gotoCount >= 2
+                    ? "<html><head><title>Recovered</title></head><body>ok</body></html>"
+                    : "<html><head><title>Just a moment...</title></head><body>challenge</body></html>",
+                url: () => "https://example.com/reuse-current-refresh",
+                waitForLoadState: async () => undefined,
+                route: async () => undefined,
+                close: async () => undefined,
+              }).pipe(
+                Effect.map((value) => ({
+                  value,
+                  warnings: [],
+                })),
+              ),
             getSnapshot: () =>
               Effect.succeed({
                 limits: {

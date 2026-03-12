@@ -81,6 +81,70 @@ describe("sdk browser challenge runtime", () => {
     expect(resolution.warnings).toContain("cloudflare-solver:clearance-observed:non-interactive");
   });
 
+  it("upgrades non-interactive interstitials into click-solvable challenges before giving up", async () => {
+    let readCount = 0;
+    let clickCount = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () => {
+          readCount += 1;
+          if (clickCount >= 1) {
+            return SOLVED_HTML;
+          }
+
+          return readCount >= 4
+            ? "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>"
+            : NON_INTERACTIVE_CHALLENGE_HTML;
+        },
+        locator: () => ({
+          last: () => ({
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          boundingBox: async () => ({
+            x: 100,
+            y: 100,
+            width: 40,
+            height: 40,
+          }),
+        }),
+        mouse: {
+          click: async () => {
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent: NON_INTERACTIVE_CHALLENGE_HTML,
+      timeoutMs: 1_000,
+      maxAttempts: 2,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(clickCount).toBe(1);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "managed",
+      resolutionKind: "click",
+      attemptCount: 1,
+    });
+    expect(resolution.warnings).toEqual(
+      expect.arrayContaining([
+        "cloudflare-solver:clearance-missing:non-interactive",
+        "cloudflare-solver:state-changed:managed",
+        "cloudflare-solver:retrying:managed",
+        "cloudflare-solver:clearance-observed:managed",
+      ]),
+    );
+  });
+
   it("classifies pre-click auto-clear paths as wait-based clears instead of synthetic clicks", async () => {
     const resolution = await resolveBrowserChallenges({
       page: makePage({
@@ -212,6 +276,73 @@ describe("sdk browser challenge runtime", () => {
     expect(resolution.warnings).toContain(
       "cloudflare-solver:challenge-emerged-after-initial-dom-read",
     );
+  });
+
+  it("keeps polling for delayed Cloudflare markers across the full solver budget", async () => {
+    const originalNow = Date.now;
+    let fakeNow = 0;
+    let clickCount = 0;
+    let readCount = 0;
+
+    Date.now = () => fakeNow;
+    try {
+      const resolution = await resolveBrowserChallenges({
+        page: makePage({
+          content: async () => {
+            readCount += 1;
+            if (clickCount >= 1) {
+              return SOLVED_HTML;
+            }
+
+            return fakeNow >= 2_250
+              ? EMBEDDED_CHALLENGE_HTML
+              : "<html><head><title>Just a moment...</title></head><body>Booting challenge...</body></html>";
+          },
+          waitForTimeout: async (timeoutMs) => {
+            fakeNow += timeoutMs;
+          },
+          locator: () => ({
+            last: () => ({
+              boundingBox: async () => ({
+                x: 100,
+                y: 100,
+                width: 40,
+                height: 40,
+              }),
+            }),
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          mouse: {
+            click: async () => {
+              clickCount += 1;
+            },
+          },
+        }),
+        pageContent:
+          "<html><head><title>Just a moment...</title></head><body>Booting challenge...</body></html>",
+        timeoutMs: 5_000,
+        challengeHandling: {
+          solveCloudflare: true,
+        },
+      });
+
+      expect(readCount).toBeGreaterThan(2);
+      expect(clickCount).toBe(1);
+      expect(resolution).toMatchObject({
+        detected: true,
+        followUpNavigationRequired: true,
+        challengeType: "embedded",
+        resolutionKind: "click",
+        attemptCount: 1,
+      });
+    } finally {
+      Date.now = originalNow;
+    }
   });
 
   it("refreshes the current page when a weak interstitial clears before any explicit marker appears", async () => {
@@ -592,5 +723,64 @@ describe("sdk browser challenge runtime", () => {
       attemptCount: 0,
     });
     expect(resolution.warnings).toContain("cloudflare-solver:unsupported-page-api");
+  });
+
+  it("retries transient click dispatch failures before reporting no-progress", async () => {
+    let clickCount = 0;
+    let attemptCount = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () => (clickCount >= 1 ? SOLVED_HTML : EMBEDDED_CHALLENGE_HTML),
+        locator: () => ({
+          last: () => ({
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          boundingBox: async () => ({
+            x: 100,
+            y: 100,
+            width: 40,
+            height: 40,
+          }),
+        }),
+        mouse: {
+          click: async () => {
+            attemptCount += 1;
+            if (attemptCount === 1) {
+              throw new Error("click-intercepted");
+            }
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent: EMBEDDED_CHALLENGE_HTML,
+      timeoutMs: 2_000,
+      maxAttempts: 2,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(attemptCount).toBe(2);
+    expect(clickCount).toBe(1);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "embedded",
+      resolutionKind: "click",
+      attemptCount: 1,
+    });
+    expect(resolution.warnings).toEqual(
+      expect.arrayContaining([
+        "cloudflare-solver:click-failed:embedded",
+        "cloudflare-solver:retrying:embedded",
+        "cloudflare-solver:clearance-observed:embedded",
+      ]),
+    );
   });
 });
