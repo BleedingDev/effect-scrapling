@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@effect-native/bun-test";
 import {
+  classifyAccessWallKind,
   detectAccessWall,
   extractHtmlTitle,
   readAccessWallSignalsFromText,
@@ -32,6 +33,19 @@ describe("sdk access wall detection", () => {
     expect(analysis.signals).toContain("url-consent");
     expect(analysis.signals).toContain("title-consent");
     expect(analysis.signals).toContain("text-consent");
+  });
+
+  it("detects trap interstitials from TSPD-style final urls", () => {
+    const analysis = detectAccessWall({
+      requestedUrl: "https://www.datart.cz/televize.html",
+      finalUrl: "https://www.datart.cz/TSPD/?type=25&foo=bar",
+      title: "",
+      text: "",
+    });
+
+    expect(analysis.likelyAccessWall).toBe(true);
+    expect(analysis.signals).toContain("url-trap");
+    expect(classifyAccessWallKind(analysis.signals)).toBe("trap");
   });
 
   it("does not flag ordinary pages that merely mention cookies in a footer", () => {
@@ -92,6 +106,13 @@ describe("sdk access wall detection", () => {
         "BrowserError: HTTP 403 access-wall:status-403 access-wall:title-consent access-wall:text-consent",
       ),
     ).toEqual(["status-403", "text-consent", "title-consent"]);
+  });
+
+  it("classifies consent-heavy wall signals separately from challenge walls", () => {
+    expect(
+      classifyAccessWallKind(["text-cookies", "text-consent", "title-consent", "url-consent"]),
+    ).toBe("consent");
+    expect(classifyAccessWallKind(["status-403", "url-challenge"])).toBe("challenge");
   });
 
   it("extracts normalized document titles", () => {

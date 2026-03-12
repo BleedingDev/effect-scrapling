@@ -417,6 +417,110 @@ describe("e9 benchmark suite", () => {
     );
   });
 
+  it("classifies consent walls into a dedicated benchmark failure category", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-consent",
+            domain: "zbozi.example",
+            kind: "aggregator",
+            state: "partial",
+            url: "https://zbozi.example/search?q=chair",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 200,
+                redirected: true,
+                challengeDetected: true,
+                observedChallengeSignals: ["text-consent", "title-consent", "url-consent"],
+                durationMs: 50,
+                contentBytes: 20_000,
+                titlePresent: true,
+                finalUrl: "https://cmp.example.test/consent?returnUrl=%2Fsearch",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-consent");
+    expect(artifact.summary?.topBrowserFailureCategories[0]).toEqual({
+      key: "access-wall-consent",
+      count: 1,
+    });
+    expect(artifact.recommendations).toContain(
+      "Top browser failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
+    );
+  });
+
+  it("classifies trap interstitials separately from generic empty-content failures", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-trap",
+            domain: "datart.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.example/category/televize",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 200,
+                redirected: true,
+                challengeDetected: true,
+                observedChallengeSignals: ["url-trap"],
+                durationMs: 50,
+                contentBytes: 0,
+                titlePresent: false,
+                finalUrl: "https://datart.example/TSPD/?type=25",
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.attempts[0]?.failureCategory).toBe("access-wall-trap");
+    expect(artifact.summary?.topBrowserFailureCategories[0]).toEqual({
+      key: "access-wall-trap",
+      count: 1,
+    });
+    expect(artifact.recommendations).toContain(
+      "Top browser failures are trap or interstitial endpoints; recognize and bail out on known trap URLs before treating them as generic content failures.",
+    );
+  });
+
   it("separates local config failures from remote browser failures in summary metrics", async () => {
     const artifact = await runE9BenchmarkSuite(
       {

@@ -13,6 +13,7 @@ import {
 } from "./e9-high-friction-canary.ts";
 import { E9ScraplingParityArtifactSchema, runE9ScraplingParity } from "./e9-scrapling-parity.ts";
 import {
+  classifyAccessWallKind,
   detectAccessWall,
   extractHtmlTitle,
   readAccessWallSignalsFromWarnings,
@@ -180,6 +181,10 @@ const BenchmarkAttemptSchema = Schema.Struct({
   failureCategory: Schema.optional(
     Schema.Literals([
       "access-wall",
+      "access-wall-challenge",
+      "access-wall-consent",
+      "access-wall-rate-limit",
+      "access-wall-trap",
       "http-error",
       "timeout",
       "browser-launch",
@@ -1147,6 +1152,23 @@ function hasRecoveredBrowserAllocationWarning(warnings: ReadonlyArray<string> | 
   );
 }
 
+function classifyAccessWallFailureCategory(
+  signals: ReadonlyArray<string>,
+): BenchmarkFailureCategory {
+  switch (classifyAccessWallKind(signals)) {
+    case "challenge":
+      return "access-wall-challenge";
+    case "consent":
+      return "access-wall-consent";
+    case "rate-limit":
+      return "access-wall-rate-limit";
+    case "trap":
+      return "access-wall-trap";
+    default:
+      return "access-wall";
+  }
+}
+
 function classifyAttemptFailureCategory(input: {
   readonly result: AttemptResult;
   readonly success: boolean;
@@ -1156,7 +1178,7 @@ function classifyAttemptFailureCategory(input: {
   }
 
   if (input.result.challengeDetected || input.result.observedChallengeSignals.length > 0) {
-    return "access-wall";
+    return classifyAccessWallFailureCategory(input.result.observedChallengeSignals);
   }
 
   if (
@@ -2678,6 +2700,30 @@ function buildSuiteRecommendations(input: {
         .map((entry) => entry.key)
         .join(", ")}.`,
     );
+  }
+
+  const topBrowserFailureCategory = input.summary.topBrowserFailureCategories[0]?.key;
+  switch (topBrowserFailureCategory) {
+    case "access-wall-challenge":
+      recommendations.push(
+        "Top browser failures are challenge walls; prioritize identity or egress tuning and challenge-redirect diagnostics on the worst domains.",
+      );
+      break;
+    case "access-wall-consent":
+      recommendations.push(
+        "Top browser failures are consent walls; prioritize consent-screen detection and domain-aware handling before judging fallback quality.",
+      );
+      break;
+    case "access-wall-rate-limit":
+      recommendations.push(
+        "Top browser failures are rate limits; review pacing, concurrency and egress rotation before comparing site success rates.",
+      );
+      break;
+    case "access-wall-trap":
+      recommendations.push(
+        "Top browser failures are trap or interstitial endpoints; recognize and bail out on known trap URLs before treating them as generic content failures.",
+      );
+      break;
   }
 
   if (

@@ -8,6 +8,11 @@ type AccessWallPattern = {
 
 const STRONG_FINAL_URL_PATTERNS: ReadonlyArray<AccessWallPattern> = [
   {
+    signal: "url-trap",
+    pattern:
+      /(?:^|[/?#&=_-])(tspd|_incapsula_resource|distil_r_captcha|botmanager|akam[-_/](?:bm|challenge|s?bot))(?:$|[/?#&=_-])/iu,
+  },
+  {
     signal: "url-challenge",
     pattern:
       /\b(captcha|challenge|verify|verification|human-check|security-check|bot-check|access-denied|attention-required|blocked|forbidden)\b/iu,
@@ -87,6 +92,28 @@ export type AccessWallAnalysis = {
   readonly signals: ReadonlyArray<string>;
   readonly likelyAccessWall: boolean;
 };
+
+export type AccessWallKind = "challenge" | "consent" | "rate-limit" | "trap";
+
+const TRAP_SIGNALS = new Set(["url-trap"]);
+const RATE_LIMIT_SIGNALS = new Set(["status-429"]);
+const CHALLENGE_SIGNALS = new Set([
+  "status-401",
+  "status-403",
+  "text-challenge",
+  "title-challenge",
+  "url-challenge",
+]);
+const CONSENT_SIGNALS = new Set([
+  "text-consent",
+  "text-cookies",
+  "text-gdpr",
+  "text-privacy",
+  "title-consent",
+  "title-cookies",
+  "title-privacy",
+  "url-consent",
+]);
 
 function dedupeAndSortSignals(signals: ReadonlyArray<string>) {
   return [...new Set(signals)].sort(compareStrings);
@@ -191,6 +218,41 @@ export function detectAccessWall(input: {
     signals: dedupeAndSortSignals([...strongSignals, ...weakSignals]),
     likelyAccessWall,
   };
+}
+
+function hasAnySignal(observedSignals: ReadonlySet<string>, expectedSignals: ReadonlySet<string>) {
+  for (const signal of expectedSignals) {
+    if (observedSignals.has(signal)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function classifyAccessWallKind(signals: ReadonlyArray<string>): AccessWallKind | undefined {
+  const observedSignals = new Set(signals);
+  if (observedSignals.size === 0) {
+    return undefined;
+  }
+
+  if (hasAnySignal(observedSignals, TRAP_SIGNALS)) {
+    return "trap";
+  }
+
+  if (hasAnySignal(observedSignals, RATE_LIMIT_SIGNALS)) {
+    return "rate-limit";
+  }
+
+  if (hasAnySignal(observedSignals, CHALLENGE_SIGNALS)) {
+    return "challenge";
+  }
+
+  if (hasAnySignal(observedSignals, CONSENT_SIGNALS)) {
+    return "consent";
+  }
+
+  return undefined;
 }
 
 export function extractHtmlTitle(html: string) {
