@@ -279,6 +279,7 @@ const BenchmarkDomainFailureMixItemSchema = Schema.Struct({
   domain: NonEmptyStringSchema,
   count: NonNegativeIntSchema,
   categories: Schema.Array(NonEmptyStringSchema),
+  breakdown: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
 });
 
 const E9BenchmarkSuiteSummarySchema = Schema.Struct({
@@ -2616,7 +2617,7 @@ function buildMixedDomainFailureBreakdown(
   attempts: ReadonlyArray<BenchmarkAttempt>,
   limit: number,
 ): ReadonlyArray<Schema.Schema.Type<typeof BenchmarkDomainFailureMixItemSchema>> {
-  const counts = new Map<string, { count: number; categories: Set<string> }>();
+  const counts = new Map<string, { count: number; categories: Map<string, number> }>();
 
   for (const attempt of attempts) {
     const category = attempt.failureCategory;
@@ -2626,10 +2627,10 @@ function buildMixedDomainFailureBreakdown(
 
     const current = counts.get(attempt.domain) ?? {
       count: 0,
-      categories: new Set<string>(),
+      categories: new Map<string, number>(),
     };
     current.count += 1;
-    current.categories.add(category);
+    current.categories.set(category, (current.categories.get(category) ?? 0) + 1);
     counts.set(attempt.domain, current);
   }
 
@@ -2641,6 +2642,13 @@ function buildMixedDomainFailureBreakdown(
         return countOrder;
       }
 
+      const leftTopBreakdownCount = Math.max(...left[1].categories.values());
+      const rightTopBreakdownCount = Math.max(...right[1].categories.values());
+      const breakdownOrder = rightTopBreakdownCount - leftTopBreakdownCount;
+      if (breakdownOrder !== 0) {
+        return breakdownOrder;
+      }
+
       const categoryOrder = right[1].categories.size - left[1].categories.size;
       if (categoryOrder !== 0) {
         return categoryOrder;
@@ -2649,13 +2657,30 @@ function buildMixedDomainFailureBreakdown(
       return compareStrings(left[0], right[0]);
     })
     .slice(0, limit)
-    .map(([domain, value]) =>
-      Schema.decodeUnknownSync(BenchmarkDomainFailureMixItemSchema)({
+    .map(([domain, value]) => {
+      const breakdown = [...value.categories.entries()]
+        .sort((left, right) => {
+          const countOrder = right[1] - left[1];
+          if (countOrder !== 0) {
+            return countOrder;
+          }
+
+          return compareStrings(left[0], right[0]);
+        })
+        .map(([key, count]) =>
+          Schema.decodeUnknownSync(BenchmarkReportItemSchema)({
+            key,
+            count,
+          }),
+        );
+
+      return Schema.decodeUnknownSync(BenchmarkDomainFailureMixItemSchema)({
         domain,
         count: value.count,
-        categories: [...value.categories].sort(compareStrings),
-      }),
-    );
+        categories: breakdown.map((entry) => entry.key),
+        breakdown,
+      });
+    });
 }
 
 function buildSuiteSummary(input: {
@@ -2951,6 +2976,20 @@ function buildSuiteWarnings(input: {
   return warnings;
 }
 
+export function formatMixedFailureDomainsForRecommendation(
+  domains: ReadonlyArray<Schema.Schema.Type<typeof BenchmarkDomainFailureMixItemSchema>>,
+) {
+  return domains
+    .slice(0, 2)
+    .map((entry) => {
+      const breakdown =
+        entry.breakdown?.map((item) => `${item.key} x${item.count}`) ??
+        entry.categories.map((category) => `${category}`);
+      return `${entry.domain} (${breakdown.join(", ")})`;
+    })
+    .join("; ");
+}
+
 function buildSuiteRecommendations(input: {
   readonly summary: Schema.Schema.Type<typeof E9BenchmarkSuiteSummarySchema>;
 }) {
@@ -2962,13 +3001,6 @@ function buildSuiteRecommendations(input: {
       .slice(0, 3)
       .map((entry) => entry.key)
       .join(", ");
-  const formatMixedFailureDomains = (
-    domains: ReadonlyArray<Schema.Schema.Type<typeof BenchmarkDomainFailureMixItemSchema>>,
-  ) =>
-    domains
-      .slice(0, 2)
-      .map((entry) => `${entry.domain} (${entry.categories.join(", ")})`)
-      .join("; ");
   const topRemoteFailureDomains =
     input.summary.topRemoteFailureDomains ??
     mergeCountBreakdowns(
@@ -3042,7 +3074,7 @@ function buildSuiteRecommendations(input: {
 
   if (topMixedRemoteFailureDomains.length > 0) {
     recommendations.push(
-      `Split domain triage by failure family where domains mix multiple remote signatures: ${formatMixedFailureDomains(topMixedRemoteFailureDomains)}.`,
+      `Split domain triage by failure family where domains mix multiple remote signatures: ${formatMixedFailureDomainsForRecommendation(topMixedRemoteFailureDomains)}.`,
     );
   }
 

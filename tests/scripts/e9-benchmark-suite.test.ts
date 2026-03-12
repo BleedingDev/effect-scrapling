@@ -7,6 +7,7 @@ import { visibleProgressWidth } from "../../scripts/benchmarks/progress-line.ts"
 import {
   E9BenchmarkSuiteArtifactSchema,
   type E9BenchmarkSuiteProgressEvent,
+  formatMixedFailureDomainsForRecommendation,
   mergeE9BenchmarkArtifacts,
   mergeChallengeSignals,
   runE9BenchmarkSuite,
@@ -346,6 +347,25 @@ describe("e9 benchmark suite", () => {
     const decoded = Schema.decodeUnknownSync(E9BenchmarkSuiteArtifactSchema)(legacyArtifact);
     expect(decoded.summary?.topRemoteFailureCategories).toBeUndefined();
     expect(decoded.summary?.topRemoteFailureDomains).toBeUndefined();
+  });
+
+  it("formats legacy mixed-domain summaries that do not yet carry per-category counts", () => {
+    expect(
+      formatMixedFailureDomainsForRecommendation([
+        {
+          domain: "legacy-boozt.example",
+          count: 4,
+          categories: ["access-wall", "access-wall-forbidden"],
+        },
+        {
+          domain: "legacy-datart.example",
+          count: 3,
+          categories: ["browser-header-read-failed", "browser-navigation-http-error"],
+        },
+      ]),
+    ).toBe(
+      "legacy-boozt.example (access-wall, access-wall-forbidden); legacy-datart.example (browser-header-read-failed, browser-navigation-http-error)",
+    );
   });
 
   it("treats skipped subbenchmarks as neutral for fast regression presets", async () => {
@@ -1803,15 +1823,201 @@ describe("e9 benchmark suite", () => {
         domain: "boozt.example",
         count: 2,
         categories: ["access-wall", "access-wall-challenge"],
+        breakdown: [
+          { key: "access-wall", count: 1 },
+          { key: "access-wall-challenge", count: 1 },
+        ],
       },
       {
         domain: "datart.example",
         count: 2,
         categories: ["browser-header-read-failed", "browser-navigation-http-error"],
+        breakdown: [
+          { key: "browser-header-read-failed", count: 1 },
+          { key: "browser-navigation-http-error", count: 1 },
+        ],
       },
     ]);
     expect(artifact.recommendations).toContain(
-      "Split domain triage by failure family where domains mix multiple remote signatures: boozt.example (access-wall, access-wall-challenge); datart.example (browser-header-read-failed, browser-navigation-http-error).",
+      "Split domain triage by failure family where domains mix multiple remote signatures: boozt.example (access-wall x1, access-wall-challenge x1); datart.example (browser-header-read-failed x1, browser-navigation-http-error x1).",
+    );
+  });
+
+  it("prioritizes equally frequent mixed domains by the dominant failure family count", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-major-a",
+            domain: "major.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://major.example/a",
+            pageType: "listing",
+            title: "Major A",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-major-b",
+            domain: "major.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://major.example/b",
+            pageType: "listing",
+            title: "Major B",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-major-c",
+            domain: "major.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://major.example/c",
+            pageType: "listing",
+            title: "Major C",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-major-d",
+            domain: "major.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://major.example/d",
+            pageType: "listing",
+            title: "Major D",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-balanced-a",
+            domain: "balanced.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://balanced.example/a",
+            pageType: "product",
+            title: "Balanced A",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-balanced-b",
+            domain: "balanced.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://balanced.example/b",
+            pageType: "product",
+            title: "Balanced B",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-balanced-c",
+            domain: "balanced.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://balanced.example/c",
+            pageType: "product",
+            title: "Balanced C",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-balanced-d",
+            domain: "balanced.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://balanced.example/d",
+            pageType: "product",
+            title: "Balanced D",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => {
+                if (page.domain === "major.example") {
+                  if (page.url.endsWith("/d")) {
+                    return {
+                      statusCode: 403,
+                      redirected: true,
+                      challengeDetected: true,
+                      observedChallengeSignals: ["status-403"],
+                      durationMs: 50,
+                      contentBytes: 20_000,
+                      titlePresent: true,
+                      finalUrl: "https://major.example/d?__cf_chl_rt_tk=abc123&__cf_chl_tk=def456",
+                    };
+                  }
+
+                  return {
+                    statusCode: 403,
+                    redirected: false,
+                    challengeDetected: true,
+                    observedChallengeSignals: ["status-403", "text-cookies"],
+                    durationMs: 50,
+                    contentBytes: 20_000,
+                    titlePresent: true,
+                    finalUrl: page.url,
+                  };
+                }
+
+                if (page.url.endsWith("/a") || page.url.endsWith("/b")) {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error:
+                      "Browser access failed :: navigation: HTTP 404 from https://balanced.example/c",
+                  };
+                }
+
+                return {
+                  redirected: false,
+                  challengeDetected: false,
+                  observedChallengeSignals: [],
+                  durationMs: 50,
+                  contentBytes: 0,
+                  titlePresent: false,
+                  error:
+                    "Browser access failed for https://balanced.example/d :: header-read: Error: HTTP 404",
+                };
+              },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topMixedRemoteFailureDomains?.slice(0, 2)).toEqual([
+      {
+        domain: "major.example",
+        count: 4,
+        categories: ["access-wall", "access-wall-challenge"],
+        breakdown: [
+          { key: "access-wall", count: 3 },
+          { key: "access-wall-challenge", count: 1 },
+        ],
+      },
+      {
+        domain: "balanced.example",
+        count: 4,
+        categories: ["browser-header-read-failed", "browser-navigation-http-error"],
+        breakdown: [
+          { key: "browser-header-read-failed", count: 2 },
+          { key: "browser-navigation-http-error", count: 2 },
+        ],
+      },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Split domain triage by failure family where domains mix multiple remote signatures: major.example (access-wall x3, access-wall-challenge x1); balanced.example (browser-header-read-failed x2, browser-navigation-http-error x2).",
     );
   });
 
