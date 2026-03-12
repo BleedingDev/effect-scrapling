@@ -1685,6 +1685,136 @@ describe("e9 benchmark suite", () => {
     );
   });
 
+  it("surfaces domains that fail across multiple remote failure families", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-browser"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-boozt-wall",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/a",
+            pageType: "listing",
+            title: "Listing",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-boozt-challenge",
+            domain: "boozt.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://boozt.example/b",
+            pageType: "search",
+            title: "Search",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-datart-http-error",
+            domain: "datart.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.example/c",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-datart-header-read",
+            domain: "datart.example",
+            kind: "retailer",
+            state: "partial",
+            url: "https://datart.example/d",
+            pageType: "product",
+            title: "Product",
+            challengeSignals: [],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-browser",
+            createRunner: async () => ({
+              runPage: async (page) => {
+                if (page.url.endsWith("/b")) {
+                  return {
+                    statusCode: 403,
+                    redirected: true,
+                    challengeDetected: true,
+                    observedChallengeSignals: ["status-403"],
+                    durationMs: 50,
+                    contentBytes: 20_000,
+                    titlePresent: true,
+                    finalUrl: "https://boozt.example/b?__cf_chl_rt_tk=abc123&__cf_chl_tk=def456",
+                  };
+                }
+
+                if (page.url.endsWith("/c")) {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error:
+                      "Browser access failed :: navigation: HTTP 404 from https://datart.example/c",
+                  };
+                }
+
+                if (page.url.endsWith("/d")) {
+                  return {
+                    redirected: false,
+                    challengeDetected: false,
+                    observedChallengeSignals: [],
+                    durationMs: 50,
+                    contentBytes: 0,
+                    titlePresent: false,
+                    error:
+                      "Browser access failed for https://datart.example/d :: header-read: Error: HTTP 404",
+                  };
+                }
+
+                return {
+                  statusCode: 403,
+                  redirected: false,
+                  challengeDetected: true,
+                  observedChallengeSignals: ["status-403", "text-cookies"],
+                  durationMs: 50,
+                  contentBytes: 20_000,
+                  titlePresent: true,
+                  finalUrl: page.url,
+                };
+              },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.topMixedRemoteFailureDomains).toEqual([
+      {
+        domain: "boozt.example",
+        count: 2,
+        categories: ["access-wall", "access-wall-challenge"],
+      },
+      {
+        domain: "datart.example",
+        count: 2,
+        categories: ["browser-header-read-failed", "browser-navigation-http-error"],
+      },
+    ]);
+    expect(artifact.recommendations).toContain(
+      "Split domain triage by failure family where domains mix multiple remote signatures: boozt.example (access-wall, access-wall-challenge); datart.example (browser-header-read-failed, browser-navigation-http-error).",
+    );
+  });
+
   it("surfaces browser navigation HTTP error domains when they become the top remote category", async () => {
     const artifact = await runE9BenchmarkSuite(
       {

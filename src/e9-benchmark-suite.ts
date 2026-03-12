@@ -275,6 +275,12 @@ const BenchmarkReportItemSchema = Schema.Struct({
   count: NonNegativeIntSchema,
 });
 
+const BenchmarkDomainFailureMixItemSchema = Schema.Struct({
+  domain: NonEmptyStringSchema,
+  count: NonNegativeIntSchema,
+  categories: Schema.Array(NonEmptyStringSchema),
+});
+
 const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   executedPhases: Schema.Array(BenchmarkCliPhaseSchema),
   skippedPhases: Schema.Array(BenchmarkCliPhaseSchema),
@@ -307,6 +313,7 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   topTimeoutFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topNavigationHttpErrorFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topHeaderReadFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topMixedRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkDomainFailureMixItemSchema)),
   topBrowserFailureCategories: Schema.Array(BenchmarkReportItemSchema),
   topBrowserRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topBrowserRemoteFailureCategories: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
@@ -2605,6 +2612,52 @@ function buildDomainBreakdownForFailureCategory(
   );
 }
 
+function buildMixedDomainFailureBreakdown(
+  attempts: ReadonlyArray<BenchmarkAttempt>,
+  limit: number,
+): ReadonlyArray<Schema.Schema.Type<typeof BenchmarkDomainFailureMixItemSchema>> {
+  const counts = new Map<string, { count: number; categories: Set<string> }>();
+
+  for (const attempt of attempts) {
+    const category = attempt.failureCategory;
+    if (category === undefined) {
+      continue;
+    }
+
+    const current = counts.get(attempt.domain) ?? {
+      count: 0,
+      categories: new Set<string>(),
+    };
+    current.count += 1;
+    current.categories.add(category);
+    counts.set(attempt.domain, current);
+  }
+
+  return [...counts.entries()]
+    .filter(([, value]) => value.categories.size >= 2)
+    .sort((left, right) => {
+      const countOrder = right[1].count - left[1].count;
+      if (countOrder !== 0) {
+        return countOrder;
+      }
+
+      const categoryOrder = right[1].categories.size - left[1].categories.size;
+      if (categoryOrder !== 0) {
+        return categoryOrder;
+      }
+
+      return compareStrings(left[0], right[0]);
+    })
+    .slice(0, limit)
+    .map(([domain, value]) =>
+      Schema.decodeUnknownSync(BenchmarkDomainFailureMixItemSchema)({
+        domain,
+        count: value.count,
+        categories: [...value.categories].sort(compareStrings),
+      }),
+    );
+}
+
 function buildSuiteSummary(input: {
   readonly corpus: E9BenchmarkSuiteArtifact["corpus"];
   readonly httpCorpus: Schema.Schema.Type<typeof BenchmarkPhaseArtifactSchema>;
@@ -2777,6 +2830,7 @@ function buildSuiteSummary(input: {
       "browser-header-read-failed",
       5,
     ),
+    topMixedRemoteFailureDomains: buildMixedDomainFailureBreakdown(remoteFailures, 5),
     topBrowserFailureCategories: buildCountBreakdown(
       browserFailures.map((attempt) => attempt.failureCategory ?? "unknown-error"),
       5,
@@ -2908,6 +2962,13 @@ function buildSuiteRecommendations(input: {
       .slice(0, 3)
       .map((entry) => entry.key)
       .join(", ");
+  const formatMixedFailureDomains = (
+    domains: ReadonlyArray<Schema.Schema.Type<typeof BenchmarkDomainFailureMixItemSchema>>,
+  ) =>
+    domains
+      .slice(0, 2)
+      .map((entry) => `${entry.domain} (${entry.categories.join(", ")})`)
+      .join("; ");
   const topRemoteFailureDomains =
     input.summary.topRemoteFailureDomains ??
     mergeCountBreakdowns(
@@ -2924,6 +2985,7 @@ function buildSuiteRecommendations(input: {
   const topNavigationHttpErrorFailureDomains =
     input.summary.topNavigationHttpErrorFailureDomains ?? [];
   const topHeaderReadFailureDomains = input.summary.topHeaderReadFailureDomains ?? [];
+  const topMixedRemoteFailureDomains = input.summary.topMixedRemoteFailureDomains ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureCategories =
     input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
@@ -2975,6 +3037,12 @@ function buildSuiteRecommendations(input: {
   if (topRemoteFailureDomains.length > 0) {
     recommendations.push(
       `Prioritize diagnostics for ${formatTopDomains(topRemoteFailureDomains)}.`,
+    );
+  }
+
+  if (topMixedRemoteFailureDomains.length > 0) {
+    recommendations.push(
+      `Split domain triage by failure family where domains mix multiple remote signatures: ${formatMixedFailureDomains(topMixedRemoteFailureDomains)}.`,
     );
   }
 
