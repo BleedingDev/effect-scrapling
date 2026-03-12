@@ -503,6 +503,7 @@ describe("sdk browser pool", () => {
         const firstFiber = yield* accessPreview({
           url: "https://example.com/first",
           execution: {
+            mode: "browser",
             providerId: "browser-basic",
           },
         }).pipe(
@@ -518,6 +519,7 @@ describe("sdk browser pool", () => {
         const secondFiber = yield* accessPreview({
           url: "https://example.com/second",
           execution: {
+            mode: "browser",
             providerId: "browser-basic",
           },
         }).pipe(
@@ -538,6 +540,7 @@ describe("sdk browser pool", () => {
         const overflowDetails = yield* accessPreview({
           url: "https://example.com/third",
           execution: {
+            mode: "browser",
             providerId: "browser-basic",
           },
         }).pipe(
@@ -1151,6 +1154,7 @@ describe("sdk browser pool", () => {
         const preview = yield* accessPreview({
           url: "https://example.com/fourth",
           execution: {
+            mode: "browser",
             providerId: "browser-basic",
           },
         }).pipe(

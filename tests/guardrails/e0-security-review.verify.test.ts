@@ -143,6 +143,7 @@ describe("E0 security review verification", () => {
       const failureDetails = yield* accessPreview({
         url: "https://example.com/browser-start",
         execution: {
+          mode: "browser",
           providerId: "browser-basic",
         },
       }).pipe(

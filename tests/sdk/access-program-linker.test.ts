@@ -130,9 +130,10 @@ describe("sdk access program linker", () => {
           url: "https://example.com/products/sku-1",
           defaultTimeoutMs: 500,
           defaultProviderId: "browser-basic",
+          allowUnregisteredDefaultProviderFallback: true,
         });
 
-        expect(specialized.program.defaultProviderId).toBe("managed-browser");
+        expect(specialized.program.defaultMode).toBe("browser");
         expect(specialized.intent.providerId).toBe("managed-browser");
         expect(specialized.intent.mode).toBe("browser");
       }),

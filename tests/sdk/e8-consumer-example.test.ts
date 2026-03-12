@@ -1,6 +1,8 @@
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync, readdirSync } from "node:fs";
+import { access, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { createRequire } from "node:module";
 import { describe, expect, it, setDefaultTimeout } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
 import {
@@ -17,15 +19,36 @@ const REPO_ROOT = import.meta.dir ? join(import.meta.dir, "..", "..") : process.
 const EXAMPLE_PATH = join(REPO_ROOT, "examples", "e8-sdk-consumer.ts");
 const FOUNDATION_CORE_ROOT = join(REPO_ROOT, "libs", "foundation", "core");
 const BUN_BINARY = process.execPath;
+const workspaceRequire = createRequire(import.meta.url);
 
 setDefaultTimeout(120000);
 
 async function runBun(cwd: string, args: readonly string[]) {
+  const writableTempDirectory = join(cwd, ".bun-temp");
+  const writableHomeDirectory = join(cwd, ".bun-home");
+  const writableCacheDirectory = join(cwd, ".bun-cache");
+  await mkdir(writableTempDirectory, { recursive: true });
+  await mkdir(writableHomeDirectory, { recursive: true });
+  await mkdir(writableCacheDirectory, { recursive: true });
+  const effectiveArgs =
+    args[0] === "install"
+      ? ["install", "--backend=copyfile", "--cache-dir", writableCacheDirectory]
+      : [...args];
   const processHandle = Bun.spawn({
-    cmd: [BUN_BINARY, ...args],
+    cmd: [BUN_BINARY, ...effectiveArgs],
     cwd,
     stdout: "pipe",
     stderr: "pipe",
+    env: {
+      ...process.env,
+      BUN_TMPDIR: writableTempDirectory,
+      TEMP: writableTempDirectory,
+      TMP: writableTempDirectory,
+      TMPDIR: writableTempDirectory,
+      HOME: writableHomeDirectory,
+      XDG_CACHE_HOME: writableCacheDirectory,
+      BUN_INSTALL_CACHE_DIR: join(writableCacheDirectory, "install"),
+    },
   });
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(processHandle.stdout).text(),
@@ -40,6 +63,93 @@ async function runBun(cwd: string, args: readonly string[]) {
   }
 
   return stdout.trim();
+}
+
+function readPackedTarballPath(output: string): string {
+  const lines = output
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const line = lines[index];
+    if (line?.endsWith(".tgz")) {
+      return line;
+    }
+  }
+
+  throw new Error(`Unable to locate packed tarball path in output:\n${output}`);
+}
+
+async function runCommand(cwd: string, command: string, args: readonly string[]) {
+  const processHandle = Bun.spawn({
+    cmd: [command, ...args],
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(processHandle.stdout).text(),
+    new Response(processHandle.stderr).text(),
+    processHandle.exited,
+  ]);
+
+  if (exitCode !== 0) {
+    throw new Error(
+      `Command failed (${command} ${args.join(" ")}): ${
+        stderr.trim() === "" ? stdout.trim() : stderr.trim()
+      }`,
+    );
+  }
+}
+
+async function unpackTarball(cwd: string, tarballPath: string, destinationDirectory: string) {
+  await mkdir(destinationDirectory, { recursive: true });
+  await runCommand(cwd, "tar", [
+    "-xzf",
+    tarballPath,
+    "-C",
+    destinationDirectory,
+    "--strip-components=1",
+  ]);
+}
+
+async function linkWorkspaceDependency(consumerDirectory: string, packageName: string) {
+  const resolvePackageRoot = () => {
+    try {
+      let currentDirectory = dirname(workspaceRequire.resolve(packageName));
+
+      while (true) {
+        if (existsSync(join(currentDirectory, "package.json"))) {
+          return currentDirectory;
+        }
+
+        const parentDirectory = dirname(currentDirectory);
+        if (parentDirectory === currentDirectory) {
+          throw new Error(`Unable to resolve package root for ${packageName}.`);
+        }
+        currentDirectory = parentDirectory;
+      }
+    } catch {
+      const bunStoreDirectory = join(REPO_ROOT, "node_modules", ".bun");
+      const bunStoreEntry = readdirSync(bunStoreDirectory).find((entry) =>
+        entry.startsWith(`${packageName}@`),
+      );
+
+      if (bunStoreEntry === undefined) {
+        throw new Error(`Unable to resolve package root for ${packageName}.`);
+      }
+
+      return join(bunStoreDirectory, bunStoreEntry, "node_modules", packageName);
+    }
+  };
+  const packageSegments = packageName.split("/");
+  const sourceDirectory = resolvePackageRoot();
+  const targetDirectory = join(consumerDirectory, "node_modules", ...packageSegments);
+
+  await mkdir(join(targetDirectory, ".."), { recursive: true });
+  await rm(targetDirectory, { recursive: true, force: true });
+  await symlink(sourceDirectory, targetDirectory, "junction");
 }
 
 describe("E8 SDK consumer example", () => {
@@ -110,20 +220,20 @@ describe("E8 SDK consumer example", () => {
       await mkdir(packsDirectory, { recursive: true });
       await mkdir(consumerDirectory, { recursive: true });
 
-      const effectScraplingTarball = await runBun(REPO_ROOT, [
+      const effectScraplingPackOutput = await runBun(REPO_ROOT, [
         "pm",
         "pack",
         "--destination",
         packsDirectory,
-        "--quiet",
       ]);
-      const foundationCoreTarball = await runBun(FOUNDATION_CORE_ROOT, [
+      const foundationCorePackOutput = await runBun(FOUNDATION_CORE_ROOT, [
         "pm",
         "pack",
         "--destination",
         packsDirectory,
-        "--quiet",
       ]);
+      const effectScraplingTarball = readPackedTarballPath(effectScraplingPackOutput);
+      const foundationCoreTarball = readPackedTarballPath(foundationCorePackOutput);
       await writeFile(
         join(consumerDirectory, "package.json"),
         `${JSON.stringify(
@@ -143,7 +253,20 @@ describe("E8 SDK consumer example", () => {
         )}\n`,
         "utf8",
       );
-      await runBun(consumerDirectory, ["install"]);
+      await mkdir(join(consumerDirectory, "node_modules"), { recursive: true });
+      await unpackTarball(
+        REPO_ROOT,
+        effectScraplingTarball,
+        join(consumerDirectory, "node_modules", "effect-scrapling"),
+      );
+      await unpackTarball(
+        REPO_ROOT,
+        foundationCoreTarball,
+        join(consumerDirectory, "node_modules", "@effect-scrapling", "foundation-core"),
+      );
+      for (const dependency of ["effect", "cheerio", "domhandler", "patchright"]) {
+        await linkWorkspaceDependency(consumerDirectory, dependency);
+      }
       await writeFile(
         join(consumerDirectory, "consumer.ts"),
         [

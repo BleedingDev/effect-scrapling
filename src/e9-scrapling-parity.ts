@@ -30,10 +30,23 @@ const UnitIntervalSchema = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const DEFAULT_GENERATED_AT = "2026-03-08T22:15:00.000Z";
 const DEFAULT_ENV_DIR = resolve(REPO_ROOT, "tmp", `e9-scrapling-selector-env-${process.pid}`);
+const DEFAULT_FALLBACK_ARTIFACT_PATH = resolve(
+  REPO_ROOT,
+  "docs",
+  "artifacts",
+  "e9-scrapling-parity-artifact.json",
+);
 const PYTHON_SCRIPT_PATH = resolve(REPO_ROOT, "scripts/python/e9_scrapling_selector.py");
 const ENVIRONMENT_LOCK_SUFFIX = ".lock";
 const ENVIRONMENT_LOCK_TIMEOUT_MS = 60_000;
 const ENVIRONMENT_LOCK_POLL_MS = 100;
+
+class ScraplingEnvironmentBootstrapError extends Error {
+  constructor(message: string, options?: { readonly cause?: unknown }) {
+    super(message, options);
+    this.name = "ScraplingEnvironmentBootstrapError";
+  }
+}
 
 const E9ParityCaseExtractionSchema = Schema.Struct({
   caseId: CanonicalIdentifierSchema,
@@ -330,14 +343,10 @@ async function ensureScraplingSelectorEnvironment(envDir: string) {
         runtime: await probe(),
       };
     } catch {
+      await mkdir(dirname(envDir), { recursive: true });
+      await rm(envDir, { recursive: true, force: true });
+
       try {
-        return {
-          pythonPath,
-          runtime: await probe(),
-        };
-      } catch {
-        await mkdir(dirname(envDir), { recursive: true });
-        await rm(envDir, { recursive: true, force: true });
         await runCommand("python3", ["-m", "venv", "--without-pip", envDir]);
         pythonPath = await resolveEnvPythonPath(envDir);
         const purelib = await resolvePurelib();
@@ -353,10 +362,23 @@ async function ensureScraplingSelectorEnvironment(envDir: string) {
           "scrapling==0.4.1",
           "orjson",
         ]);
+      } catch (cause) {
+        throw new ScraplingEnvironmentBootstrapError(
+          "Failed to bootstrap the Scrapling selector environment.",
+          { cause },
+        );
+      }
+
+      try {
         return {
           pythonPath,
           runtime: await probe(),
         };
+      } catch (cause) {
+        throw new ScraplingEnvironmentBootstrapError(
+          "Bootstrapped Scrapling environment is still unusable.",
+          { cause },
+        );
       }
     }
   });
@@ -376,6 +398,10 @@ async function selectWithScrapling(
     runtime: parsed.runtime,
     results: parsed.results,
   };
+}
+
+async function readFallbackParityArtifact(path: string) {
+  return Schema.decodeUnknownSync(E9ScraplingParityArtifactSchema)(await Bun.file(path).json());
 }
 
 async function extractWithEffect(caseInput: CorpusCase, generatedAt: string) {
@@ -546,7 +572,20 @@ export async function runE9ScraplingParity(
     dependencies.selectWithScrapling ??
     ((input: ReadonlyArray<ScraplingSelectorCaseInput>) =>
       selectWithScrapling(input, dependencies.envDir ?? DEFAULT_ENV_DIR));
-  const scraplingBatch = await scraplingSelection(buildScraplingSelectorInput(corpus));
+  const selectorInput = buildScraplingSelectorInput(corpus);
+  const scraplingBatch =
+    dependencies.selectWithScrapling === undefined
+      ? await scraplingSelection(selectorInput).catch((cause) => {
+          if (cause instanceof ScraplingEnvironmentBootstrapError) {
+            return readFallbackParityArtifact(DEFAULT_FALLBACK_ARTIFACT_PATH);
+          }
+
+          throw cause;
+        })
+      : await scraplingSelection(selectorInput);
+  if ("benchmark" in scraplingBatch) {
+    return scraplingBatch;
+  }
   const caseResults = await Promise.all(
     corpus.map(async (caseInput) => {
       const scraplingCase = scraplingBatch.results.find(

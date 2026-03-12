@@ -35,6 +35,8 @@ import { SharedAccessHealthSignalsLive } from "./access-health-shared-runtime.ts
 export type AccessSelectionInput = {
   readonly url: string;
   readonly defaultProviderId: AccessProviderId;
+  readonly defaultMode?: AccessMode | undefined;
+  readonly allowUnregisteredDefaultProviderFallback?: boolean | undefined;
   readonly execution?: AccessExecutionProfile | undefined;
 };
 
@@ -84,17 +86,13 @@ function uniqueProviderIds(providerIds: ReadonlyArray<AccessProviderId>) {
 }
 
 function candidateProviders(input: {
-  readonly requestedMode: AccessMode | undefined;
+  readonly targetMode: AccessMode;
   readonly defaultProviderId: AccessProviderId;
   readonly defaultHttpProviderId: AccessProviderId;
   readonly defaultBrowserProviderId: AccessProviderId;
   readonly providerModes: Readonly<Partial<Record<AccessProviderId, AccessMode>>>;
 }) {
-  if (input.requestedMode === undefined) {
-    return [input.defaultProviderId] satisfies ReadonlyArray<AccessProviderId>;
-  }
-
-  if (input.requestedMode === "http") {
+  if (input.targetMode === "http") {
     return uniqueProviderIds(
       [
         ...(input.providerModes[input.defaultProviderId] !== "browser"
@@ -320,6 +318,7 @@ export function makeStaticAccessSelectionPolicy(input?: {
       Effect.gen(function* () {
         const requestedMode = yield* inferRequestedMode(input.execution);
         const requestedProviderId = input.execution?.providerId;
+        const targetMode = requestedMode ?? input.defaultMode ?? "http";
         yield* validateProviderId(input.defaultProviderId);
         if (requestedProviderId !== undefined) {
           yield* validateProviderId(requestedProviderId);
@@ -365,11 +364,11 @@ export function makeStaticAccessSelectionPolicy(input?: {
             return Effect.gen(function* () {
               const requestedProvider = yield* ensureKnownProvider(requestedProviderId);
               const requestedProviderMode = requestedProvider.capabilities.mode;
-              if (requestedMode !== undefined && requestedMode !== requestedProviderMode) {
+              if (targetMode !== requestedProviderMode) {
                 return yield* Effect.fail(
                   invalidExecution(
                     "Execution mode does not match provider",
-                    `Mode "${requestedMode}" cannot be served by provider "${requestedProviderId}".`,
+                    `Mode "${targetMode}" cannot be served by provider "${requestedProviderId}".`,
                   ),
                 );
               }
@@ -378,69 +377,36 @@ export function makeStaticAccessSelectionPolicy(input?: {
             });
           }
 
-          if (requestedMode === undefined) {
-            return Effect.gen(function* () {
-              const configuredProvider = yield* providerRegistry.findDescriptor(
-                input.defaultProviderId,
-              );
-              if (configuredProvider !== undefined) {
-                return input.defaultProviderId;
-              }
-
-              const resolvedLaneDefault =
-                input.defaultProviderId === DEFAULT_BROWSER_PROVIDER_ID ||
-                input.defaultProviderId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-                  ? defaultBrowserProviderId
-                  : input.defaultProviderId === DEFAULT_HTTP_PROVIDER_ID
-                    ? defaultHttpProviderId
-                    : undefined;
-
-              if (resolvedLaneDefault !== undefined) {
-                yield* ensureKnownProvider(resolvedLaneDefault);
-                return resolvedLaneDefault;
-              }
-
+          return Effect.gen(function* () {
+            const configuredProvider = yield* providerRegistry.findDescriptor(
+              input.defaultProviderId,
+            );
+            if (
+              configuredProvider === undefined &&
+              input.allowUnregisteredDefaultProviderFallback !== true
+            ) {
               return yield* Effect.fail(
                 invalidExecution(
                   "Unknown access provider",
                   `No access provider named "${input.defaultProviderId}" is registered.`,
                 ),
               );
-            });
-          }
-
-          if (requestedMode === "http") {
-            return Effect.gen(function* () {
-              const providerModes = yield* resolveProviderModes([
-                input.defaultProviderId,
-                defaultHttpProviderId,
-              ]);
-              const candidates = candidateProviders({
-                requestedMode,
-                defaultProviderId: input.defaultProviderId,
-                defaultHttpProviderId,
-                defaultBrowserProviderId,
-                providerModes,
-              });
-              const resolvedProviderId = candidates[0] ?? defaultHttpProviderId;
-              yield* ensureKnownProvider(resolvedProviderId);
-              return resolvedProviderId;
-            });
-          }
-
-          return Effect.gen(function* () {
+            }
             const providerModes = yield* resolveProviderModes([
               input.defaultProviderId,
+              defaultHttpProviderId,
               defaultBrowserProviderId,
             ]);
             const candidates = candidateProviders({
-              requestedMode,
+              targetMode,
               defaultProviderId: input.defaultProviderId,
               defaultHttpProviderId,
               defaultBrowserProviderId,
               providerModes,
             });
-            const resolvedProviderId = candidates[0] ?? defaultBrowserProviderId;
+            const fallbackProviderId =
+              targetMode === "http" ? defaultHttpProviderId : defaultBrowserProviderId;
+            const resolvedProviderId = candidates[0] ?? fallbackProviderId;
             yield* ensureKnownProvider(resolvedProviderId);
             return resolvedProviderId;
           });
@@ -448,12 +414,12 @@ export function makeStaticAccessSelectionPolicy(input?: {
 
         const preferredProviderId = yield* resolveProviderId();
         const preferredProvider = yield* ensureKnownProvider(preferredProviderId);
-        const mode = requestedMode ?? preferredProvider.capabilities.mode;
-        if (mode === undefined) {
+        const mode = targetMode;
+        if (preferredProvider.capabilities.mode !== mode) {
           return yield* Effect.fail(
             invalidExecution(
-              "Execution mode is required",
-              `Provider "${preferredProviderId}" does not expose an execution mode.`,
+              "Selected provider does not match execution mode",
+              `Provider "${preferredProviderId}" serves mode "${preferredProvider.capabilities.mode}", not "${mode}".`,
             ),
           );
         }
@@ -489,7 +455,7 @@ export function makeStaticAccessSelectionPolicy(input?: {
           defaultBrowserProviderId,
         ]);
         const candidates = candidateProviders({
-          requestedMode: mode,
+          targetMode: mode,
           defaultProviderId: input.defaultProviderId,
           defaultHttpProviderId,
           defaultBrowserProviderId,
@@ -593,7 +559,7 @@ export const AccessSelectionPolicyLive = Layer.succeed(AccessSelectionPolicy, {
                     : {
                         defaultHttpProviderId: resolveModeDefaultProviderId({
                           mode: "http",
-                          providerIds: providerIdsByMode.http,
+                          providers: descriptors,
                         }),
                       }),
                   ...(providerIdsByMode.browser.length === 0
@@ -601,7 +567,7 @@ export const AccessSelectionPolicyLive = Layer.succeed(AccessSelectionPolicy, {
                     : {
                         defaultBrowserProviderId: resolveModeDefaultProviderId({
                           mode: "browser",
-                          providerIds: providerIdsByMode.browser,
+                          providers: descriptors,
                         }),
                       }),
                 };

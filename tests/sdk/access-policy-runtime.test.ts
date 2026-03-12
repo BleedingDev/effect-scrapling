@@ -138,6 +138,7 @@ describe("sdk access policy runtime", () => {
             url: "https://example.com/custom-provider-known",
             defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
             execution: {
+              mode: "browser",
               providerId: "managed-unblocker",
             },
           }),
@@ -158,6 +159,7 @@ describe("sdk access policy runtime", () => {
           return yield* policy.resolveSelection({
             url: "https://example.com/live-custom-default-browser",
             defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+            allowUnregisteredDefaultProviderFallback: true,
             execution: {
               mode: "browser",
             },
@@ -214,6 +216,7 @@ describe("sdk access policy runtime", () => {
           return yield* policy.resolveSelection({
             url: "https://example.com/live-custom-default-http",
             defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+            allowUnregisteredDefaultProviderFallback: true,
           });
         }).pipe(
           Effect.provide(AccessSelectionPolicyLive),
@@ -634,6 +637,7 @@ describe("sdk access policy runtime", () => {
         const selection = yield* resolveSelection({
           url: "https://example.com/unknown-default-provider",
           defaultProviderId: "missing-http-provider",
+          allowUnregisteredDefaultProviderFallback: true,
           execution: {
             mode: "http",
           },

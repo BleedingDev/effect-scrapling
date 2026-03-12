@@ -408,7 +408,7 @@ function createArtifactJsonlWriter(path: string | undefined) {
 
     try {
       await appendFile(resolvedPath, `${JSON.stringify(entry)}\n`, "utf8");
-    } catch (cause) {
+    } catch {
       await ensureParentDir();
       await appendFile(resolvedPath, `${JSON.stringify(entry)}\n`, "utf8");
     }

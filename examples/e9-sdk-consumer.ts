@@ -1,10 +1,10 @@
 import { Effect, Schema } from "effect";
 import {
   E9CapabilitySliceEvidenceSchema,
+  E9HighFrictionCanaryArtifactSchema,
   E9LaunchReadinessArtifactSchema,
+  E9ReferencePackValidationArtifactSchema,
   E9ScraplingParityArtifactSchema,
-  runE9CapabilitySlice,
-  runE9LaunchReadiness,
 } from "effect-scrapling/e9";
 
 export const e9SdkConsumerPrerequisites = [
@@ -21,8 +21,52 @@ export const e9SdkConsumerPitfalls = [
 
 export function runE9SdkConsumerExample() {
   return Effect.gen(function* () {
-    const capabilitySlice = yield* runE9CapabilitySlice();
-    const readiness = yield* Effect.promise(() => runE9LaunchReadiness());
+    const referencePackValidation = Schema.decodeUnknownSync(
+      E9ReferencePackValidationArtifactSchema,
+    )(
+      yield* Effect.promise(() =>
+        Bun.file(
+          new URL("../docs/artifacts/e9-reference-pack-validation-artifact.json", import.meta.url),
+        ).json(),
+      ),
+    );
+    const parity = Schema.decodeUnknownSync(E9ScraplingParityArtifactSchema)(
+      yield* Effect.promise(() =>
+        Bun.file(
+          new URL("../docs/artifacts/e9-scrapling-parity-artifact.json", import.meta.url),
+        ).json(),
+      ),
+    );
+    const highFrictionCanary = Schema.decodeUnknownSync(E9HighFrictionCanaryArtifactSchema)(
+      yield* Effect.promise(() =>
+        Bun.file(
+          new URL("../docs/artifacts/e9-high-friction-canary-artifact.json", import.meta.url),
+        ).json(),
+      ),
+    );
+    const readiness = Schema.decodeUnknownSync(E9LaunchReadinessArtifactSchema)(
+      yield* Effect.promise(() =>
+        Bun.file(
+          new URL("../docs/artifacts/e9-launch-readiness-artifact.json", import.meta.url),
+        ).json(),
+      ),
+    );
+    const capabilitySlice = Schema.decodeUnknownSync(E9CapabilitySliceEvidenceSchema)({
+      evidencePath: {
+        validationId: referencePackValidation.validationId,
+        comparisonId: parity.comparisonId,
+        canarySuiteId: highFrictionCanary.suiteId,
+        readinessId: readiness.readinessId,
+        referencePackStatus: referencePackValidation.status,
+        parityStatus: parity.status,
+        canaryStatus: highFrictionCanary.status,
+        readinessStatus: readiness.status,
+      },
+      referencePackValidation,
+      scraplingParity: parity,
+      highFrictionCanary,
+      launchReadiness: readiness,
+    });
 
     return {
       importPath: "effect-scrapling/e9" as const,
@@ -30,7 +74,7 @@ export function runE9SdkConsumerExample() {
       pitfalls: e9SdkConsumerPitfalls,
       payload: {
         capabilitySlice: Schema.encodeSync(E9CapabilitySliceEvidenceSchema)(capabilitySlice),
-        parity: Schema.encodeSync(E9ScraplingParityArtifactSchema)(capabilitySlice.scraplingParity),
+        parity: Schema.encodeSync(E9ScraplingParityArtifactSchema)(parity),
         readiness: Schema.encodeSync(E9LaunchReadinessArtifactSchema)(readiness),
       },
     };

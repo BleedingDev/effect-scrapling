@@ -209,6 +209,7 @@ describe("public sdk engine consumer", () => {
             const browserPreview = yield* engine.accessPreview({
               url: "https://consumer.example/browser-preview",
               execution: {
+                mode: "browser",
                 driverId: "synthetic-browser",
               },
             });
@@ -232,12 +233,14 @@ describe("public sdk engine consumer", () => {
           const normalizedTrace = yield* engine.traceInput("access", {
             url: "https://consumer.example/browser-preview",
             execution: {
+              mode: "browser",
               driverId: "synthetic-browser",
             },
           });
           const trace = yield* engine.explainAccessPreview({
             url: "https://consumer.example/browser-preview",
             execution: {
+              mode: "browser",
               driverId: "synthetic-browser",
             },
           });
@@ -247,6 +250,7 @@ describe("public sdk engine consumer", () => {
 
           expect(normalizedTrace.resolved.driverId).toBe("synthetic-browser");
           expect(normalizedExecution).toMatchObject({
+            mode: "browser",
             driverId: "synthetic-browser",
           });
           expect(

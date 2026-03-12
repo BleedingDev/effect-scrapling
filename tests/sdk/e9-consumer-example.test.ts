@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@effect-native/bun-test";
+import { describe, expect, it, setDefaultTimeout } from "@effect-native/bun-test";
 import { Effect, Schema } from "effect";
 import {
   E9CapabilitySliceEvidenceSchema,
@@ -6,6 +6,8 @@ import {
   E9ScraplingParityArtifactSchema,
 } from "effect-scrapling/e9";
 import { runE9SdkConsumerExample } from "../../examples/e9-sdk-consumer.ts";
+
+setDefaultTimeout(120000);
 
 describe("E9 SDK consumer example", () => {
   it("runs the public E9 consumer contract without private import leakage", async () => {

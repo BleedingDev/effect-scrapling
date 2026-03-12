@@ -12,6 +12,7 @@ import {
 } from "./sdk/error-guards.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
 import {
+  AccessEngineClosedError,
   createEngine,
   type AccessEngine,
   type CreateAccessEngineOptions,
@@ -26,6 +27,18 @@ function json(body: unknown, status = 200): Response {
 }
 
 function toErrorResponse(error: unknown): Response {
+  if (error instanceof AccessEngineClosedError) {
+    return json(
+      {
+        ok: false,
+        code: "AccessEngineClosedError",
+        message: error.message,
+        details: error.details ?? null,
+      },
+      503,
+    );
+  }
+
   if (isInvalidInputError(error)) {
     return json(
       {
@@ -143,6 +156,9 @@ function knownRoutes(): string[] {
 
 let sharedApiEnginePromise: Promise<AccessEngine> | undefined;
 export type ApiHostEngineOptions = Omit<CreateAccessEngineOptions, "fetchClient">;
+export type ApiRequestHandler = ((req: Request) => Promise<Response>) & {
+  readonly close: () => Promise<void>;
+};
 
 function hasCustomEngineAssembly(options: ApiHostEngineOptions | undefined) {
   return options !== undefined && Object.keys(options).length > 0;
@@ -156,55 +172,124 @@ function getSharedApiEngine() {
   return sharedApiEnginePromise;
 }
 
-async function withAccessEngine<A>(
-  run: (engine: AccessEngine) => Effect.Effect<A, unknown, never>,
+type AccessEngineRunner = {
+  readonly use: <A>(run: (engine: AccessEngine) => Effect.Effect<A, unknown, never>) => Promise<A>;
+  readonly close: () => Promise<void>;
+};
+
+function createClosedHandlerError() {
+  return new AccessEngineClosedError({
+    message: "API request handler is closed",
+    details: "Create a new API request handler before processing additional requests.",
+  });
+}
+
+function createAccessEngineRunner(
   fetchClient?: FetchClient,
   engineOptions?: ApiHostEngineOptions,
-): Promise<A> {
+): AccessEngineRunner {
+  let closed = false;
+  let activeUses = 0;
+  let waitForDrainResolve: (() => void) | undefined;
+  let closePromise: Promise<void> | undefined;
+
+  const ensureOpen = () => {
+    if (closed) {
+      throw createClosedHandlerError();
+    }
+  };
+
+  const releaseUse = () => {
+    activeUses -= 1;
+    if (activeUses === 0) {
+      waitForDrainResolve?.();
+      waitForDrainResolve = undefined;
+    }
+  };
+
   if (fetchClient === undefined && !hasCustomEngineAssembly(engineOptions)) {
-    return runEffect(run(await getSharedApiEngine()));
+    return {
+      use: async (run) => {
+        ensureOpen();
+        activeUses += 1;
+        try {
+          return await getSharedApiEngine().then((engine) => runEffect(run(engine)));
+        } finally {
+          releaseUse();
+        }
+      },
+      close: async () => {
+        closed = true;
+        if (activeUses > 0) {
+          closePromise ??= new Promise<void>((resolve) => {
+            waitForDrainResolve = resolve;
+          });
+          await closePromise;
+        }
+      },
+    };
   }
 
-  const engine = await Effect.runPromise(
-    createEngine({
-      ...engineOptions,
-      ...(fetchClient === undefined ? {} : { fetchClient }),
-    }),
-  );
-  try {
-    return await runEffect(run(engine));
-  } finally {
-    await Effect.runPromise(engine.close);
-  }
+  let enginePromise: Promise<AccessEngine> | undefined;
+
+  const getEngine = () => {
+    ensureOpen();
+    enginePromise ??= Effect.runPromise(
+      createEngine({
+        ...engineOptions,
+        ...(fetchClient === undefined ? {} : { fetchClient }),
+      }),
+    ).catch((error) => {
+      enginePromise = undefined;
+      throw error;
+    });
+    return enginePromise;
+  };
+
+  return {
+    use: async (run) => {
+      ensureOpen();
+      activeUses += 1;
+      try {
+        return await getEngine().then((engine) => runEffect(run(engine)));
+      } finally {
+        releaseUse();
+      }
+    },
+    close: async () => {
+      closed = true;
+      closePromise ??= (async () => {
+        if (activeUses > 0) {
+          await new Promise<void>((resolve) => {
+            waitForDrainResolve = resolve;
+          });
+        }
+
+        const activeEngine = await enginePromise?.catch(() => undefined);
+        enginePromise = undefined;
+        if (activeEngine !== undefined) {
+          await Effect.runPromise(activeEngine.close);
+        }
+      })();
+      await closePromise;
+    },
+  };
 }
 
 async function runRouteEffect(
   req: Request,
   kind: "access" | "extract" | "render",
-  fetchClient?: FetchClient,
-  engineOptions?: ApiHostEngineOptions,
+  engineRunner: AccessEngineRunner,
 ): Promise<Response> {
   try {
     const rawPayload = await readBody(req);
     const payload = normalizePayload(kind, rawPayload);
     const response =
       kind === "access"
-        ? await withAccessEngine(
-            (engine) => engine.accessPreview(payload),
-            fetchClient,
-            engineOptions,
-          )
+        ? await engineRunner.use((engine) => engine.accessPreview(payload))
         : kind === "render"
-          ? await withAccessEngine(
-              (engine) => engine.renderPreview(payload),
-              fetchClient,
-              engineOptions,
-            )
-          : await withAccessEngine(
-              (engine) => engine.extractRun(payload),
-              fetchClient,
-              engineOptions,
-            );
+          ? await engineRunner.use((engine) => engine.renderPreview(payload))
+          : await engineRunner.use((engine) => engine.extractRun(payload));
     return json(response);
   } catch (error) {
     return toErrorResponse(error);
@@ -216,14 +301,54 @@ export function createApiRequestHandler(
     readonly fetchClient?: FetchClient | undefined;
     readonly engine?: ApiHostEngineOptions | undefined;
   } = {},
-) {
-  return (req: Request) => handleApiRequest(req, options.fetchClient, options.engine);
+): ApiRequestHandler {
+  const engineRunner = createAccessEngineRunner(options.fetchClient, options.engine);
+  let closed = false;
+  let activeRequests = 0;
+  let waitForDrainResolve: (() => void) | undefined;
+  let closePromise: Promise<void> | undefined;
+
+  const releaseRequest = () => {
+    activeRequests -= 1;
+    if (activeRequests === 0) {
+      waitForDrainResolve?.();
+      waitForDrainResolve = undefined;
+    }
+  };
+
+  const handler = (async (req: Request) => {
+    if (closed) {
+      return toErrorResponse(createClosedHandlerError());
+    }
+
+    activeRequests += 1;
+    try {
+      return await handleApiRequestWithRunner(req, engineRunner);
+    } finally {
+      releaseRequest();
+    }
+  }) as ApiRequestHandler;
+  Object.defineProperty(handler, "close", {
+    value: async () => {
+      closed = true;
+      closePromise ??= (async () => {
+        if (activeRequests > 0) {
+          await new Promise<void>((resolve) => {
+            waitForDrainResolve = resolve;
+          });
+        }
+        await engineRunner.close();
+      })();
+      await closePromise;
+    },
+    enumerable: true,
+  });
+  return handler;
 }
 
-export async function handleApiRequest(
+async function handleApiRequestWithRunner(
   req: Request,
-  fetchClient?: FetchClient,
-  engineOptions?: ApiHostEngineOptions,
+  engineRunner: AccessEngineRunner,
 ): Promise<Response> {
   const url = new URL(req.url);
 
@@ -237,24 +362,22 @@ export async function handleApiRequest(
 
   if (req.method === "GET" && url.pathname === "/doctor") {
     try {
-      return json(
-        await withAccessEngine((engine) => engine.runDoctor(), fetchClient, engineOptions),
-      );
+      return json(await engineRunner.use((engine) => engine.runDoctor()));
     } catch (error) {
       return toErrorResponse(error);
     }
   }
 
   if (req.method === "POST" && url.pathname === "/access/preview") {
-    return runRouteEffect(req, "access", fetchClient, engineOptions);
+    return runRouteEffect(req, "access", engineRunner);
   }
 
   if (req.method === "POST" && url.pathname === "/render/preview") {
-    return runRouteEffect(req, "render", fetchClient, engineOptions);
+    return runRouteEffect(req, "render", engineRunner);
   }
 
   if (req.method === "POST" && url.pathname === "/extract/run") {
-    return runRouteEffect(req, "extract", fetchClient, engineOptions);
+    return runRouteEffect(req, "extract", engineRunner);
   }
 
   return json(
@@ -267,16 +390,54 @@ export async function handleApiRequest(
   );
 }
 
+export async function handleApiRequest(
+  req: Request,
+  fetchClient?: FetchClient,
+  engineOptions?: ApiHostEngineOptions,
+): Promise<Response> {
+  const engineRunner = createAccessEngineRunner(fetchClient, engineOptions);
+
+  try {
+    return await handleApiRequestWithRunner(req, engineRunner);
+  } finally {
+    await engineRunner.close();
+  }
+}
+
 export function startApiServer(port = Number(process.env.PORT || "3000")) {
+  const handler = createApiRequestHandler();
   const server = Bun.serve({
     port,
-    fetch(req) {
-      return handleApiRequest(req);
-    },
+    fetch: handler,
+  });
+  const stop = server.stop.bind(server);
+  let stopPromise: Promise<void> | undefined;
+  let closePromise: Promise<void> | undefined;
+
+  const close = async (closeActiveConnections?: boolean) => {
+    stopPromise ??= Promise.resolve(stop(closeActiveConnections));
+    await stopPromise;
+    closePromise ??= handler.close();
+    await closePromise;
+  };
+
+  Object.defineProperty(server, "stop", {
+    value: close,
+    configurable: true,
+    enumerable: true,
+    writable: true,
+  });
+  Object.defineProperty(server, "close", {
+    value: close,
+    configurable: true,
+    enumerable: true,
   });
 
   console.log(`effect-scrapling api listening on :${port}`);
-  return server;
+  return server as typeof server & {
+    readonly stop: (closeActiveConnections?: boolean) => Promise<void>;
+    readonly close: (closeActiveConnections?: boolean) => Promise<void>;
+  };
 }
 
 if (import.meta.main) {

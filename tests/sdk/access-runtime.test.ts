@@ -268,7 +268,7 @@ function resolveExecutionWithMockLinker(input: {
       {
         programId: "access-preview",
         command: "access",
-        defaultProviderId: "managed-http",
+        defaultMode: "http",
         candidateProviderIdsByMode: {
           http: ["managed-http"],
           browser: ["managed-browser"],
@@ -281,7 +281,7 @@ function resolveExecutionWithMockLinker(input: {
       {
         programId: "render-preview",
         command: "render",
-        defaultProviderId: "managed-browser",
+        defaultMode: "browser",
         candidateProviderIdsByMode: {
           http: ["managed-http"],
           browser: ["managed-browser"],
@@ -530,6 +530,7 @@ describe("sdk access runtime", () => {
         defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
         defaultTimeoutMs: 1_500,
         execution: {
+          mode: "browser",
           providerId: DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
         },
       });
@@ -692,6 +693,7 @@ describe("sdk access runtime", () => {
           command: "access",
           url: "https://example.com/explicit-access-command",
           defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+          allowUnregisteredDefaultProviderFallback: true,
           defaultTimeoutMs: 900,
         },
       });
@@ -701,10 +703,17 @@ describe("sdk access runtime", () => {
     }),
   );
 
-  it.effect("infers the render command from a known browser execution provider", () =>
+  it.effect("requires an explicit browser signal when a browser driver is pinned", () =>
     Effect.gen(function* () {
-      const resolved = yield* resolveExecutionWithMockLinker({
+      const failure = yield* resolveExecutionWithMockLinker({
         irProviders: [
+          {
+            id: "managed-http",
+            capabilities: {
+              mode: "http",
+              rendersDom: false,
+            },
+          },
           {
             id: "managed-browser",
             capabilities: {
@@ -721,10 +730,15 @@ describe("sdk access runtime", () => {
             providerId: "managed-browser",
           },
         },
-      });
+      }).pipe(
+        Effect.match({
+          onFailure: (error) => error,
+          onSuccess: () => undefined,
+        }),
+      );
 
-      expect(resolved.specializeCalled).toBe(false);
-      expect(resolved.plan.mode).toBe("browser");
+      expect(failure?._tag).toBe("InvalidInputError");
+      expect(failure?.message).toBe("Execution mode does not match provider");
     }),
   );
 
@@ -750,6 +764,7 @@ describe("sdk access runtime", () => {
         executionInput: {
           url: "https://example.com/runtime-profile-render-command",
           defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          allowUnregisteredDefaultProviderFallback: true,
           defaultTimeoutMs: 900,
           execution: {
             browserRuntimeProfileId: "patchright-default",
@@ -928,6 +943,7 @@ describe("sdk access runtime", () => {
         {
           url: "https://example.com/custom-default-http",
           defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          allowUnregisteredDefaultProviderFallback: true,
           defaultTimeoutMs: 900,
         },
         customPolicy,
@@ -983,6 +999,7 @@ describe("sdk access runtime", () => {
           {
             url: "https://example.com/custom-default-browser",
             defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+            allowUnregisteredDefaultProviderFallback: true,
             defaultTimeoutMs: 900,
             execution: {
               mode: "browser",
@@ -998,7 +1015,7 @@ describe("sdk access runtime", () => {
   );
 
   it.effect(
-    "infers the render command from browser-lane defaults even when builtin browser ids are absent",
+    "resolves browser-lane defaults from an explicit mode hint even when builtin browser ids are absent",
     () =>
       Effect.gen(function* () {
         const providerRegistry = makeProviderRegistry([
@@ -1041,6 +1058,8 @@ describe("sdk access runtime", () => {
           {
             url: "https://example.com/custom-default-browser-command",
             defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+            defaultModeHint: "browser",
+            allowUnregisteredDefaultProviderFallback: true,
             defaultTimeoutMs: 900,
           },
           customPolicy,
@@ -1067,6 +1086,7 @@ describe("sdk access runtime", () => {
         executionInput: {
           url: "https://example.com/browser-only-ir",
           defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+          allowUnregisteredDefaultProviderFallback: true,
           defaultTimeoutMs: 900,
         },
       });

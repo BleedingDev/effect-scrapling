@@ -1,22 +1,15 @@
-import { DEFAULT_BROWSER_PROVIDER_ID, DEFAULT_HTTP_PROVIDER_ID } from "./access-provider-ids.ts";
-import { type AccessMode, type AccessProviderId } from "./schemas.ts";
-
-function resolvePreferredProviderId(input: {
-  readonly providerIds: ReadonlyArray<AccessProviderId>;
-  readonly preferredProviderId: AccessProviderId;
-}) {
-  return input.providerIds.includes(input.preferredProviderId)
-    ? input.preferredProviderId
-    : input.providerIds[0];
-}
+import { type AccessProviderDescriptor } from "./access-provider-runtime.ts";
+import { type AccessMode } from "./schemas.ts";
 
 export function resolveModeDefaultProviderId(input: {
   readonly mode: AccessMode;
-  readonly providerIds: ReadonlyArray<AccessProviderId>;
+  readonly providers: ReadonlyArray<AccessProviderDescriptor>;
 }) {
-  return resolvePreferredProviderId({
-    providerIds: input.providerIds,
-    preferredProviderId:
-      input.mode === "browser" ? DEFAULT_BROWSER_PROVIDER_ID : DEFAULT_HTTP_PROVIDER_ID,
-  });
+  return input.providers
+    .filter((provider) => provider.capabilities.mode === input.mode)
+    .sort((left, right) => {
+      const priorityDifference =
+        (right.capabilities.selectionPriority ?? 0) - (left.capabilities.selectionPriority ?? 0);
+      return priorityDifference === 0 ? left.id.localeCompare(right.id) : priorityDifference;
+    })[0]?.id;
 }

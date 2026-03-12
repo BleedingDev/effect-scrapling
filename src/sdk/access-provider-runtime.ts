@@ -18,10 +18,19 @@ import {
   extractHtmlTitle,
   toAccessWallWarnings,
 } from "./access-wall-detection.ts";
+import {
+  DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+  DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID,
+} from "./access-profile-runtime.ts";
 import { formatUnknownError } from "./error-guards.ts";
 import { BrowserError, InvalidInputError, NetworkError } from "./errors.ts";
 import { FetchService } from "./fetch-service.ts";
-import { type AccessMode, type AccessProviderId, type BrowserWaitUntil } from "./schemas.ts";
+import {
+  type AccessMode,
+  type AccessProviderId,
+  type BrowserRuntimeProfileId,
+  type BrowserWaitUntil,
+} from "./schemas.ts";
 import { getUrlPolicyViolation, resolveValidatedUrl } from "./url-policy.ts";
 
 const MAX_REDIRECTS = 5;
@@ -33,6 +42,13 @@ const DEFAULT_USER_AGENT = "effect-scrapling/0.0.1";
 export type AccessProviderCapabilities = {
   readonly mode: AccessMode;
   readonly rendersDom: boolean;
+  readonly selectionPriority?: number | undefined;
+  readonly browserDefaults?:
+    | {
+        readonly runtimeProfileId?: BrowserRuntimeProfileId | undefined;
+        readonly waitUntil?: BrowserWaitUntil | undefined;
+      }
+    | undefined;
 };
 
 export type AccessProviderDescriptor = {
@@ -520,6 +536,7 @@ export function makeHttpAccessProvider(id: "http-basic" | "http-impersonated"): 
     capabilities: {
       mode: "http",
       rendersDom: false,
+      selectionPriority: id === "http-basic" ? 100 : 50,
     },
     execute: ({ url, context }) => executeHttpProvider(url, context),
   };
@@ -533,6 +550,14 @@ export function makeBrowserAccessProvider(
     capabilities: {
       mode: "browser",
       rendersDom: true,
+      selectionPriority: id === DEFAULT_BROWSER_PROVIDER_ID ? 100 : 50,
+      browserDefaults: {
+        runtimeProfileId:
+          id === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
+            ? DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID
+            : DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+        waitUntil: "domcontentloaded",
+      },
     },
     execute: ({ url, context }) => {
       if (context.browser === undefined) {
@@ -555,6 +580,7 @@ export const BuiltinAccessProviderDescriptors = Object.freeze([
     capabilities: {
       mode: "http",
       rendersDom: false,
+      selectionPriority: 100,
     },
   },
   {
@@ -562,6 +588,7 @@ export const BuiltinAccessProviderDescriptors = Object.freeze([
     capabilities: {
       mode: "http",
       rendersDom: false,
+      selectionPriority: 50,
     },
   },
   {
@@ -569,6 +596,11 @@ export const BuiltinAccessProviderDescriptors = Object.freeze([
     capabilities: {
       mode: "browser",
       rendersDom: true,
+      selectionPriority: 100,
+      browserDefaults: {
+        runtimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+        waitUntil: "domcontentloaded",
+      },
     },
   },
   {
@@ -576,6 +608,11 @@ export const BuiltinAccessProviderDescriptors = Object.freeze([
     capabilities: {
       mode: "browser",
       rendersDom: true,
+      selectionPriority: 50,
+      browserDefaults: {
+        runtimeProfileId: DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID,
+        waitUntil: "domcontentloaded",
+      },
     },
   },
 ] satisfies ReadonlyArray<AccessProviderDescriptor>);

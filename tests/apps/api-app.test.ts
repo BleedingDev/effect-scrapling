@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@effect-native/bun-test";
+import { beforeEach, describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
 import { createApiRequestHandler, handleApiRequest } from "../../src/api.ts";
@@ -76,6 +76,10 @@ function makeSyntheticBrowserModule() {
 }
 
 describe("api app", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
   it("serves doctor status through the HTTP boundary", async () => {
     const response = await handleApiRequest(new Request("http://localhost/doctor"));
     const payload = await response.json();
@@ -244,24 +248,141 @@ describe("api app", () => {
         modules: [makeSyntheticBrowserModule()],
       },
     });
-    const response = await handler(
+    try {
+      const response = await handler(
+        new Request("http://localhost/access/preview", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            url: "https://example.com/browser-only",
+            execution: {
+              mode: "browser",
+              providerId: "synthetic-browser",
+            },
+          }),
+        }),
+      );
+      const payload = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(payload.command).toBe("access preview");
+      expect(payload.data.execution.providerId).toBe("synthetic-browser");
+      expect(payload.data.finalUrl).toBe("https://example.com/browser-only");
+    } finally {
+      await handler.close();
+    }
+  });
+
+  it("fails closed after an API request handler is disposed", async () => {
+    const handler = createApiRequestHandler();
+
+    await handler.close();
+
+    const response = await handler(new Request("http://localhost/doctor"));
+    const payload = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(payload.code).toBe("AccessEngineClosedError");
+    expect(payload.message).toContain("handler is closed");
+  });
+
+  it("lets in-flight API requests finish before closing the handler", async () => {
+    let resolveFetch: ((response: Response) => void) | undefined;
+    let notifyFetchStarted: (() => void) | undefined;
+    const fetchStarted = new Promise<void>((resolve) => {
+      notifyFetchStarted = resolve;
+    });
+    const pendingResponse = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const handler = createApiRequestHandler({
+      fetchClient: async (input) => {
+        notifyFetchStarted?.();
+
+        const response = await pendingResponse;
+        Object.defineProperty(response, "url", {
+          value: new Request(input).url,
+          configurable: true,
+        });
+        return response;
+      },
+    });
+
+    const requestPromise = handler(
       new Request("http://localhost/access/preview", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          url: "https://example.com/browser-only",
-          execution: {
-            providerId: "synthetic-browser",
-          },
+          url: "https://example.com/articles/effect-scrapling",
         }),
       }),
     );
+
+    await fetchStarted;
+
+    const closePromise = handler.close();
+
+    resolveFetch?.(
+      new Response("<html><head><title>Effect Scrapling</title></head></html>", {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    );
+
+    const response = await requestPromise;
     const payload = await response.json();
+
+    await closePromise;
 
     expect(response.status).toBe(200);
     expect(payload.command).toBe("access preview");
-    expect(payload.data.execution.providerId).toBe("synthetic-browser");
-    expect(payload.data.finalUrl).toBe("https://example.com/browser-only");
+    expect(payload.data.finalUrl).toBe("https://example.com/articles/effect-scrapling");
+  });
+
+  it("lets accepted API requests finish body parsing before closing the handler", async () => {
+    let resolveBody: ((payload: unknown) => void) | undefined;
+    let notifyBodyStarted: (() => void) | undefined;
+    const bodyStarted = new Promise<void>((resolve) => {
+      notifyBodyStarted = resolve;
+    });
+    const pendingBody = new Promise<unknown>((resolve) => {
+      resolveBody = resolve;
+    });
+    const handler = createApiRequestHandler({
+      fetchClient: mockHtmlFetch("<html><head><title>Effect Scrapling</title></head></html>"),
+    });
+    const request = new Request("http://localhost/access/preview", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ignored: true }),
+    });
+
+    Object.defineProperty(request, "json", {
+      value: async () => {
+        notifyBodyStarted?.();
+        return pendingBody;
+      },
+      configurable: true,
+    });
+
+    const requestPromise = handler(request);
+
+    await bodyStarted;
+
+    const closePromise = handler.close();
+
+    resolveBody?.({
+      url: "https://example.com/articles/effect-scrapling",
+    });
+
+    const response = await requestPromise;
+    const payload = await response.json();
+
+    await closePromise;
+
+    expect(response.status).toBe(200);
+    expect(payload.command).toBe("access preview");
+    expect(payload.data.finalUrl).toBe("https://example.com/articles/effect-scrapling");
   });
 
   it("maps ExtractionError failures to a 422 API response", async () => {
@@ -416,6 +537,7 @@ describe("api app", () => {
           body: JSON.stringify({
             url: "https://example.com/articles/effect-scrapling",
             execution: {
+              mode: "browser",
               providerId: "browser-basic",
             },
           }),

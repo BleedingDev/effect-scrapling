@@ -1,19 +1,15 @@
 import { Effect, Layer, ServiceMap } from "effect";
 import { AccessModuleRegistry } from "./access-module-runtime.ts";
-import { resolveModeDefaultProviderId } from "./access-default-provider.ts";
 import {
   AccessProfileRegistry,
   DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
-  DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID,
 } from "./access-profile-runtime.ts";
 import { AccessProfileSelectionPolicy } from "./access-profile-policy-runtime.ts";
-import { AccessProviderRegistry } from "./access-provider-runtime.ts";
 import {
-  AccessSelectionPolicy,
-  DEFAULT_BROWSER_PROVIDER_ID,
-  DEFAULT_HTTP_PROVIDER_ID,
-  DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
-} from "./access-policy-runtime.ts";
+  type AccessProviderDescriptor,
+  AccessProviderRegistry,
+} from "./access-provider-runtime.ts";
+import { AccessSelectionPolicy } from "./access-policy-runtime.ts";
 import {
   buildCanonicalAccessIr,
   type AccessProgramDecisionTrace,
@@ -30,7 +26,7 @@ import {
   type ResolvedExecutionPlan,
   type ResolvedHttpExecution,
 } from "./access-execution-context.ts";
-import { type AccessProviderId, type BrowserExecutionOptions } from "./schemas.ts";
+import { type BrowserExecutionOptions } from "./schemas.ts";
 
 function invalidExecution(message: string, details?: string) {
   return new InvalidInputError({
@@ -40,16 +36,14 @@ function invalidExecution(message: string, details?: string) {
 }
 
 function resolveBrowserProviderWaitUntil(
-  providerId: AccessProviderId,
+  provider: AccessProviderDescriptor,
   browserOptions?: BrowserExecutionOptions,
 ) {
   if (browserOptions?.waitUntil !== undefined) {
     return browserOptions.waitUntil;
   }
 
-  return providerId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-    ? "domcontentloaded"
-    : "domcontentloaded";
+  return provider.capabilities.browserDefaults?.waitUntil ?? "domcontentloaded";
 }
 
 function shouldEnableBrowserFallbackByDefault(
@@ -84,12 +78,8 @@ function resolveTargetDomain(url: string): Effect.Effect<string, InvalidInputErr
   });
 }
 
-function makeFallbackEdges(browserProviderIds: ReadonlyArray<AccessProviderId>) {
-  const defaultBrowserProviderId = resolveModeDefaultProviderId({
-    mode: "browser",
-    providerIds: browserProviderIds,
-  });
-  if (defaultBrowserProviderId === undefined) {
+function makeFallbackEdges(browserProviders: ReadonlyArray<AccessProviderDescriptor>) {
+  if (browserProviders.length === 0) {
     return [] as const;
   }
 
@@ -99,27 +89,19 @@ function makeFallbackEdges(browserProviderIds: ReadonlyArray<AccessProviderId>) 
       kind: "browser-on-access-wall",
       fromMode: "http",
       toMode: "browser",
-      defaultTargetProviderId: defaultBrowserProviderId,
     } satisfies AccessProgramFallbackEdge,
   ] as const;
 }
 
 function buildPrograms(input: {
+  readonly providers: ReadonlyArray<AccessProviderDescriptor>;
   readonly providerIdsByMode: Readonly<{
-    readonly http: ReadonlyArray<AccessProviderId>;
-    readonly browser: ReadonlyArray<AccessProviderId>;
+    readonly http: ReadonlyArray<string>;
+    readonly browser: ReadonlyArray<string>;
   }>;
   readonly egressProfileIds: ReadonlyArray<string>;
   readonly identityProfileIds: ReadonlyArray<string>;
 }) {
-  const defaultHttpProviderId = resolveModeDefaultProviderId({
-    mode: "http",
-    providerIds: input.providerIdsByMode.http,
-  });
-  const defaultBrowserProviderId = resolveModeDefaultProviderId({
-    mode: "browser",
-    providerIds: input.providerIdsByMode.browser,
-  });
   const shared = {
     candidateProviderIdsByMode: input.providerIdsByMode,
     egressProfileIds: input.egressProfileIds,
@@ -131,27 +113,29 @@ function buildPrograms(input: {
       "host-load",
     ] as const,
   };
-  const fallbackEdges = makeFallbackEdges(input.providerIdsByMode.browser);
+  const fallbackEdges = makeFallbackEdges(
+    input.providers.filter((provider) => provider.capabilities.mode === "browser"),
+  );
 
   return [
     {
       programId: "access-preview",
       command: "access",
-      defaultProviderId: defaultHttpProviderId ?? DEFAULT_HTTP_PROVIDER_ID,
+      defaultMode: "http",
       fallbackEdges,
       ...shared,
     },
     {
       programId: "render-preview",
       command: "render",
-      defaultProviderId: defaultBrowserProviderId ?? DEFAULT_BROWSER_PROVIDER_ID,
+      defaultMode: "browser",
       fallbackEdges: [] as const,
       ...shared,
     },
     {
       programId: "extract-run",
       command: "extract",
-      defaultProviderId: defaultHttpProviderId ?? DEFAULT_HTTP_PROVIDER_ID,
+      defaultMode: "http",
       fallbackEdges,
       ...shared,
     },
@@ -167,7 +151,7 @@ function httpExecutionFromIdentity(
 }
 
 function browserExecutionFromIdentity(input: {
-  readonly providerId: AccessProviderId;
+  readonly provider: AccessProviderDescriptor;
   readonly defaultTimeoutMs: number;
   readonly execution?: AccessProgramSpecializationInput["execution"];
   readonly identity: {
@@ -183,10 +167,9 @@ function browserExecutionFromIdentity(input: {
     runtimeProfileId:
       input.execution?.browserRuntimeProfileId ??
       input.identity.browserRuntimeProfileId ??
-      (input.providerId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-        ? DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID
-        : DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID),
-    waitUntil: resolveBrowserProviderWaitUntil(input.providerId, browserOptions),
+      input.provider.capabilities.browserDefaults?.runtimeProfileId ??
+      DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+    waitUntil: resolveBrowserProviderWaitUntil(input.provider, browserOptions),
     timeoutMs: browserTimeoutMs,
     ...(browserUserAgent === undefined ? {} : { userAgent: browserUserAgent }),
   };
@@ -236,6 +219,7 @@ export const AccessProgramLinkerLive = Layer.effect(
         .sort(),
     } as const;
     const programs = buildPrograms({
+      providers,
       providerIdsByMode,
       egressProfileIds: egressProfiles.map((profile) => profile.profileId).sort(),
       identityProfileIds: identityProfiles.map((profile) => profile.profileId).sort(),
@@ -271,15 +255,20 @@ export const AccessProgramLinkerLive = Layer.effect(
           }
           const resolveIntent = ({
             defaultProviderId,
+            defaultMode,
             execution,
           }: {
-            readonly defaultProviderId: AccessProviderId;
+            readonly defaultProviderId: string;
+            readonly defaultMode: "http" | "browser";
             readonly execution: AccessProgramSpecializationInput["execution"];
           }) =>
             Effect.gen(function* () {
               const selection = yield* selectionPolicy.resolveSelection({
                 url: input.url,
                 defaultProviderId,
+                defaultMode,
+                allowUnregisteredDefaultProviderFallback:
+                  input.allowUnregisteredDefaultProviderFallback,
                 execution,
               });
               const providerId = selection.providerId;
@@ -345,7 +334,7 @@ export const AccessProgramLinkerLive = Layer.effect(
                       })()
                     : {
                         browser: browserExecutionFromIdentity({
-                          providerId,
+                          provider: providerDescriptor,
                           defaultTimeoutMs: input.defaultTimeoutMs,
                           execution,
                           identity: profiles.identity,
@@ -365,14 +354,8 @@ export const AccessProgramLinkerLive = Layer.effect(
             });
 
           const baseResolution = yield* resolveIntent({
-            defaultProviderId:
-              (yield* providerRegistry.findDescriptor(input.defaultProviderId)) !== undefined
-                ? input.defaultProviderId
-                : input.defaultProviderId === DEFAULT_HTTP_PROVIDER_ID ||
-                    input.defaultProviderId === DEFAULT_BROWSER_PROVIDER_ID ||
-                    input.defaultProviderId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-                  ? program.defaultProviderId
-                  : input.defaultProviderId,
+            defaultProviderId: input.defaultProviderId,
+            defaultMode: program.defaultMode,
             execution: input.execution,
           });
           const baseIntent = baseResolution.intent;
@@ -403,7 +386,8 @@ export const AccessProgramLinkerLive = Layer.effect(
                         : { providerId: undefined }),
                     };
                     const fallbackResolution = yield* resolveIntent({
-                      defaultProviderId: browserFallbackEdge.defaultTargetProviderId,
+                      defaultProviderId: input.defaultProviderId,
+                      defaultMode: browserFallbackEdge.toMode,
                       execution: fallbackExecution,
                     });
                     if (fallbackResolution.intent.mode !== "browser") {

@@ -28,6 +28,7 @@ import {
 } from "./sdk/error-guards.ts";
 import { InvalidInputError } from "./sdk/errors.ts";
 import {
+  AccessEngineClosedError,
   createSdkEngine,
   provideSdkEnvironment,
   type CreateSdkEngineOptions,
@@ -53,11 +54,11 @@ Usage:
   effect-scrapling pack validate --input '<json>'
   effect-scrapling pack promote --input '<json>'
   effect-scrapling access explain --url <url> [--timeout-ms <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
-  effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--mode <http|browser>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling render explain --url <url> [--timeout-ms <ms>] [--mode <browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--provider <browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling extract explain --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
-  effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
+  effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--mode <http|browser>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"]
   effect-scrapling crawl compile --input '<json>'
   effect-scrapling workflow run --input '<json>'
   effect-scrapling workflow resume --input '<json>'
@@ -71,12 +72,12 @@ Examples:
   effect-scrapling workspace config show
   effect-scrapling access explain --url "https://example.com" --provider browser-stealth --browser-wait-until domcontentloaded
   effect-scrapling access preview --url "https://example.com"
-  effect-scrapling access preview --url "https://example.com" --provider browser-stealth --browser-wait-until domcontentloaded --browser-timeout-ms 300
+  effect-scrapling access preview --url "https://example.com" --mode browser --provider browser-stealth --browser-wait-until domcontentloaded --browser-timeout-ms 300
   effect-scrapling render explain --url "https://example.com" --provider browser-basic --browser-wait-until load
   effect-scrapling render preview --url "https://example.com" --provider browser-basic --browser-wait-until load --browser-timeout-ms 300
   effect-scrapling extract explain --url "https://example.com" --selector "h1"
   effect-scrapling extract run --url "https://example.com" --selector "h1"
-  effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --provider browser-basic --browser-wait-until load
+  effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --mode browser --provider browser-basic --browser-wait-until load
 `;
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -231,6 +232,84 @@ async function withAccessEngine<A>(
   }
 }
 
+type CliAccessEngineRunner = {
+  readonly assertOpen: () => void;
+  readonly use: <A>(run: (engine: SdkEngine) => Effect.Effect<A, unknown, never>) => Promise<A>;
+  readonly close: () => Promise<void>;
+};
+
+function createCliAccessEngineRunner(
+  fetchClient?: FetchClient,
+  engineOptions?: Omit<CreateSdkEngineOptions, "fetchClient">,
+): CliAccessEngineRunner {
+  let closed = false;
+  let enginePromise: Promise<SdkEngine> | undefined;
+  let activeUses = 0;
+  let waitForDrainResolve: (() => void) | undefined;
+  let closePromise: Promise<void> | undefined;
+
+  const ensureOpen = () => {
+    if (closed) {
+      throw new AccessEngineClosedError({
+        message: "CLI host is closed",
+        details: "Create a new CLI host before executing additional commands.",
+      });
+    }
+  };
+
+  const releaseUse = () => {
+    activeUses -= 1;
+    if (activeUses === 0) {
+      waitForDrainResolve?.();
+      waitForDrainResolve = undefined;
+    }
+  };
+
+  const getEngine = () => {
+    ensureOpen();
+    enginePromise ??= Effect.runPromise(
+      createSdkEngine({
+        ...engineOptions,
+        ...(fetchClient === undefined ? {} : { fetchClient }),
+      }),
+    ).catch((error) => {
+      enginePromise = undefined;
+      throw error;
+    });
+    return enginePromise;
+  };
+
+  return {
+    assertOpen: ensureOpen,
+    use: async (run) => {
+      ensureOpen();
+      activeUses += 1;
+      try {
+        return await getEngine().then((engine) => runEffect(run(engine)));
+      } finally {
+        releaseUse();
+      }
+    },
+    close: async () => {
+      closed = true;
+      closePromise ??= (async () => {
+        if (activeUses > 0) {
+          await new Promise<void>((resolve) => {
+            waitForDrainResolve = resolve;
+          });
+        }
+
+        const activeEngine = await enginePromise?.catch(() => undefined);
+        enginePromise = undefined;
+        if (activeEngine !== undefined) {
+          await Effect.runPromise(activeEngine.close);
+        }
+      })();
+      await closePromise;
+    },
+  };
+}
+
 export type CliExecutionResult = {
   readonly exitCode: number;
   readonly output: string;
@@ -324,6 +403,18 @@ function toCliDecisionTrace(trace: {
 }
 
 function toCliErrorResult(error: unknown): CliExecutionResult {
+  if (error instanceof AccessEngineClosedError) {
+    return {
+      exitCode: 1,
+      output: encodeCliJson({
+        ok: false,
+        code: "AccessEngineClosedError",
+        message: error.message,
+        details: error.details ?? null,
+      }),
+    };
+  }
+
   if (isInvalidInputError(error)) {
     return {
       exitCode: 2,
@@ -411,61 +502,86 @@ export async function executeCli(
   fetchClient?: FetchClient,
   engineOptions?: CliHostEngineOptions,
 ): Promise<CliExecutionResult> {
+  return executeCliWithRunner(args, {
+    assertOpen: () => {},
+    use: (run) => withAccessEngine(run, fetchClient, engineOptions),
+    close: async () => {},
+  });
+}
+
+async function executeCliWithRunner(
+  args: string[],
+  engineRunner: CliAccessEngineRunner,
+): Promise<CliExecutionResult> {
   const parsed = parseArgs(args);
   const [command, subcommand, action, extra] = parsed.positionals;
 
   try {
+    engineRunner.assertOpen();
+
     if (!command || command === "help" || command === "--help" || command === "-h") {
       return { exitCode: 0, output: USAGE_TEXT };
     }
 
-    if (command === "doctor" || (command === "workspace" && subcommand === "doctor")) {
-      const doctor = await withAccessEngine(
-        (engine) => engine.runDoctor(),
-        fetchClient,
-        engineOptions,
-      );
+    if (command === "doctor") {
+      assertNoExtraAction(subcommand, ["doctor"]);
+      assertAllowedOptions(parsed.options, [], ["doctor"]);
+      const doctor = await engineRunner.use((engine) => engine.runDoctor());
+      return { exitCode: doctor.ok ? 0 : 1, output: encodeCliJson(doctor) };
+    }
+
+    if (command === "workspace" && subcommand === "doctor") {
+      assertNoExtraAction(action, ["workspace", "doctor"]);
+      assertAllowedOptions(parsed.options, [], ["workspace", "doctor"]);
+      const doctor = await engineRunner.use((engine) => engine.runDoctor());
       return { exitCode: doctor.ok ? 0 : 1, output: encodeCliJson(doctor) };
     }
 
     if (command === "workspace" && subcommand === "config" && action === "show") {
       assertNoExtraAction(extra, ["workspace", "config", "show"]);
+      assertAllowedOptions(parsed.options, [], ["workspace", "config", "show"]);
       const config = await runEffect(provideSdkEnvironment(showWorkspaceConfig()));
       return { exitCode: 0, output: encodeCliJson(config) };
     }
 
     if (command === "target" && subcommand === "import") {
       assertNoExtraAction(action, ["target", "import"]);
+      assertAllowedOptions(parsed.options, ["input"], ["target", "import"]);
       const result = await runEffect(runTargetImportOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "target" && subcommand === "list") {
       assertNoExtraAction(action, ["target", "list"]);
+      assertAllowedOptions(parsed.options, ["input"], ["target", "list"]);
       const result = await runEffect(runTargetListOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "pack" && subcommand === "create") {
       assertNoExtraAction(action, ["pack", "create"]);
+      assertAllowedOptions(parsed.options, ["input"], ["pack", "create"]);
       const result = await runEffect(runPackCreateOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "pack" && subcommand === "inspect") {
       assertNoExtraAction(action, ["pack", "inspect"]);
+      assertAllowedOptions(parsed.options, ["input"], ["pack", "inspect"]);
       const result = await runEffect(runPackInspectOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "pack" && subcommand === "validate") {
       assertNoExtraAction(action, ["pack", "validate"]);
+      assertAllowedOptions(parsed.options, ["input"], ["pack", "validate"]);
       const result = await runEffect(runPackValidateOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "pack" && subcommand === "promote") {
       assertNoExtraAction(action, ["pack", "promote"]);
+      assertAllowedOptions(parsed.options, ["input"], ["pack", "promote"]);
       const result = await runEffect(runPackPromoteOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
@@ -492,11 +608,7 @@ export async function executeCli(
         ["access", "preview"],
       );
       const payload = normalizeCliPayload("access", parsed.options);
-      const result = await withAccessEngine(
-        (engine) => engine.accessPreview(payload),
-        fetchClient,
-        engineOptions,
-      );
+      const result = await engineRunner.use((engine) => engine.accessPreview(payload));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
@@ -522,11 +634,7 @@ export async function executeCli(
         ["access", "explain"],
       );
       const payload = normalizeCliPayload("access", parsed.options);
-      const result = await withAccessEngine(
-        (engine) => engine.explainAccessPreview(payload),
-        fetchClient,
-        engineOptions,
-      );
+      const result = await engineRunner.use((engine) => engine.explainAccessPreview(payload));
       return { exitCode: 0, output: encodeCliJson(toCliDecisionTrace(result)) };
     }
 
@@ -551,11 +659,7 @@ export async function executeCli(
         ["render", "preview"],
       );
       const payload = normalizeCliPayload("render", parsed.options);
-      const result = await withAccessEngine(
-        (engine) => engine.renderPreview(payload),
-        fetchClient,
-        engineOptions,
-      );
+      const result = await engineRunner.use((engine) => engine.renderPreview(payload));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
@@ -580,11 +684,7 @@ export async function executeCli(
         ["render", "explain"],
       );
       const payload = normalizeCliPayload("render", parsed.options);
-      const result = await withAccessEngine(
-        (engine) => engine.explainRenderPreview(payload),
-        fetchClient,
-        engineOptions,
-      );
+      const result = await engineRunner.use((engine) => engine.explainRenderPreview(payload));
       return { exitCode: 0, output: encodeCliJson(toCliDecisionTrace(result)) };
     }
 
@@ -622,11 +722,7 @@ export async function executeCli(
         command === "extract" ? ["extract", "run"] : ["scrape"],
       );
       const payload = normalizeCliPayload("extract", parsed.options);
-      const result = await withAccessEngine(
-        (engine) => engine.extractRun(payload),
-        fetchClient,
-        engineOptions,
-      );
+      const result = await engineRunner.use((engine) => engine.extractRun(payload));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
@@ -656,52 +752,55 @@ export async function executeCli(
         ["extract", "explain"],
       );
       const payload = normalizeCliPayload("extract", parsed.options);
-      const result = await withAccessEngine(
-        (engine) => engine.explainExtractRun(payload),
-        fetchClient,
-        engineOptions,
-      );
+      const result = await engineRunner.use((engine) => engine.explainExtractRun(payload));
       return { exitCode: 0, output: encodeCliJson(toCliDecisionTrace(result)) };
     }
 
     if (command === "crawl" && subcommand === "compile") {
       assertNoExtraAction(action, ["crawl", "compile"]);
+      assertAllowedOptions(parsed.options, ["input"], ["crawl", "compile"]);
       const result = await runEffect(runCrawlCompileOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "workflow" && subcommand === "run") {
       assertNoExtraAction(action, ["workflow", "run"]);
+      assertAllowedOptions(parsed.options, ["input"], ["workflow", "run"]);
       const result = await runEffect(runWorkflowRunOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "workflow" && subcommand === "resume") {
       assertNoExtraAction(action, ["workflow", "resume"]);
+      assertAllowedOptions(parsed.options, ["input"], ["workflow", "resume"]);
       const result = await runEffect(runWorkflowResumeOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "workflow" && subcommand === "inspect") {
       assertNoExtraAction(action, ["workflow", "inspect"]);
+      assertAllowedOptions(parsed.options, ["input"], ["workflow", "inspect"]);
       const result = await runEffect(runWorkflowInspectOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "quality" && subcommand === "diff") {
       assertNoExtraAction(action, ["quality", "diff"]);
+      assertAllowedOptions(parsed.options, ["input"], ["quality", "diff"]);
       const result = await runEffect(runSnapshotDiffOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "quality" && subcommand === "verify") {
       assertNoExtraAction(action, ["quality", "verify"]);
+      assertAllowedOptions(parsed.options, ["input"], ["quality", "verify"]);
       const result = await runEffect(runQualityVerifyOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
 
     if (command === "quality" && subcommand === "compare") {
       assertNoExtraAction(action, ["quality", "compare"]);
+      assertAllowedOptions(parsed.options, ["input"], ["quality", "compare"]);
       const result = await runEffect(runQualityCompareOperation(parseJsonInput(parsed.options)));
       return { exitCode: 0, output: encodeCliJson(result) };
     }
@@ -721,8 +820,50 @@ export function createCliHost(
     readonly engine?: CliHostEngineOptions | undefined;
   } = {},
 ) {
+  const engineRunner = createCliAccessEngineRunner(options.fetchClient, options.engine);
+  let closed = false;
+  let activeCommands = 0;
+  let waitForDrainResolve: (() => void) | undefined;
+  let closePromise: Promise<void> | undefined;
+
+  const releaseCommand = () => {
+    activeCommands -= 1;
+    if (activeCommands === 0) {
+      waitForDrainResolve?.();
+      waitForDrainResolve = undefined;
+    }
+  };
+
   return {
-    execute: (args: string[]) => executeCli(args, options.fetchClient, options.engine),
+    execute: async (args: string[]) => {
+      if (closed) {
+        return toCliErrorResult(
+          new AccessEngineClosedError({
+            message: "CLI host is closed",
+            details: "Create a new CLI host before executing additional commands.",
+          }),
+        );
+      }
+
+      activeCommands += 1;
+      try {
+        return await executeCliWithRunner(args, engineRunner);
+      } finally {
+        releaseCommand();
+      }
+    },
+    close: async () => {
+      closed = true;
+      closePromise ??= (async () => {
+        if (activeCommands > 0) {
+          await new Promise<void>((resolve) => {
+            waitForDrainResolve = resolve;
+          });
+        }
+        await engineRunner.close();
+      })();
+      await closePromise;
+    },
   } as const;
 }
 

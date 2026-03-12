@@ -3,8 +3,9 @@
 - Status: Accepted
 - Date: 2026-03-12
 - Decision Owners: effect-scrapling maintainers
-- Implementation Status: Implemented in the current SDK runtime; follow-up
-  optimization work remains open
+- Implementation Status: Implemented in the current SDK runtime and validated
+  against the focused E3 benchmark plus sampled live E9 regression traffic;
+  release-grade evidence still requires the full-corpus live suite
 
 ## Implementation Snapshot
 
@@ -19,6 +20,12 @@ ADR in the SDK runtime:
 - one public authoring model with a narrowed SDK facade in
   [`src/sdk/public.ts`](../../src/sdk/public.ts) and
   [`src/sdk/engine.ts`](../../src/sdk/engine.ts)
+- mode-aware default and fallback resolution, with explicit provider overrides
+  still remaining caller-controlled input, through
+  [`src/sdk/access-policy-runtime.ts`](../../src/sdk/access-policy-runtime.ts),
+  [`src/sdk/access-program-linker.ts`](../../src/sdk/access-program-linker.ts),
+  [`src/sdk/access-runtime.ts`](../../src/sdk/access-runtime.ts), and
+  [`src/sdk/access-provider-runtime.ts`](../../src/sdk/access-provider-runtime.ts)
 - host-specific assembly through shared CLI/API/SDK boundaries in
   [`src/standalone.ts`](../../src/standalone.ts),
   [`src/api.ts`](../../src/api.ts), and
@@ -28,16 +35,74 @@ ADR in the SDK runtime:
   and
   [`src/sdk/access-allocation-plugin-runtime.ts`](../../src/sdk/access-allocation-plugin-runtime.ts)
 
-What remains open is not the foundational redesign itself, but follow-up work
-on top of it, for example:
+What remains open outside this ADR's acceptance scope is follow-up work on top
+of the implemented kernel seam, for example:
 
-- reducing the still-broad internal/public export surface in
-  [`src/sdk/index.ts`](../../src/sdk/index.ts)
-- pushing more selection semantics out of provider-centric runtime structures
 - adding more aggressive prelinked or cached specialization layers above the
   linker
 - broadening transport realizers beyond the current proxy-capable execution
   backends
+- running the full-corpus live suite when release evidence, parity, or canary
+  confidence matters more than fast-regression turnaround
+
+## Post-Implementation Validation
+
+The implementation was re-validated on 2026-03-12 with both the focused E3
+runtime benchmark and the live E9 fast-regression suite. The artifacts cited
+below were generated on 2026-03-12 while validating the repository state under
+test for those benchmark runs:
+
+- [`docs/artifacts/e3-access-runtime-scorecard.json`](../artifacts/e3-access-runtime-scorecard.json)
+  reported `status: "pass"` with:
+  - `generatedAt = 2026-03-12T05:28:02.547Z`
+  - `baselineAccess.p95Ms = 0.67`
+  - `candidateAccess.p95Ms = 7.2`
+  - `retryRecovery.p95Ms = 260.582`
+  - all three metrics stayed inside the current budgets of `25`, `50`, and
+    `300` milliseconds respectively
+- [`docs/artifacts/e9-benchmark-suite-fast-regression-artifact.json`](../artifacts/e9-benchmark-suite-fast-regression-artifact.json)
+  reported `status: "pass"` with:
+  - `generatedAt = 2026-03-12T05:28:06.802Z`
+  - `totalAttemptCount = 640`
+  - `totalSweepCount = 5`
+  - `httpSuccessRate = 0.898`
+  - `browserSuccessRate = 0.867`
+  - `httpBestThroughputPagesPerMinute = 791.617`
+  - `browserBestThroughputPagesPerMinute = 80.279`
+  - `httpLocalFailureCount = 0`
+  - `browserLocalFailureCount = 0`
+
+Relative to the previously committed fast-regression artifact generated at
+`2026-03-12T02:51:45.844Z`, the sampled live suite moved as follows:
+
+- HTTP success rate improved from `0.893` to `0.898`
+- browser success rate improved from `0.844` to `0.867`
+- best HTTP throughput moved from `922.659` to `791.617` pages per minute
+- best browser throughput improved from `60.901` to `80.279` pages per minute
+
+The sampled live artifact does not surface direct evidence of local kernel or
+runtime faults. Its observed failures cluster on external domain behavior
+instead:
+
+- browser and HTTP access walls on `ebay.com`
+- browser access walls on `zbozi.cz`
+- smaller residual failures on `lidl-shop.cz`, `mp.cz`, and `shein.com`
+- a small number of browser navigation timeouts, with no recovered-browser or
+  local runtime fault spikes
+- skipped `scrapling` and `canary` phases in the sampled preset, so a
+  full-corpus run remains the right release-evidence follow-up when needed
+
+The benchmark follow-up therefore changes the implementation assessment in one
+important way: the current ADR seam is not only structurally implemented, but
+also validated under both focused runtime pressure and sampled live traffic.
+The mixed HTTP/browser throughput movement across sampled live runs is best read
+as possible live-environment variance, not as definitive proof of a local kernel
+regression, because the focused E3 benchmark stayed healthy and both local-
+failure counters remained at zero in the sampled live suite. That is an
+inference from the benchmark artifacts, not a proof. What remains open after
+this validation is optimization, site-specific hardening, and full-corpus
+release evidence, not a foundational correction to the canonical access kernel
+design.
 
 ## Context
 
@@ -60,10 +125,11 @@ The architecture therefore must optimize for all of the following at once:
 - a public API that downstream TypeScript consumers can use without importing
   internal orchestration machinery
 
-## Current State And Pain Points
+## Pre-Implementation State And Pain Points
 
-The current implementation contains valuable pieces that should influence the
-next design, but it is not a suitable target architecture.
+At decision time, the repository already contained valuable pieces that should
+influence the target design, but that pre-implementation state was not yet a
+suitable target architecture.
 
 ### Good Parts Worth Preserving
 
@@ -772,7 +838,7 @@ true after implementation:
 
 ## Follow-Up Work
 
-Implementation should produce follow-up design and implementation artifacts for:
+Implementation produced follow-up design and implementation artifacts for:
 
 - public SDK facade
 - CLI host assembler

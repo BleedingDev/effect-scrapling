@@ -303,6 +303,7 @@ function explainExecution(input: {
       url: validatedUrl,
       defaultTimeoutMs: request.timeoutMs,
       defaultProviderId: input.defaultProviderId,
+      allowUnregisteredDefaultProviderFallback: true,
       execution: request.execution,
     });
 

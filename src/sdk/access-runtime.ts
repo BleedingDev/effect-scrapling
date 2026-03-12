@@ -1,22 +1,13 @@
 import { Effect, Layer, ServiceMap } from "effect";
 import { AccessProgramLinker } from "./access-program-linker.ts";
 import { AccessProfileSelectionPolicy } from "./access-profile-policy-runtime.ts";
+import { DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID } from "./access-profile-runtime.ts";
 import {
-  DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
-  DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID,
-} from "./access-profile-runtime.ts";
-import { AccessProviderRegistry } from "./access-provider-runtime.ts";
+  type AccessProviderDescriptor,
+  AccessProviderRegistry,
+} from "./access-provider-runtime.ts";
 import { AccessSelectionPolicy } from "./access-policy-runtime.ts";
-import {
-  DEFAULT_BROWSER_PROVIDER_ID,
-  DEFAULT_HTTP_PROVIDER_ID,
-  DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
-} from "./access-provider-ids.ts";
-export {
-  DEFAULT_BROWSER_PROVIDER_ID,
-  DEFAULT_HTTP_PROVIDER_ID,
-  DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
-} from "./access-provider-ids.ts";
+export * from "./access-provider-ids.ts";
 import {
   makeBrowserPoolKey,
   materializeExecutionContext,
@@ -42,6 +33,8 @@ export type AccessExecutionInput = {
   readonly defaultTimeoutMs: number;
   readonly execution?: AccessExecutionProfile | undefined;
   readonly defaultProviderId: AccessProviderId;
+  readonly defaultModeHint?: "http" | "browser" | undefined;
+  readonly allowUnregisteredDefaultProviderFallback?: boolean | undefined;
 };
 
 export { toExecutionMetadata } from "./access-execution-metadata.ts";
@@ -73,16 +66,14 @@ function invalidExecution(message: string, details?: string) {
 }
 
 function resolveBrowserProviderWaitUntil(
-  providerId: AccessProviderId,
+  provider: AccessProviderDescriptor,
   browserOptions?: BrowserExecutionOptions,
 ) {
   if (browserOptions?.waitUntil !== undefined) {
     return browserOptions.waitUntil;
   }
 
-  return providerId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-    ? "domcontentloaded"
-    : "domcontentloaded";
+  return provider.capabilities.browserDefaults?.waitUntil ?? "domcontentloaded";
 }
 
 function resolveTargetDomain(url: string): Effect.Effect<string, InvalidInputError> {
@@ -124,7 +115,7 @@ function httpExecutionFromIdentity(
 }
 
 function browserExecutionFromIdentity(input: {
-  readonly providerId: AccessProviderId;
+  readonly provider: AccessProviderDescriptor;
   readonly defaultTimeoutMs: number;
   readonly execution?: AccessExecutionInput["execution"];
   readonly identity: {
@@ -140,10 +131,9 @@ function browserExecutionFromIdentity(input: {
     runtimeProfileId:
       input.execution?.browserRuntimeProfileId ??
       input.identity.browserRuntimeProfileId ??
-      (input.providerId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-        ? DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID
-        : DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID),
-    waitUntil: resolveBrowserProviderWaitUntil(input.providerId, browserOptions),
+      input.provider.capabilities.browserDefaults?.runtimeProfileId ??
+      DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
+    waitUntil: resolveBrowserProviderWaitUntil(input.provider, browserOptions),
     timeoutMs: browserTimeoutMs,
     ...(browserUserAgent === undefined ? {} : { userAgent: browserUserAgent }),
   };
@@ -153,38 +143,19 @@ function dedupeWarnings(...inputs: ReadonlyArray<ReadonlyArray<string>>) {
   return [...new Set(inputs.flatMap((warnings) => warnings))];
 }
 
-function shouldInferBrowserCommand(input: {
-  readonly defaultProviderId: AccessProviderId;
-  readonly ir: CanonicalAccessIr;
-}) {
-  const knownDefaultProvider = input.ir.providers.find(
-    (provider) => provider.id === input.defaultProviderId,
+function shouldInferBrowserCommand(ir: CanonicalAccessIr) {
+  const hasBrowserProvider = ir.providers.some(
+    (provider) => provider.capabilities.mode === "browser",
   );
-  if (knownDefaultProvider?.capabilities.mode === "browser") {
-    return true;
-  }
+  const hasHttpProvider = ir.providers.some((provider) => provider.capabilities.mode === "http");
 
-  if (
-    input.defaultProviderId !== DEFAULT_BROWSER_PROVIDER_ID &&
-    input.defaultProviderId !== DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-  ) {
-    const hasBrowserProvider = input.ir.providers.some(
-      (provider) => provider.capabilities.mode === "browser",
-    );
-    const hasHttpProvider = input.ir.providers.some(
-      (provider) => provider.capabilities.mode === "http",
-    );
-
-    return hasBrowserProvider && !hasHttpProvider;
-  }
-
-  return input.ir.providers.some((provider) => provider.capabilities.mode === "browser");
+  return hasBrowserProvider && !hasHttpProvider;
 }
 
 function inferExecutionCommand(input: {
   readonly command?: AccessProgramCommandKind | undefined;
   readonly execution?: AccessExecutionProfile | undefined;
-  readonly defaultProviderId: AccessProviderId;
+  readonly defaultModeHint?: "http" | "browser" | undefined;
   readonly ir: CanonicalAccessIr;
 }): AccessProgramCommandKind {
   if (input.command !== undefined) {
@@ -203,25 +174,11 @@ function inferExecutionCommand(input: {
     return "access";
   }
 
-  const explicitExecutionProvider = input.execution?.providerId;
-  if (explicitExecutionProvider !== undefined) {
-    const explicitProviderDescriptor = input.ir.providers.find(
-      (provider) => provider.id === explicitExecutionProvider,
-    );
-    if (explicitProviderDescriptor?.capabilities.mode === "browser") {
-      return "render";
-    }
-    if (explicitProviderDescriptor?.capabilities.mode === "http") {
-      return "access";
-    }
+  if (input.defaultModeHint !== undefined) {
+    return input.defaultModeHint === "browser" ? "render" : "access";
   }
 
-  return shouldInferBrowserCommand({
-    defaultProviderId: input.defaultProviderId,
-    ir: input.ir,
-  })
-    ? "render"
-    : "access";
+  return shouldInferBrowserCommand(input.ir) ? "render" : "access";
 }
 
 export const AccessExecutionRuntimeLive = Layer.effect(
@@ -239,7 +196,7 @@ export const AccessExecutionRuntimeLive = Layer.effect(
           const inferredCommand = inferExecutionCommand({
             command: input.command,
             execution: input.execution,
-            defaultProviderId: input.defaultProviderId,
+            defaultModeHint: input.defaultModeHint,
             ir,
           });
           const program = ir.programs.find((candidate) => candidate.command === inferredCommand);
@@ -254,15 +211,20 @@ export const AccessExecutionRuntimeLive = Layer.effect(
 
           const resolveIntent = ({
             defaultProviderId,
+            defaultMode,
             execution,
           }: {
             readonly defaultProviderId: AccessProviderId;
+            readonly defaultMode: "http" | "browser";
             readonly execution: AccessExecutionInput["execution"];
           }) =>
             Effect.gen(function* () {
               const selection = yield* selectionPolicy.resolveSelection({
                 url: input.url,
                 defaultProviderId,
+                defaultMode,
+                allowUnregisteredDefaultProviderFallback:
+                  input.allowUnregisteredDefaultProviderFallback,
                 execution,
               });
               const providerId = selection.providerId;
@@ -328,7 +290,7 @@ export const AccessExecutionRuntimeLive = Layer.effect(
                     })()
                   : {
                       browser: browserExecutionFromIdentity({
-                        providerId,
+                        provider: providerDescriptor,
                         defaultTimeoutMs: input.defaultTimeoutMs,
                         execution,
                         identity: profiles.identity,
@@ -338,20 +300,9 @@ export const AccessExecutionRuntimeLive = Layer.effect(
               } satisfies ResolvedExecutionPlan;
             });
 
-          const explicitDefaultProvider = yield* providerRegistry.findDescriptor(
-            input.defaultProviderId,
-          );
-          const effectiveDefaultProviderId =
-            explicitDefaultProvider !== undefined
-              ? input.defaultProviderId
-              : input.defaultProviderId === DEFAULT_HTTP_PROVIDER_ID ||
-                  input.defaultProviderId === DEFAULT_BROWSER_PROVIDER_ID ||
-                  input.defaultProviderId === DEFAULT_STEALTH_BROWSER_PROVIDER_ID
-                ? program.defaultProviderId
-                : input.defaultProviderId;
-
           const baseIntent = yield* resolveIntent({
-            defaultProviderId: effectiveDefaultProviderId,
+            defaultProviderId: input.defaultProviderId,
+            defaultMode: program.defaultMode,
             execution: input.execution,
           });
 
@@ -384,7 +335,8 @@ export const AccessExecutionRuntimeLive = Layer.effect(
               : { providerId: undefined }),
           };
           const fallbackIntent = yield* resolveIntent({
-            defaultProviderId: browserFallbackEdge.defaultTargetProviderId,
+            defaultProviderId: input.defaultProviderId,
+            defaultMode: browserFallbackEdge.toMode,
             execution: fallbackExecution,
           });
           const fallbackBrowser =

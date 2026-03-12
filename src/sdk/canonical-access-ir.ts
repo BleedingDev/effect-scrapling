@@ -4,7 +4,7 @@ import {
   type ResolvedIdentityProfile,
 } from "./access-profile-runtime.ts";
 import { type AccessProviderDescriptor } from "./access-provider-runtime.ts";
-import { type AccessExecutionProfile, type AccessProviderId } from "./schemas.ts";
+import { type AccessExecutionProfile, type AccessMode, type AccessProviderId } from "./schemas.ts";
 
 export type AccessProgramCommandKind = "access" | "render" | "extract";
 
@@ -13,13 +13,12 @@ export type AccessProgramFallbackEdge = {
   readonly kind: "browser-on-access-wall";
   readonly fromMode: "http";
   readonly toMode: "browser";
-  readonly defaultTargetProviderId: AccessProviderId;
 };
 
 export type ParameterizedAccessProgram = {
   readonly programId: string;
   readonly command: AccessProgramCommandKind;
-  readonly defaultProviderId: AccessProviderId;
+  readonly defaultMode: AccessMode;
   readonly candidateProviderIdsByMode: Readonly<{
     readonly http: ReadonlyArray<AccessProviderId>;
     readonly browser: ReadonlyArray<AccessProviderId>;
@@ -57,6 +56,7 @@ export type AccessProgramSpecializationInput = {
   readonly url: string;
   readonly defaultTimeoutMs: number;
   readonly defaultProviderId: AccessProviderId;
+  readonly allowUnregisteredDefaultProviderFallback?: boolean | undefined;
   readonly execution?: AccessExecutionProfile | undefined;
 };
 

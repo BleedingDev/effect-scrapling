@@ -328,6 +328,7 @@ export function accessPreview(
       command: "access",
       url: validatedUrl,
       defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+      allowUnregisteredDefaultProviderFallback: true,
       defaultTimeoutMs: request.timeoutMs,
       execution: request.execution,
     });
@@ -383,6 +384,7 @@ export function renderPreview(
       command: "render",
       url: validatedUrl,
       defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+      allowUnregisteredDefaultProviderFallback: true,
       defaultTimeoutMs: request.timeoutMs,
       execution: request.execution,
     });
@@ -466,6 +468,7 @@ export function extractRun(
       command: "extract",
       url: validatedUrl,
       defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+      allowUnregisteredDefaultProviderFallback: true,
       defaultTimeoutMs: request.timeoutMs,
       execution: request.execution,
     });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@effect-native/bun-test";
+import { beforeEach, describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
 import { createCliHost, executeCli } from "../../src/standalone.ts";
@@ -74,6 +74,10 @@ function makeSyntheticBrowserModule() {
 }
 
 describe("cli app", () => {
+  beforeEach(() => {
+    mock.restore();
+  });
+
   it("executes access preview with shared schema decoding instead of manual flag parsing", async () => {
     const result = await executeCli(
       [
@@ -131,20 +135,115 @@ describe("cli app", () => {
         modules: [makeSyntheticBrowserModule()],
       },
     });
-    const result = await host.execute([
+    try {
+      const result = await host.execute([
+        "access",
+        "preview",
+        "--url",
+        "https://example.com/browser-only",
+        "--mode",
+        "browser",
+        "--provider",
+        "synthetic-browser",
+      ]);
+      const payload = JSON.parse(result.output);
+
+      expect(result.exitCode).toBe(0);
+      expect(payload.command).toBe("access preview");
+      expect(payload.data.execution.providerId).toBe("synthetic-browser");
+      expect(payload.data.finalUrl).toBe("https://example.com/browser-only");
+    } finally {
+      await host.close();
+    }
+  });
+
+  it("fails closed after a CLI host is disposed", async () => {
+    const host = createCliHost();
+
+    await host.close();
+
+    const result = await host.execute(["doctor"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(1);
+    expect(payload.code).toBe("AccessEngineClosedError");
+    expect(payload.message).toContain("CLI host is closed");
+  });
+
+  it("fails closed for non-engine CLI commands after a CLI host is disposed", async () => {
+    const host = createCliHost();
+
+    await host.close();
+
+    const result = await host.execute(["workspace", "config", "show"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(1);
+    expect(payload.code).toBe("AccessEngineClosedError");
+    expect(payload.message).toContain("CLI host is closed");
+  });
+
+  it("fails closed for help commands after a CLI host is disposed", async () => {
+    const host = createCliHost();
+
+    await host.close();
+
+    const result = await host.execute(["help"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(1);
+    expect(payload.code).toBe("AccessEngineClosedError");
+    expect(payload.message).toContain("CLI host is closed");
+  });
+
+  it("lets in-flight CLI commands finish before closing the host", async () => {
+    let resolveFetch: ((response: Response) => void) | undefined;
+    let notifyFetchStarted: (() => void) | undefined;
+    const fetchStarted = new Promise<void>((resolve) => {
+      notifyFetchStarted = resolve;
+    });
+    const pendingResponse = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const host = createCliHost({
+      fetchClient: async (input) => {
+        notifyFetchStarted?.();
+
+        const response = await pendingResponse;
+        Object.defineProperty(response, "url", {
+          value: new Request(input).url,
+          configurable: true,
+        });
+        return response;
+      },
+    });
+
+    const commandPromise = host.execute([
       "access",
       "preview",
       "--url",
-      "https://example.com/browser-only",
-      "--provider",
-      "synthetic-browser",
+      "https://example.com/articles/effect-scrapling",
     ]);
+
+    await fetchStarted;
+
+    const closePromise = host.close();
+
+    resolveFetch?.(
+      new Response("<html><head><title>Effect Scrapling</title></head></html>", {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      }),
+    );
+
+    const result = await commandPromise;
     const payload = JSON.parse(result.output);
+
+    await closePromise;
 
     expect(result.exitCode).toBe(0);
     expect(payload.command).toBe("access preview");
-    expect(payload.data.execution.providerId).toBe("synthetic-browser");
-    expect(payload.data.finalUrl).toBe("https://example.com/browser-only");
+    expect(payload.data.finalUrl).toBe("https://example.com/articles/effect-scrapling");
   });
 
   it("emits driver-centric decision traces for CLI explain commands", async () => {
@@ -153,6 +252,8 @@ describe("cli app", () => {
       "explain",
       "--url",
       "https://example.com/browser-only",
+      "--mode",
+      "browser",
       "--provider",
       "browser-basic",
       "--browser-wait-until",
@@ -179,6 +280,24 @@ describe("cli app", () => {
     expect(payload.ok).toBe(true);
     expect(payload.data.ok).toBe(true);
     expect(payload.warnings).toEqual([]);
+  });
+
+  it("rejects extra positional segments on doctor", async () => {
+    const result = await executeCli(["doctor", "extra"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(2);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toContain("Unexpected positional segment");
+  });
+
+  it("rejects unsupported options on doctor", async () => {
+    const result = await executeCli(["doctor", "--url", "https://example.com"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(2);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toContain("Unsupported option");
   });
 
   it("supports the workspace doctor alias through the shared command core", async () => {
@@ -218,6 +337,24 @@ describe("cli app", () => {
     expect(result.exitCode).toBe(2);
     expect(payload.code).toBe("InvalidInputError");
     expect(payload.message).toContain("Unexpected positional segment");
+  });
+
+  it("rejects unsupported options on workspace config show", async () => {
+    const result = await executeCli(["workspace", "config", "show", "--bogus", "1"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(2);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toContain("Unsupported option");
+  });
+
+  it("rejects unsupported options on input-driven commands", async () => {
+    const result = await executeCli(["target", "list", "--input", "{}", "--bogus", "1"]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(2);
+    expect(payload.code).toBe("InvalidInputError");
+    expect(payload.message).toContain("Unsupported option");
   });
 
   it("supports the scrape alias for extract run", async () => {
@@ -352,6 +489,8 @@ describe("cli app", () => {
         "preview",
         "--url",
         "https://example.com/articles/effect-scrapling",
+        "--mode",
+        "browser",
         "--provider",
         "browser-basic",
       ]);
@@ -546,5 +685,20 @@ describe("cli app", () => {
     expect(result.exitCode).toBe(2);
     expect(payload.code).toBe("InvalidInputError");
     expect(payload.details).toContain("effect-scrapling help");
+  });
+
+  it("documents explicit browser mode for provider-pinned access and extract commands", async () => {
+    const result = await executeCli(["help"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.output).toContain(
+      "access preview --url <url> [--timeout-ms <ms>] [--mode <http|browser>]",
+    );
+    expect(result.output).toContain(
+      'access preview --url "https://example.com" --mode browser --provider browser-stealth',
+    );
+    expect(result.output).toContain(
+      'extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --mode browser --provider browser-basic',
+    );
   });
 });

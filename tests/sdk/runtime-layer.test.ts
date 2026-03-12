@@ -192,6 +192,7 @@ describe("sdk runtime layer", () => {
           const selection = yield* selectionPolicy.resolveSelection({
             url: "https://example.com/managed-runtime-selection",
             defaultProviderId: "managed-unblocker",
+            defaultMode: "browser",
           });
 
           expect(selection.providerId).toBe("managed-unblocker");

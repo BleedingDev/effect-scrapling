@@ -1120,6 +1120,7 @@ async function resolveBenchmarkExecutionPlan(input: {
         url: input.url,
         defaultTimeoutMs: input.defaultTimeoutMs,
         defaultProviderId: input.defaultProviderId,
+        allowUnregisteredDefaultProviderFallback: true,
         execution: input.execution,
       });
     }).pipe(input.provideRuntime),
