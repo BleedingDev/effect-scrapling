@@ -73,8 +73,8 @@ test for those benchmark runs:
   - `browserLocalFailureCount = 0`
 
 The sampled live artifact does not surface direct evidence of local kernel or
-runtime faults. Its observed failures cluster on external domain behavior
-instead:
+runtime faults. Its observed failures are dominated by specific domains and
+browser-side categories rather than recorded local-failure counters:
 
 - `ebay.com` appeared in both the top HTTP and top browser failure-domain lists
 - `zbozi.cz` appeared in the top browser failure-domain list
@@ -96,7 +96,8 @@ follow-up remains concrete:
 - review browser failure categories and top failing domains
 - prioritize diagnostics for `ebay.com`, `zbozi.cz`, and `lidl-shop.cz`
 - run parity and canary phases separately, or the full-corpus suite, when
-  definitive release evidence is needed
+  competitor evidence, high-friction evidence, or definitive release evidence
+  is needed
 
 ## Context
 
