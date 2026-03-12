@@ -62,47 +62,38 @@ test for those benchmark runs:
     `300` milliseconds respectively
 - [`docs/artifacts/e9-benchmark-suite-fast-regression-artifact.json`](../artifacts/e9-benchmark-suite-fast-regression-artifact.json)
   reported `status: "pass"` with:
-  - `generatedAt = 2026-03-12T06:30:06.250Z`
+  - `generatedAt = 2026-03-12T06:43:35.110Z`
   - `totalAttemptCount = 640`
   - `totalSweepCount = 5`
   - `httpSuccessRate = 0.896`
-  - `browserSuccessRate = 0.867`
-  - `httpBestThroughputPagesPerMinute = 1571.659`
-  - `browserBestThroughputPagesPerMinute = 89.993`
+  - `browserSuccessRate = 0.863`
+  - `httpBestThroughputPagesPerMinute = 1640.791`
+  - `browserBestThroughputPagesPerMinute = 78.072`
   - `httpLocalFailureCount = 0`
   - `browserLocalFailureCount = 0`
-
-Relative to the previously committed fast-regression artifact generated at
-`2026-03-12T05:28:06.802Z`, the sampled live suite moved as follows:
-
-- HTTP success rate moved from `0.898` to `0.896`
-- browser success rate stayed at `0.867`
-- best HTTP throughput improved from `791.617` to `1571.659` pages per minute
-- best browser throughput improved from `80.279` to `89.993` pages per minute
 
 The sampled live artifact does not surface direct evidence of local kernel or
 runtime faults. Its observed failures cluster on external domain behavior
 instead:
 
-- browser and HTTP access walls on `ebay.com`
-- browser access walls on `zbozi.cz`
-- smaller residual failures on `lidl-shop.cz`, `mp.cz`, and `shein.com`
-- a small number of browser navigation timeouts, with no recovered-browser or
-  local runtime fault spikes
+- `ebay.com` appeared in both the top HTTP and top browser failure-domain lists
+- `zbozi.cz` appeared in the top browser failure-domain list
+- smaller residual failures appeared on `datart.cz`, `lidl-shop.cz`, `mp.cz`,
+  and `shein.com`
+- the top browser failure category was `access-wall` (`35` attempts)
+- no recovered-browser allocations and zero local-failure counters
 - skipped `scrapling` and `canary` phases in the sampled preset, so a
   full-corpus run remains the right release-evidence follow-up when needed
 
 The benchmark follow-up therefore changes the implementation assessment in one
 important way: the current ADR seam is not only structurally implemented, but
 also validated under both focused runtime pressure and sampled live traffic.
-The mixed HTTP/browser throughput movement across sampled live runs is best read
-as possible live-environment variance, not as definitive proof of a local kernel
-regression, because the focused E3 benchmark stayed healthy and both local-
-failure counters remained at zero in the sampled live suite. That is an
-inference from the benchmark artifacts, not a proof. What remains open after
-this validation is optimization, site-specific hardening, and full-corpus
-release evidence, not a foundational correction to the canonical access kernel
-design.
+The sampled run does not prove release readiness. Its benchmark-driven
+follow-up remains concrete:
+
+- review browser failure categories and top failing domains
+- prioritize diagnostics for `ebay.com`, `zbozi.cz`, and `shein.com`
+- run the full-corpus suite when definitive release evidence is needed
 
 ## Context
 
