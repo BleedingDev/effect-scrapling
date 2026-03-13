@@ -81,6 +81,7 @@ describe("e9 scrapling live parity benchmark", () => {
     expect(decoded.summary.equalOrBetter.fetchSuccess).toBe(true);
     expect(decoded.summary.equalOrBetter.parityAgreement).toBe(true);
     expect(decoded.summary.equalOrBetter.bypassSuccess).toBe(true);
+    expect(decoded.summary.equalOrBetter.referenceMatch).toBe(true);
     expect(decoded.summary.ours.referenceMatchRate).toBe(1);
     expect(decoded.cases.every(({ ours }) => ours.mediationStatus === "cleared")).toBe(true);
     expect(decoded.cases.every(({ requiresBypass }) => requiresBypass)).toBe(true);
@@ -137,6 +138,7 @@ describe("e9 scrapling live parity benchmark", () => {
     expect(artifact.summary.equalOrBetter.fetchSuccess).toBe(false);
     expect(artifact.summary.equalOrBetter.parityAgreement).toBe(true);
     expect(artifact.summary.equalOrBetter.bypassSuccess).toBe(false);
+    expect(artifact.summary.equalOrBetter.referenceMatch).toBe(false);
     expect(artifact.summary.ours.referenceMatchRate).toBe(0.5);
     expect(artifact.summary.scrapling.referenceMatchRate).toBe(1);
     expect(artifact.cases.find(({ caseId }) => caseId === firstCase.caseId)?.ours.diagnostic).toBe(
@@ -175,6 +177,128 @@ describe("e9 scrapling live parity benchmark", () => {
     expect(artifact.summary.equalOrBetter.fetchSuccess).toBe(true);
     expect(artifact.summary.equalOrBetter.parityAgreement).toBe(true);
     expect(artifact.summary.equalOrBetter.bypassSuccess).toBe(true);
+    expect(artifact.summary.equalOrBetter.referenceMatch).toBe(true);
+  });
+
+  it("fails when both implementations agree on the same wrong value for every live case", async () => {
+    const corpus = createDefaultE9ScraplingLiveParityCorpus();
+    const artifact = await runE9ScraplingLiveParity({
+      selectCases: async () => corpus,
+      resolveRuntime: async () => ({
+        measurementMode: "live-upstream-cli-turnstile",
+        ourCommand: "bun run src/standalone.ts extract run --solve-cloudflare",
+        upstreamCommand: "scrapling extract stealthy-fetch --solve-cloudflare",
+        upstreamCliPath: "/Users/satan/.local/bin/scrapling",
+        upstreamVersion: "0.4.2",
+      }),
+      runEffectScraplingCase: async (input) => ({
+        fetchSuccess: true,
+        valueMatchesReference: false,
+        bypassSuccess: true,
+        durationMs: 900,
+        value: `challenge-shell:${input.caseId}`,
+        finalUrl: input.entryUrl,
+        mediationStatus: "cleared",
+        cloudflareSolved: true,
+      }),
+      runUpstreamScraplingCase: async (input) => ({
+        fetchSuccess: true,
+        valueMatchesReference: false,
+        bypassSuccess: true,
+        durationMs: 950,
+        value: `challenge-shell:${input.caseId}`,
+        finalUrl: input.entryUrl,
+        cloudflareSolved: true,
+      }),
+    });
+
+    expect(artifact.status).toBe("fail");
+    expect(artifact.summary.equalOrBetter.fetchSuccess).toBe(true);
+    expect(artifact.summary.equalOrBetter.parityAgreement).toBe(true);
+    expect(artifact.summary.equalOrBetter.bypassSuccess).toBe(true);
+    expect(artifact.summary.equalOrBetter.referenceMatch).toBe(true);
+    expect(artifact.summary.ours.referenceMatchRate).toBe(0);
+    expect(artifact.summary.scrapling.referenceMatchRate).toBe(0);
+  });
+
+  it("passes when Effect-Scrapling matches the reference and upstream does not", async () => {
+    const corpus = createDefaultE9ScraplingLiveParityCorpus();
+    const artifact = await runE9ScraplingLiveParity({
+      selectCases: async () => corpus,
+      resolveRuntime: async () => ({
+        measurementMode: "live-upstream-cli-turnstile",
+        ourCommand: "bun run src/standalone.ts extract run --solve-cloudflare",
+        upstreamCommand: "scrapling extract stealthy-fetch --solve-cloudflare",
+        upstreamCliPath: "/Users/satan/.local/bin/scrapling",
+        upstreamVersion: "0.4.2",
+      }),
+      runEffectScraplingCase: async (input) => ({
+        fetchSuccess: true,
+        valueMatchesReference: true,
+        bypassSuccess: true,
+        durationMs: 900,
+        value: input.expectedValue,
+        finalUrl: input.entryUrl,
+        mediationStatus: "cleared",
+        cloudflareSolved: true,
+      }),
+      runUpstreamScraplingCase: async (input) => ({
+        fetchSuccess: true,
+        valueMatchesReference: false,
+        bypassSuccess: true,
+        durationMs: 950,
+        value: `wrong:${input.caseId}`,
+        finalUrl: input.entryUrl,
+        cloudflareSolved: true,
+      }),
+    });
+
+    expect(artifact.status).toBe("pass");
+    expect(artifact.summary.equalOrBetter.fetchSuccess).toBe(true);
+    expect(artifact.summary.equalOrBetter.parityAgreement).toBe(true);
+    expect(artifact.summary.equalOrBetter.bypassSuccess).toBe(true);
+    expect(artifact.summary.equalOrBetter.referenceMatch).toBe(true);
+    expect(artifact.summary.ours.referenceMatchRate).toBe(1);
+    expect(artifact.summary.scrapling.referenceMatchRate).toBe(0);
+  });
+
+  it("passes when Effect-Scrapling solves every live case and upstream fails every case", async () => {
+    const corpus = createDefaultE9ScraplingLiveParityCorpus();
+    const artifact = await runE9ScraplingLiveParity({
+      selectCases: async () => corpus,
+      resolveRuntime: async () => ({
+        measurementMode: "live-upstream-cli-turnstile",
+        ourCommand: "bun run src/standalone.ts extract run --solve-cloudflare",
+        upstreamCommand: "scrapling extract stealthy-fetch --solve-cloudflare",
+        upstreamCliPath: "/Users/satan/.local/bin/scrapling",
+        upstreamVersion: "0.4.2",
+      }),
+      runEffectScraplingCase: async (input) => ({
+        fetchSuccess: true,
+        valueMatchesReference: true,
+        bypassSuccess: true,
+        durationMs: 900,
+        value: input.expectedValue,
+        finalUrl: input.entryUrl,
+        mediationStatus: "cleared",
+        cloudflareSolved: true,
+      }),
+      runUpstreamScraplingCase: async () => ({
+        fetchSuccess: false,
+        valueMatchesReference: false,
+        bypassSuccess: false,
+        durationMs: 1_100,
+        diagnostic: "Upstream solver stalled before extraction.",
+      }),
+    });
+
+    expect(artifact.status).toBe("pass");
+    expect(artifact.summary.equalOrBetter.fetchSuccess).toBe(true);
+    expect(artifact.summary.equalOrBetter.parityAgreement).toBe(true);
+    expect(artifact.summary.equalOrBetter.bypassSuccess).toBe(true);
+    expect(artifact.summary.equalOrBetter.referenceMatch).toBe(true);
+    expect(artifact.summary.ours.referenceMatchRate).toBe(1);
+    expect(artifact.summary.scrapling.fetchSuccessRate).toBe(0);
   });
 
   it("persists a decodable artifact through the benchmark wrapper", async () => {
@@ -213,6 +337,7 @@ describe("e9 scrapling live parity benchmark", () => {
             fetchSuccess: true,
             parityAgreement: true,
             bypassSuccess: true,
+            referenceMatch: true,
           },
         },
         cases: createDefaultE9ScraplingLiveParityCorpus().map((input) => ({

@@ -193,7 +193,7 @@ export function resolveBrowserHardTimeoutMs(input: {
 
   const mediationBudgetMs = Math.max(input.browserTimeoutMs, mediationPolicy.timeBudgetMs);
 
-  return input.browserTimeoutMs + mediationBudgetMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
+  return mediationBudgetMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
 }
 
 function withHardTimeout<A, E>(input: {
@@ -243,27 +243,33 @@ function withHardTimeout<A, E>(input: {
   });
 }
 
-function withHardTimeoutUntilDisarmed<A, E>(input: {
-  readonly effect: (disarmTimeout: () => void) => Effect.Effect<A, E>;
+function withResettableHardTimeout<A, E>(input: {
+  readonly effect: (resetTimeoutMs: (timeoutMs: number) => void) => Effect.Effect<A, E>;
   readonly timeoutMs: number;
   readonly onTimeout: () => E;
 }): Effect.Effect<A, E> {
   return Effect.callback((resume) => {
     let settled = false;
-    let timeoutDisarmed = false;
+    let activeTimeoutMs = input.timeoutMs;
     let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
 
-    const disarmTimeout = () => {
-      if (settled || timeoutDisarmed) {
-        return;
-      }
-      timeoutDisarmed = true;
+    const scheduleTimeout = (timeoutMs: number) => {
+      activeTimeoutMs = timeoutMs;
       if (timeoutHandle !== undefined) {
         clearTimeout(timeoutHandle);
       }
+      timeoutHandle = setTimeout(() => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        removeObserver();
+        fiber.interruptUnsafe();
+        resume(Effect.fail(input.onTimeout()));
+      }, activeTimeoutMs);
     };
 
-    const fiber = Effect.runFork(input.effect(disarmTimeout));
+    const fiber = Effect.runFork(input.effect(scheduleTimeout));
     const removeObserver = fiber.addObserver((exit) => {
       if (settled) {
         return;
@@ -279,15 +285,7 @@ function withHardTimeoutUntilDisarmed<A, E>(input: {
       resume(Effect.failCause(exit.cause));
     });
 
-    timeoutHandle = setTimeout(() => {
-      if (settled || timeoutDisarmed) {
-        return;
-      }
-      settled = true;
-      removeObserver();
-      fiber.interruptUnsafe();
-      resume(Effect.fail(input.onTimeout()));
-    }, input.timeoutMs);
+    scheduleTimeout(activeTimeoutMs);
 
     return Effect.sync(() => {
       if (settled) {
@@ -429,6 +427,8 @@ function executeBrowserProvider(
   return Effect.gen(function* () {
     const browserRuntime = yield* BrowserRuntime;
     let currentBrowserStage: BrowserExecutionStage | undefined;
+    let currentBrowserHardTimeoutMs =
+      context.browser.timeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
     let runtimeWarnings: ReadonlyArray<string> = [];
     const pageStageHardTimeoutMs =
       context.browser.timeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
@@ -462,7 +462,7 @@ function executeBrowserProvider(
           details: formatUnknownError(error),
         }),
     });
-    const browserAccessEffect = (disarmOuterHardTimeout: () => void) =>
+    const browserAccessEffect = (resetOuterHardTimeoutMs: (timeoutMs: number) => void) =>
       browserRuntime
         .withPage(
           {
@@ -479,7 +479,6 @@ function executeBrowserProvider(
             ...(proxy === undefined ? {} : { proxy }),
           },
           (page: PatchrightPage, poolWarnings) => {
-            disarmOuterHardTimeout();
             runtimeWarnings = poolWarnings ?? [];
             let stage: BrowserExecutionStage | undefined;
 
@@ -490,6 +489,8 @@ function executeBrowserProvider(
               withHardTimeout({
                 effect: Effect.tryPromise({
                   try: async () => {
+                    currentBrowserHardTimeoutMs = pageStageHardTimeoutMs;
+                    resetOuterHardTimeoutMs(pageStageHardTimeoutMs);
                     stage = nextStage;
                     currentBrowserStage = nextStage;
                     return await operation();
@@ -580,6 +581,8 @@ function executeBrowserProvider(
             } satisfies BrowserNavigationSnapshot;
 
             const mediationStartedAt = performance.now();
+            currentBrowserHardTimeoutMs = mediationHardTimeoutMs;
+            resetOuterHardTimeoutMs(mediationHardTimeoutMs);
             stage = "challenge-resolution";
             currentBrowserStage = stage;
             const mediationResolution = yield* withHardTimeout({
@@ -750,6 +753,8 @@ function executeBrowserProvider(
             } satisfies BrowserNavigationSnapshot;
             stage = undefined;
             currentBrowserStage = undefined;
+            currentBrowserHardTimeoutMs = pageStageHardTimeoutMs;
+            resetOuterHardTimeoutMs(pageStageHardTimeoutMs);
 
             return {
               url,
@@ -818,13 +823,10 @@ function executeBrowserProvider(
           ),
         );
 
-    const hardTimeoutMs = resolveBrowserHardTimeoutMs({
-      browserTimeoutMs: context.browser.timeoutMs,
-      challengeHandling: context.browser.challengeHandling,
-    });
-    return yield* withHardTimeoutUntilDisarmed({
+    currentBrowserHardTimeoutMs = pageStageHardTimeoutMs;
+    return yield* withResettableHardTimeout({
       effect: browserAccessEffect,
-      timeoutMs: hardTimeoutMs,
+      timeoutMs: currentBrowserHardTimeoutMs,
       onTimeout: () =>
         new BrowserError({
           message: `Browser access failed for ${url}`,
@@ -833,7 +835,7 @@ function executeBrowserProvider(
             providerId: context.providerId,
             waitUntil: context.browser.waitUntil,
             browserTimeoutMs: context.browser.timeoutMs,
-            hardTimeoutMs,
+            hardTimeoutMs: currentBrowserHardTimeoutMs,
             stage: currentBrowserStage,
           }),
           ...(runtimeWarnings.length === 0 ? {} : { warnings: runtimeWarnings }),

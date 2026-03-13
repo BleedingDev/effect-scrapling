@@ -75,6 +75,7 @@ const E9EqualOrBetterSchema = Schema.Struct({
   fetchSuccess: Schema.Boolean,
   parityAgreement: Schema.Boolean,
   bypassSuccess: Schema.Boolean,
+  referenceMatch: Schema.Boolean,
 });
 
 export const E9ScraplingLiveParityArtifactSchema = Schema.Struct({
@@ -428,6 +429,7 @@ function summarizeCases(
     fetchSuccess: ours.fetchSuccessRate >= scrapling.fetchSuccessRate,
     parityAgreement: ours.parityAgreementRate >= scrapling.parityAgreementRate,
     bypassSuccess: ours.bypassSuccessRate >= scrapling.bypassSuccessRate,
+    referenceMatch: ours.referenceMatchRate >= scrapling.referenceMatchRate,
   });
 
   return {
@@ -489,12 +491,21 @@ export async function runE9ScraplingLiveParity(
   const hasComparableSuccess = caseResults.some(
     ({ ours, scrapling }) => ours.fetchSuccess && scrapling.fetchSuccess,
   );
+  const hasOurReferenceAlignedSuccess = caseResults.some(
+    ({ ours }) => ours.fetchSuccess && ours.valueMatchesReference,
+  );
+  const hasMeaningfulSuccessSignal = hasComparableSuccess || hasOurReferenceAlignedSuccess;
   const status =
-    hasComparableSuccess &&
+    hasMeaningfulSuccessSignal &&
+    hasOurReferenceAlignedSuccess &&
     summary.equalOrBetter.fetchSuccess &&
     summary.equalOrBetter.parityAgreement &&
     summary.equalOrBetter.bypassSuccess &&
-    caseResults.every(({ ours, valueAgreement }) => !ours.fetchSuccess || valueAgreement)
+    summary.equalOrBetter.referenceMatch &&
+    caseResults.every(
+      ({ ours, valueAgreement }) =>
+        !ours.fetchSuccess || valueAgreement || ours.valueMatchesReference,
+    )
       ? "pass"
       : "fail";
 

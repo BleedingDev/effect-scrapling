@@ -47,7 +47,7 @@ describe("sdk access provider runtime", () => {
           solveCloudflare: true,
         },
       }),
-    ).toBe(61_025);
+    ).toBe(61_000);
   });
 
   it.effect("wires browser providers through the injected BrowserRuntime service", () =>
@@ -1994,6 +1994,114 @@ describe("sdk access provider runtime", () => {
                 "Recovered browser allocation after retryable protocol error: Protocol error (Page.enable): Internal server error, session closed.",
               ],
             ).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ),
+    ),
+  );
+
+  it.effect("fails cleanup hangs after the page callback finishes instead of stalling indefinitely", () =>
+    Effect.suspend(() =>
+      Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-basic");
+        const failure = yield* provider
+          .execute({
+            url: "https://example.com/browser-runtime-cleanup-timeout",
+            context: {
+              targetUrl: "https://example.com/browser-runtime-cleanup-timeout",
+              targetDomain: "example.com",
+              providerId: "browser-basic",
+              mode: "browser",
+              timeoutMs: 25,
+              egress: {
+                allocationMode: "static",
+                pluginId: "test-egress",
+                profileId: "direct",
+                poolId: "direct-pool",
+                routePolicyId: "direct-route",
+                routeKind: "direct",
+                routeKey: "direct",
+                egressKey: "direct",
+                requestHeaders: {},
+                warnings: [],
+                release: Effect.void,
+              },
+              identity: {
+                allocationMode: "static",
+                pluginId: "test-identity",
+                profileId: "persona-a",
+                tenantId: "tenant-a",
+                identityKey: "identity-a",
+                browserRuntimeProfileId: "patchright-default",
+                browserUserAgent: "Identity Agent",
+                warnings: [],
+                release: Effect.void,
+              },
+              browser: {
+                runtimeProfileId: "patchright-default",
+                waitUntil: "domcontentloaded",
+                timeoutMs: 25,
+                userAgent: "Browser Agent",
+                poolKey: "browser-basic::patchright-default::direct::identity-a",
+              },
+              warnings: [],
+            },
+          })
+          .pipe(Effect.flip);
+
+        expect(failure._tag).toBe("BrowserError");
+        if (failure._tag !== "BrowserError") {
+          throw new Error(`Expected BrowserError, received ${failure._tag}`);
+        }
+
+        expect(failure.details).toContain("hard timeout");
+        expect(failure.details).toContain("stage=unknown");
+      }).pipe(
+        Effect.provide(AccessProviderRegistryLive),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (_options, use) =>
+            use({
+              route: async () => undefined,
+              goto: async () => ({
+                status: () => 200,
+                allHeaders: async () => ({
+                  "content-type": "text/html; charset=utf-8",
+                }),
+                request: () => ({
+                  url: () => "https://example.com/browser-runtime-cleanup-timeout",
+                  redirectedFrom: () => null,
+                }),
+              }),
+              content: async () => "<html><head><title>ok</title></head><body>ok</body></html>",
+              url: () => "https://example.com/browser-runtime-cleanup-timeout",
+              waitForLoadState: async () => undefined,
+              close: async () => undefined,
+            } as never).pipe(Effect.flatMap(() => Effect.never)),
           getSnapshot: () =>
             Effect.succeed({
               limits: {
