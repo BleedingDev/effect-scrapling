@@ -31,6 +31,12 @@ export {
   runE9ScraplingParity,
 } from "./e9-scrapling-parity.ts";
 export {
+  createDefaultE9ScraplingLiveParityCorpus,
+  E9ScraplingLiveParityArtifactSchema,
+  E9ScraplingLiveParityCaseInputSchema,
+  runE9ScraplingLiveParity,
+} from "./e9-scrapling-live-parity.ts";
+export {
   E9BenchmarkSuiteArtifactSchema,
   mergeE9BenchmarkArtifacts,
   runE9BenchmarkSuite,

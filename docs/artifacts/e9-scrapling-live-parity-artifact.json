@@ -1,0 +1,92 @@
+{
+  "benchmark": "e9-scrapling-live-parity",
+  "comparisonId": "comparison-e9-scrapling-live-parity",
+  "generatedAt": "2026-03-13T00:03:59.344Z",
+  "caseCount": 2,
+  "measurementMode": "live-upstream-cli-turnstile",
+  "runtime": {
+    "measurementMode": "live-upstream-cli-turnstile",
+    "ourCommand": "bun run src/standalone.ts extract run --mode browser --provider browser-stealth --solve-cloudflare",
+    "upstreamCommand": "scrapling extract stealthy-fetch --solve-cloudflare",
+    "upstreamCliPath": "/Users/satan/.local/bin/scrapling",
+    "upstreamVersion": "0.4.2"
+  },
+  "summary": {
+    "ours": {
+      "measurementMode": "live-upstream-cli-turnstile",
+      "fetchSuccessRate": 1,
+      "parityAgreementRate": 1,
+      "bypassSuccessRate": 1,
+      "referenceMatchRate": 1
+    },
+    "scrapling": {
+      "measurementMode": "live-upstream-cli-turnstile",
+      "fetchSuccessRate": 1,
+      "parityAgreementRate": 1,
+      "bypassSuccessRate": 1,
+      "referenceMatchRate": 1
+    },
+    "equalOrBetter": {
+      "fetchSuccess": true,
+      "parityAgreement": true,
+      "bypassSuccess": true
+    }
+  },
+  "cases": [
+    {
+      "caseId": "case-e9-live-alza-robostar-w800",
+      "retailer": "alza",
+      "entryUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm",
+      "selector": "h1",
+      "expectedValue": "TESLA RoboStar W800 WiFi",
+      "requiresBypass": true,
+      "valueAgreement": true,
+      "ours": {
+        "fetchSuccess": true,
+        "valueMatchesReference": true,
+        "bypassSuccess": true,
+        "durationMs": 34972,
+        "value": "TESLA RoboStar W800 WiFi",
+        "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm",
+        "mediationStatus": "cleared",
+        "cloudflareSolved": true
+      },
+      "scrapling": {
+        "fetchSuccess": true,
+        "valueMatchesReference": true,
+        "bypassSuccess": true,
+        "durationMs": 14793,
+        "value": "TESLA RoboStar W800 WiFi",
+        "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm"
+      }
+    },
+    {
+      "caseId": "case-e9-live-alza-sound-eb20",
+      "retailer": "alza",
+      "entryUrl": "https://www.alza.cz/tesla-sound-eb20-d7915352.htm",
+      "selector": "h1",
+      "expectedValue": "TESLA Sound EB20 - Pearl Pink",
+      "requiresBypass": true,
+      "valueAgreement": true,
+      "ours": {
+        "fetchSuccess": true,
+        "valueMatchesReference": true,
+        "bypassSuccess": true,
+        "durationMs": 24335,
+        "value": "TESLA Sound EB20 - Pearl Pink",
+        "finalUrl": "https://www.alza.cz/tesla-sound-eb20-d7915352.htm",
+        "mediationStatus": "cleared",
+        "cloudflareSolved": true
+      },
+      "scrapling": {
+        "fetchSuccess": true,
+        "valueMatchesReference": true,
+        "bypassSuccess": true,
+        "durationMs": 15161,
+        "value": "TESLA Sound EB20 - Pearl Pink",
+        "finalUrl": "https://www.alza.cz/tesla-sound-eb20-pearl-pink-d7915352.htm"
+      }
+    }
+  ],
+  "status": "pass"
+}

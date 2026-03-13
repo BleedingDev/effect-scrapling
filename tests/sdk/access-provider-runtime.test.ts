@@ -5,6 +5,7 @@ import {
   AccessProviderRegistry,
   AccessProviderRegistryLive,
   makeAccessProviderRegistryLive,
+  resolveBrowserHardTimeoutMs,
 } from "../../src/sdk/access-provider-runtime.ts";
 import { BrowserMediationRuntime } from "../../src/sdk/browser-mediation-runtime.ts";
 import { BrowserError, InvalidInputError, NetworkError } from "../../src/sdk/errors.ts";
@@ -33,6 +34,22 @@ function makeRedirectRequest(url: string, redirectCount: number) {
 }
 
 describe("sdk access provider runtime", () => {
+  it("allocates a multi-stage hard-timeout envelope for Cloudflare solver flows", () => {
+    expect(
+      resolveBrowserHardTimeoutMs({
+        browserTimeoutMs: 25,
+      }),
+    ).toBe(1_025);
+    expect(
+      resolveBrowserHardTimeoutMs({
+        browserTimeoutMs: 25,
+        challengeHandling: {
+          solveCloudflare: true,
+        },
+      }),
+    ).toBe(61_025);
+  });
+
   it.effect("wires browser providers through the injected BrowserRuntime service", () =>
     Effect.suspend(() => {
       let runtimeProfileId = "";
