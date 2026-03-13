@@ -1,7 +1,7 @@
 {
   "benchmark": "e9-scrapling-live-parity",
   "comparisonId": "comparison-e9-scrapling-live-parity",
-  "generatedAt": "2026-03-13T00:29:34.542Z",
+  "generatedAt": "2026-03-13T00:42:41.114Z",
   "caseCount": 2,
   "measurementMode": "live-upstream-cli-turnstile",
   "runtime": {
@@ -46,7 +46,7 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 34709,
+        "durationMs": 33189,
         "value": "TESLA RoboStar W800 WiFi",
         "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm",
         "mediationStatus": "cleared",
@@ -56,9 +56,10 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 15291,
+        "durationMs": 27163,
         "value": "TESLA RoboStar W800 WiFi",
-        "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm"
+        "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm",
+        "cloudflareSolved": true
       }
     },
     {
@@ -73,7 +74,7 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 32506,
+        "durationMs": 23420,
         "value": "TESLA Sound EB20 - Pearl Pink",
         "finalUrl": "https://www.alza.cz/tesla-sound-eb20-d7915352.htm",
         "mediationStatus": "cleared",
@@ -83,7 +84,7 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 19317,
+        "durationMs": 27178,
         "value": "TESLA Sound EB20 - Pearl Pink",
         "finalUrl": "https://www.alza.cz/tesla-sound-eb20-pearl-pink-d7915352.htm",
         "cloudflareSolved": true
