@@ -11,3 +11,9 @@ node_modules/
 
 # bv (beads viewer) local config and caches
 .bv/
+
+# Repo-local bundled native helpers and binaries
+vendor/surfshark-wireguard-assets/bin/
+
+# Beads / Dolt files (added by bd init)
+.beads-credential-key
