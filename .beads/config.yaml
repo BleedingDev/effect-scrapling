@@ -3,3 +3,5 @@ issue_prefix: bd
 default_priority: 2
 default_type: task
 db: '.beads/beads.db'
+
+sync.remote: "git+https://github.com/BleedingDev/effect-scrapling.git"
