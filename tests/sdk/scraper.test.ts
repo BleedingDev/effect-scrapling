@@ -1416,6 +1416,8 @@ describe("scraper guardrails", () => {
           },
           browser: {
             waitUntil: " load ",
+            waitMs: " 2000 ",
+            waitSelector: " h1 ",
           },
         },
       }),
@@ -1439,6 +1441,8 @@ describe("scraper guardrails", () => {
         },
         browser: {
           waitUntil: "load",
+          waitMs: 2000,
+          waitSelector: "h1",
           timeoutMs: undefined,
           userAgent: undefined,
         },

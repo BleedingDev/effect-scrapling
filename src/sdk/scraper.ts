@@ -70,6 +70,8 @@ const EXECUTION_PROFILE_SHAPE = {
   browser: {
     waitUntil: true,
     timeoutMs: true,
+    waitMs: true,
+    waitSelector: true,
     userAgent: true,
     challengeHandling: {
       solveCloudflare: true,

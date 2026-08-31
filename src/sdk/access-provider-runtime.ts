@@ -13,6 +13,7 @@ import {
   toFetchTransportProxyConfig,
 } from "./access-transport-binding.ts";
 import { BrowserRuntime, type PatchrightPage } from "./browser-pool.ts";
+import { detectCloudflareChallengeType } from "./browser-challenge-runtime.ts";
 import {
   type BrowserMediationOutcome,
   type BrowserNavigationSnapshot,
@@ -47,13 +48,16 @@ import { getUrlPolicyViolation, resolveValidatedUrl } from "./url-policy.ts";
 const MAX_REDIRECTS = 5;
 const BROWSER_OPERATION_TIMEOUT_GRACE_MS = 1_000;
 const DEFAULT_BROWSER_USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36";
 const DEFAULT_USER_AGENT = "effect-scrapling/0.0.1";
+const DEFAULT_BROWSER_REFERER = "https://www.google.com/";
+const CLOUDFLARE_INTERSTITIAL_TITLE = "Just a moment...";
 
 type BrowserExecutionStage =
   | "route-registration"
   | "navigation"
   | "load-state"
+  | "post-navigation-wait"
   | "challenge-resolution"
   | "dom-read"
   | "header-read";
@@ -84,6 +88,7 @@ export type AccessExecutionTimings = {
   readonly routeRegistrationDurationMs?: number | undefined;
   readonly gotoDurationMs?: number | undefined;
   readonly loadStateDurationMs?: number | undefined;
+  readonly postNavigationWaitDurationMs?: number | undefined;
   readonly domReadDurationMs?: number | undefined;
   readonly headerReadDurationMs?: number | undefined;
 };
@@ -133,12 +138,226 @@ function resolveHeaders(
   };
 }
 
+function resolveBrowserReferer(extraHeaders?: Readonly<Record<string, string>>) {
+  const referer = extraHeaders?.referer ?? extraHeaders?.Referer;
+  if (referer !== undefined && referer.trim().length > 0) {
+    return referer;
+  }
+
+  return DEFAULT_BROWSER_REFERER;
+}
+
+function resolveBrowserPageUrl(candidate: string, fallbackUrl: string) {
+  try {
+    return resolveValidatedUrl(candidate).toString();
+  } catch {
+    return fallbackUrl;
+  }
+}
+
+function resolveBrowserErrorPageCode(html: string) {
+  if (
+    !/This page has been blocked by Chromium/iu.test(html) &&
+    !/\bERR_BLOCKED_BY_CLIENT\b/u.test(html)
+  ) {
+    return undefined;
+  }
+
+  const codeMatch = html.match(/\b(ERR_[A-Z_]+)\b/u);
+  return codeMatch?.[1] ?? "ERR_BLOCKED_BY_CLIENT";
+}
+
 function roundTiming(value: number) {
   return Math.round(Math.max(0, value) * 1_000) / 1_000;
 }
 
 function shouldAttemptPostClearanceNetworkSettle(waitUntil: BrowserWaitUntil) {
   return waitUntil !== "networkidle";
+}
+
+const POST_CLEARANCE_CONFIRMATION_RETRY_WAIT_MS = 750;
+const PRE_FOLLOW_UP_CLEARANCE_SETTLE_TIMEOUT_MS = 10_000;
+const PRE_FOLLOW_UP_CLEARANCE_SETTLE_POLL_INTERVAL_MS = 250;
+const POST_CLEARANCE_BROWSER_ERROR_RECOVERY_ATTEMPTS = Math.max(
+  1,
+  Math.ceil(
+    PRE_FOLLOW_UP_CLEARANCE_SETTLE_TIMEOUT_MS / PRE_FOLLOW_UP_CLEARANCE_SETTLE_POLL_INTERVAL_MS,
+  ),
+);
+
+async function waitForBrowserTimeout(page: PatchrightPage, timeoutMs: number) {
+  if (timeoutMs <= 0) {
+    return;
+  }
+
+  if (page.waitForTimeout !== undefined) {
+    await page.waitForTimeout(timeoutMs);
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    setTimeout(resolve, timeoutMs);
+  });
+}
+
+async function readBrowserPageContent(page: PatchrightPage) {
+  let lastError: unknown;
+  for (let attemptIndex = 0; attemptIndex < 3; attemptIndex += 1) {
+    try {
+      return await page.content();
+    } catch (error) {
+      lastError = error;
+      const details =
+        error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : typeof error === "string"
+            ? error
+            : "";
+      const isTransientNavigationRace =
+        details.includes("page is navigating") || details.includes("changing the content");
+      if (!isTransientNavigationRace || attemptIndex + 1 >= 3) {
+        throw error;
+      }
+      await waitForBrowserTimeout(page, PRE_FOLLOW_UP_CLEARANCE_SETTLE_POLL_INTERVAL_MS);
+    }
+  }
+
+  throw lastError;
+}
+
+function isCloudflareChallengeHtml(html: string) {
+  return (
+    extractHtmlTitle(html) === CLOUDFLARE_INTERSTITIAL_TITLE ||
+    detectCloudflareChallengeType(html) !== undefined
+  );
+}
+
+async function waitForCloudflarePostClearanceSettle(input: {
+  readonly page: PatchrightPage;
+  readonly timeoutMs: number;
+}) {
+  const deadlineAt =
+    Date.now() + Math.max(1, Math.min(input.timeoutMs, PRE_FOLLOW_UP_CLEARANCE_SETTLE_TIMEOUT_MS));
+  while (Date.now() < deadlineAt) {
+    const html = await readBrowserPageContent(input.page);
+    if (!isCloudflareChallengeHtml(html)) {
+      return true;
+    }
+    await waitForBrowserTimeout(input.page, PRE_FOLLOW_UP_CLEARANCE_SETTLE_POLL_INTERVAL_MS);
+  }
+
+  return !isCloudflareChallengeHtml(await readBrowserPageContent(input.page));
+}
+
+async function recoverPostClearanceBrowserErrorPage(input: {
+  readonly page: PatchrightPage;
+  readonly currentHtml: string;
+  readonly timeoutMs: number;
+}) {
+  let html = input.currentHtml;
+  let remainingBudgetMs = Math.max(
+    1,
+    Math.min(
+      input.timeoutMs,
+      POST_CLEARANCE_BROWSER_ERROR_RECOVERY_ATTEMPTS *
+        PRE_FOLLOW_UP_CLEARANCE_SETTLE_POLL_INTERVAL_MS,
+    ),
+  );
+
+  while (remainingBudgetMs > 0) {
+    if (resolveBrowserErrorPageCode(html) === undefined) {
+      return html;
+    }
+
+    const waitMs = Math.min(PRE_FOLLOW_UP_CLEARANCE_SETTLE_POLL_INTERVAL_MS, remainingBudgetMs);
+    await waitForBrowserTimeout(input.page, waitMs);
+    remainingBudgetMs -= waitMs;
+    html = await readBrowserPageContent(input.page);
+  }
+
+  return html;
+}
+
+async function isLocatorReady(
+  locator: NonNullable<ReturnType<NonNullable<PatchrightPage["locator"]>>>,
+) {
+  if (locator.isVisible !== undefined) {
+    return locator.isVisible();
+  }
+
+  return (await locator.boundingBox()) !== null;
+}
+
+async function isSelectorReady(page: PatchrightPage, selector: string) {
+  const locator = page.locator?.(selector);
+  if (locator === undefined) {
+    return false;
+  }
+
+  if (locator.count !== undefined && locator.nth !== undefined) {
+    const count = await locator.count();
+    for (let index = 0; index < count; index += 1) {
+      if (await isLocatorReady(locator.nth(index))) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  if (await isLocatorReady(locator)) {
+    return true;
+  }
+
+  if (locator.first !== undefined && (await isLocatorReady(locator.first()))) {
+    return true;
+  }
+
+  if (locator.last !== undefined && (await isLocatorReady(locator.last()))) {
+    return true;
+  }
+
+  return false;
+}
+
+async function waitForBrowserSelector(input: {
+  readonly page: PatchrightPage;
+  readonly selector: string;
+  readonly timeoutMs: number;
+}) {
+  const deadlineAt = Date.now() + Math.max(1, input.timeoutMs);
+  while (Date.now() < deadlineAt) {
+    if (await isSelectorReady(input.page, input.selector)) {
+      return;
+    }
+
+    await waitForBrowserTimeout(input.page, 100);
+  }
+
+  throw new Error(`selector-wait-timeout:${input.selector}`);
+}
+
+async function applyBrowserPostNavigationWait(input: {
+  readonly page: PatchrightPage;
+  readonly waitMs?: number | undefined;
+  readonly waitSelector?: string | undefined;
+  readonly timeoutMs: number;
+}) {
+  const startedAt = performance.now();
+
+  if (input.waitMs !== undefined) {
+    await waitForBrowserTimeout(input.page, input.waitMs);
+  }
+
+  if (input.waitSelector !== undefined) {
+    await waitForBrowserSelector({
+      page: input.page,
+      selector: input.waitSelector,
+      timeoutMs: input.timeoutMs,
+    });
+  }
+
+  return performance.now() - startedAt;
 }
 
 function countRedirectChain(request: unknown) {
@@ -430,8 +649,7 @@ function executeBrowserProvider(
     let currentBrowserHardTimeoutMs =
       context.browser.timeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
     let runtimeWarnings: ReadonlyArray<string> = [];
-    const pageStageHardTimeoutMs =
-      context.browser.timeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
+    const pageStageHardTimeoutMs = context.browser.timeoutMs + BROWSER_OPERATION_TIMEOUT_GRACE_MS;
     const mediationHardTimeoutMs =
       Math.max(
         context.browser.timeoutMs,
@@ -480,6 +698,7 @@ function executeBrowserProvider(
           },
           (page: PatchrightPage, poolWarnings) => {
             runtimeWarnings = poolWarnings ?? [];
+            const navigationReferer = resolveBrowserReferer(context.egress.requestHeaders);
             let stage: BrowserExecutionStage | undefined;
 
             const runPageStage = <A>(
@@ -512,190 +731,502 @@ function executeBrowserProvider(
               });
 
             return Effect.gen(function* () {
-            const startedAt = performance.now();
-            let blockedRequestReason: string | undefined;
-            let blockedRequestCount = 0;
-            let challengeWarnings: ReadonlyArray<string> = [];
+              const startedAt = performance.now();
+              let blockedRequestReason: string | undefined;
+              let blockedRequestCount = 0;
+              let challengeWarnings: ReadonlyArray<string> = [];
+              const shouldDeferRouteRegistration =
+                context.browser.challengeHandling?.solveCloudflare === true;
+              let routeRegistrationDurationMs = 0;
+              let routeGuardRegistered = false;
 
-            const routeRegistrationStartedAt = performance.now();
-            yield* runPageStage("route-registration", async () => {
-              await page.route("**/*", async (route) => {
-                const requestUrl = route.request().url();
-                const violation = getUrlPolicyViolation(new URL(requestUrl), {
-                  allowNonNetworkProtocols: true,
+              const ensureRouteGuardRegistered = () =>
+                Effect.gen(function* () {
+                  if (routeGuardRegistered) {
+                    return;
+                  }
+
+                  const routeRegistrationStartedAt = performance.now();
+                  yield* runPageStage("route-registration", async () => {
+                    await page.route("**/*", async (route) => {
+                      const requestUrl = route.request().url();
+                      const violation = getUrlPolicyViolation(new URL(requestUrl), {
+                        allowNonNetworkProtocols: true,
+                      });
+
+                      if (violation) {
+                        blockedRequestReason ??= `Blocked browser request to ${requestUrl}: ${violation}`;
+                        blockedRequestCount += 1;
+                        await route.abort("blockedbyclient");
+                        return;
+                      }
+
+                      await route.continue();
+                    });
+                  });
+                  routeRegistrationDurationMs += performance.now() - routeRegistrationStartedAt;
+                  routeGuardRegistered = true;
                 });
 
-                if (violation) {
-                  blockedRequestReason ??= `Blocked browser request to ${requestUrl}: ${violation}`;
-                  blockedRequestCount += 1;
-                  await route.abort("blockedbyclient");
-                  return;
-                }
-
-                await route.continue();
-              });
-            });
-            const routeRegistrationDurationMs = performance.now() - routeRegistrationStartedAt;
-
-            const gotoStartedAt = performance.now();
-            let response = yield* runPageStage("navigation", () =>
-              page.goto(url, {
-                waitUntil: context.browser.waitUntil,
-                timeout: context.browser.timeoutMs,
-              }),
-            );
-            let gotoDurationMs = performance.now() - gotoStartedAt;
-            let loadStateDurationMs = 0;
-            let loadStateMeasured = false;
-
-            if (!response) {
-              return yield* Effect.fail(new Error("navigation-response-missing"));
-            }
-            const initialResponse = response;
-
-            if (blockedRequestReason) {
-              return yield* Effect.fail(new Error(blockedRequestReason));
-            }
-
-            const initialDomReadStartedAt = performance.now();
-            let html = yield* runPageStage("dom-read", () => page.content());
-            let domReadDurationMs = performance.now() - initialDomReadStartedAt;
-            const initialHeaderReadStartedAt = performance.now();
-            let headers = yield* runPageStage("header-read", () => initialResponse.allHeaders());
-            let headerReadDurationMs = performance.now() - initialHeaderReadStartedAt;
-            const initialStatus = initialResponse.status();
-            const initialFinalUrl = resolveValidatedUrl(page.url()).toString();
-            const initialRequestGetter = Reflect.get(initialResponse, "request");
-            const initialRedirectCount =
-              typeof initialRequestGetter === "function"
-                ? countRedirectChain(initialRequestGetter.call(initialResponse))
-                : 0;
-            const initialSnapshot = {
-              requestedUrl: url,
-              finalUrl: initialFinalUrl,
-              status: initialStatus,
-              title: extractHtmlTitle(html) ?? null,
-              contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
-              htmlLength: html.length,
-              redirectCount: initialRedirectCount,
-            } satisfies BrowserNavigationSnapshot;
-
-            const mediationStartedAt = performance.now();
-            currentBrowserHardTimeoutMs = mediationHardTimeoutMs;
-            resetOuterHardTimeoutMs(mediationHardTimeoutMs);
-            stage = "challenge-resolution";
-            currentBrowserStage = stage;
-            const mediationResolution = yield* withHardTimeout({
-              effect: mediationRuntime.mediate({
-                page,
-                pageContent: html,
-                initialSnapshot,
-                timeoutMs: context.browser.timeoutMs,
-                challengeHandling: context.browser.challengeHandling,
-              }),
-              timeoutMs: mediationHardTimeoutMs,
-              onTimeout: () =>
-                new Error(
-                  formatBrowserOperationTimeoutDetails({
-                    url,
-                    providerId: context.providerId,
-                    waitUntil: context.browser.waitUntil,
-                    browserTimeoutMs: context.browser.timeoutMs,
-                    hardTimeoutMs: mediationHardTimeoutMs,
-                    stage: "challenge-resolution",
-                  }),
-                ),
-            });
-            const mediationDurationMs = performance.now() - mediationStartedAt;
-            let mediationOutcome: BrowserMediationOutcome =
-              mediationResolution.outcome.status === "none"
-                ? makeEmptyBrowserMediationOutcome()
-                : {
-                    ...mediationResolution.outcome,
-                    timings: {
-                      ...mediationResolution.outcome.timings,
-                      resolutionMs: roundTiming(mediationDurationMs),
-                    },
-                  };
-            challengeWarnings = [...mediationResolution.warnings];
-            const effectivePostClearanceStrategy =
-              mediationResolution.currentPageRefreshRequired &&
-              mediationResolution.postClearanceStrategy === "reuse-current"
-                ? "reload-target"
-                : mediationResolution.postClearanceStrategy;
-            const shouldFollowUpNavigation =
-              mediationResolution.followUpNavigationRequired ||
-              (mediationResolution.currentPageRefreshRequired &&
-                effectivePostClearanceStrategy === "reload-target");
-            const shouldRefreshCurrentPage =
-              mediationResolution.currentPageRefreshRequired && !shouldFollowUpNavigation;
-
-            if (shouldRefreshCurrentPage || shouldFollowUpNavigation) {
-              challengeWarnings =
-                effectivePostClearanceStrategy === mediationResolution.postClearanceStrategy
-                  ? [
-                      ...challengeWarnings,
-                      `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
-                      `cloudflare-solver:post-clearance-strategy:${effectivePostClearanceStrategy}`,
-                    ]
-                  : [
-                      ...challengeWarnings,
-                      "cloudflare-solver:post-clearance-strategy-fallback:reload-target",
-                      `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
-                      `cloudflare-solver:post-clearance-strategy:${effectivePostClearanceStrategy}`,
-                    ];
-              if (shouldRefreshCurrentPage) {
-                const mediatedDomReadStartedAt = performance.now();
-                html = yield* runPageStage("dom-read", () => page.content());
-                domReadDurationMs += performance.now() - mediatedDomReadStartedAt;
+              if (!shouldDeferRouteRegistration) {
+                yield* ensureRouteGuardRegistered();
               }
-            }
 
-            if (shouldFollowUpNavigation) {
-              const followUpNavigationStartedAt = performance.now();
-              response = yield* runPageStage("navigation", () =>
+              const gotoStartedAt = performance.now();
+              let response = yield* runPageStage("navigation", () =>
                 page.goto(url, {
+                  referer: navigationReferer,
                   waitUntil: context.browser.waitUntil,
                   timeout: context.browser.timeoutMs,
                 }),
               );
+              let gotoDurationMs = performance.now() - gotoStartedAt;
+              let loadStateDurationMs = 0;
+              let postNavigationWaitDurationMs = 0;
+              let loadStateMeasured = false;
+
               if (!response) {
-                return yield* Effect.fail(new Error("challenge-follow-up-response-missing"));
+                return yield* Effect.fail(new Error("navigation-response-missing"));
               }
-              const followUpResponse = response;
+              const initialResponse = response;
+
               if (blockedRequestReason) {
                 return yield* Effect.fail(new Error(blockedRequestReason));
               }
-              const followUpNavigationDurationMs = performance.now() - followUpNavigationStartedAt;
-              gotoDurationMs += followUpNavigationDurationMs;
-              if (shouldAttemptPostClearanceNetworkSettle(context.browser.waitUntil)) {
-                loadStateMeasured = true;
-                const postClearanceLoadStateStartedAt = performance.now();
-                const postClearanceLoadStateReached = yield* runPageStage("load-state", () =>
-                  page.waitForLoadState("networkidle", {
-                    timeout: context.browser.timeoutMs,
-                  }),
-                ).pipe(
-                  Effect.match({
-                    onFailure: () => false,
-                    onSuccess: () => true,
-                  }),
-                );
-                loadStateDurationMs += performance.now() - postClearanceLoadStateStartedAt;
-                if (!postClearanceLoadStateReached) {
+
+              const initialDomReadStartedAt = performance.now();
+              let html = yield* runPageStage("dom-read", () => page.content());
+              let domReadDurationMs = performance.now() - initialDomReadStartedAt;
+              const initialHtml = html;
+              const initialHeaderReadStartedAt = performance.now();
+              let headers = yield* runPageStage("header-read", () => initialResponse.allHeaders());
+              let headerReadDurationMs = performance.now() - initialHeaderReadStartedAt;
+              const initialStatus = initialResponse.status();
+              const initialFinalUrl = resolveBrowserPageUrl(page.url(), url);
+              const initialRequestGetter = Reflect.get(initialResponse, "request");
+              const initialRedirectCount =
+                typeof initialRequestGetter === "function"
+                  ? countRedirectChain(initialRequestGetter.call(initialResponse))
+                  : 0;
+              const initialSnapshot = {
+                requestedUrl: url,
+                finalUrl: initialFinalUrl,
+                status: initialStatus,
+                title: extractHtmlTitle(html) ?? null,
+                contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
+                htmlLength: html.length,
+                redirectCount: initialRedirectCount,
+              } satisfies BrowserNavigationSnapshot;
+
+              const mediationStartedAt = performance.now();
+              currentBrowserHardTimeoutMs = mediationHardTimeoutMs;
+              resetOuterHardTimeoutMs(mediationHardTimeoutMs);
+              stage = "challenge-resolution";
+              currentBrowserStage = stage;
+              const mediationResolution = yield* withHardTimeout({
+                effect: mediationRuntime.mediate({
+                  page,
+                  pageContent: html,
+                  initialSnapshot,
+                  timeoutMs: context.browser.timeoutMs,
+                  challengeHandling: context.browser.challengeHandling,
+                }),
+                timeoutMs: mediationHardTimeoutMs,
+                onTimeout: () =>
+                  new Error(
+                    formatBrowserOperationTimeoutDetails({
+                      url,
+                      providerId: context.providerId,
+                      waitUntil: context.browser.waitUntil,
+                      browserTimeoutMs: context.browser.timeoutMs,
+                      hardTimeoutMs: mediationHardTimeoutMs,
+                      stage: "challenge-resolution",
+                    }),
+                  ),
+              });
+              const mediationDurationMs = performance.now() - mediationStartedAt;
+              let mediationOutcome: BrowserMediationOutcome =
+                mediationResolution.outcome.status === "none"
+                  ? makeEmptyBrowserMediationOutcome()
+                  : {
+                      ...mediationResolution.outcome,
+                      timings: {
+                        ...mediationResolution.outcome.timings,
+                        resolutionMs: roundTiming(mediationDurationMs),
+                      },
+                    };
+              challengeWarnings = [...mediationResolution.warnings];
+              const effectivePostClearanceStrategy =
+                mediationResolution.currentPageRefreshRequired &&
+                mediationResolution.postClearanceStrategy === "reuse-current"
+                  ? "reload-target"
+                  : mediationResolution.postClearanceStrategy;
+              const shouldFollowUpNavigation =
+                mediationResolution.followUpNavigationRequired ||
+                (mediationResolution.currentPageRefreshRequired &&
+                  effectivePostClearanceStrategy === "reload-target");
+              const shouldRefreshCurrentPage =
+                mediationResolution.currentPageRefreshRequired && !shouldFollowUpNavigation;
+              const requiresConfiguredPostNavigationWait =
+                context.browser.waitMs !== undefined || context.browser.waitSelector !== undefined;
+              let followUpNavigationCount = 0;
+              let followUpNavigationDurationMs = 0;
+              let followUpRedirectCount = 0;
+              let reusedSettledCurrentPage = false;
+              let currentPageStatusOverride: number | undefined;
+
+              if (shouldRefreshCurrentPage || shouldFollowUpNavigation) {
+                challengeWarnings =
+                  effectivePostClearanceStrategy === mediationResolution.postClearanceStrategy
+                    ? [
+                        ...challengeWarnings,
+                        `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
+                        `cloudflare-solver:post-clearance-strategy:${effectivePostClearanceStrategy}`,
+                      ]
+                    : [
+                        ...challengeWarnings,
+                        "cloudflare-solver:post-clearance-strategy-fallback:reload-target",
+                        `cloudflare-solver:challenge-resolution-ms:${roundTiming(mediationDurationMs)}`,
+                        `cloudflare-solver:post-clearance-strategy:${effectivePostClearanceStrategy}`,
+                      ];
+                if (shouldRefreshCurrentPage) {
+                  const mediatedDomReadStartedAt = performance.now();
+                  html = yield* runPageStage("dom-read", () => page.content());
+                  domReadDurationMs += performance.now() - mediatedDomReadStartedAt;
+                }
+              }
+
+              if (shouldFollowUpNavigation) {
+                let clearedBeforeFollowUp = false;
+                const shouldAttemptCloudflarePreFollowUpSettle =
+                  mediationOutcome.kind === "challenge" &&
+                  mediationOutcome.status === "cleared" &&
+                  challengeWarnings.some(
+                    (warning) =>
+                      warning === "cloudflare-solver:clearance-observed:managed" ||
+                      warning === "cloudflare-solver:clearance-observed:interactive",
+                  );
+                if (shouldAttemptCloudflarePreFollowUpSettle) {
                   challengeWarnings = [
                     ...challengeWarnings,
-                    "cloudflare-solver:post-clearance-networkidle-unreached",
+                    "cloudflare-solver:post-clearance-settle-before-follow-up",
+                  ];
+                  const settleWaitStartedAt = performance.now();
+                  clearedBeforeFollowUp = yield* runPageStage("post-navigation-wait", () =>
+                    waitForCloudflarePostClearanceSettle({
+                      page,
+                      timeoutMs: context.browser.timeoutMs,
+                    }),
+                  );
+                  postNavigationWaitDurationMs += performance.now() - settleWaitStartedAt;
+                  challengeWarnings = [
+                    ...challengeWarnings,
+                    clearedBeforeFollowUp
+                      ? "cloudflare-solver:post-clearance-settled-before-follow-up"
+                      : "cloudflare-solver:post-clearance-still-blocked-before-follow-up",
+                  ];
+                }
+                if (clearedBeforeFollowUp) {
+                  if (requiresConfiguredPostNavigationWait) {
+                    const settledCurrentPageWaitStartedAt = performance.now();
+                    const settledCurrentPageWaitDurationMs = yield* runPageStage(
+                      "post-navigation-wait",
+                      () =>
+                        applyBrowserPostNavigationWait({
+                          page,
+                          waitMs: context.browser.waitMs,
+                          waitSelector: context.browser.waitSelector,
+                          timeoutMs: context.browser.timeoutMs,
+                        }),
+                    );
+                    postNavigationWaitDurationMs +=
+                      settledCurrentPageWaitDurationMs > 0
+                        ? settledCurrentPageWaitDurationMs
+                        : performance.now() - settledCurrentPageWaitStartedAt;
+                  }
+                  const settledCurrentPageDomReadStartedAt = performance.now();
+                  html = yield* runPageStage("dom-read", () => page.content());
+                  domReadDurationMs += performance.now() - settledCurrentPageDomReadStartedAt;
+                  let settledCurrentPageBrowserErrorCode = resolveBrowserErrorPageCode(html);
+                  if (settledCurrentPageBrowserErrorCode !== undefined) {
+                    challengeWarnings = [
+                      ...challengeWarnings,
+                      "cloudflare-solver:post-clearance-browser-error-recovery",
+                    ];
+                    const browserErrorRecoveryStartedAt = performance.now();
+                    html = yield* runPageStage("dom-read", () =>
+                      recoverPostClearanceBrowserErrorPage({
+                        page,
+                        currentHtml: html,
+                        timeoutMs: context.browser.timeoutMs,
+                      }),
+                    );
+                    domReadDurationMs += performance.now() - browserErrorRecoveryStartedAt;
+                    settledCurrentPageBrowserErrorCode = resolveBrowserErrorPageCode(html);
+                    challengeWarnings = [
+                      ...challengeWarnings,
+                      settledCurrentPageBrowserErrorCode === undefined
+                        ? "cloudflare-solver:post-clearance-browser-error-recovered"
+                        : `cloudflare-solver:post-clearance-browser-error-persisted:${settledCurrentPageBrowserErrorCode}`,
+                    ];
+                  }
+                  const settledCurrentPageFinalUrl = resolveBrowserPageUrl(
+                    page.url(),
+                    initialSnapshot.finalUrl,
+                  );
+                  const settledCurrentPageTitle = extractHtmlTitle(html);
+                  const settledCurrentPageWallAnalysis = detectAccessWall({
+                    statusCode: 200,
+                    requestedUrl: url,
+                    finalUrl: settledCurrentPageFinalUrl,
+                    title: settledCurrentPageTitle,
+                    text: html,
+                  });
+                  const settledCurrentPageShowsProgress =
+                    settledCurrentPageFinalUrl !== initialSnapshot.finalUrl ||
+                    settledCurrentPageTitle !== initialSnapshot.title ||
+                    html !== initialHtml ||
+                    html.length !== initialSnapshot.htmlLength;
+                  if (
+                    settledCurrentPageBrowserErrorCode === undefined &&
+                    !settledCurrentPageWallAnalysis.likelyAccessWall &&
+                    settledCurrentPageShowsProgress
+                  ) {
+                    reusedSettledCurrentPage = true;
+                    currentPageStatusOverride = 200;
+                    challengeWarnings = [
+                      ...challengeWarnings,
+                      "cloudflare-solver:post-clearance-strategy-override:reuse-current",
+                    ];
+                  } else if (settledCurrentPageBrowserErrorCode !== undefined) {
+                    challengeWarnings = [
+                      ...challengeWarnings,
+                      `cloudflare-solver:post-clearance-strategy-override-skipped:browser-error:${settledCurrentPageBrowserErrorCode}`,
+                    ];
+                  } else if (!settledCurrentPageShowsProgress) {
+                    challengeWarnings = [
+                      ...challengeWarnings,
+                      "cloudflare-solver:post-clearance-strategy-override-skipped:no-progress",
+                    ];
+                  }
+                }
+                if (!reusedSettledCurrentPage) {
+                  if (shouldDeferRouteRegistration) {
+                    yield* ensureRouteGuardRegistered();
+                  }
+                  const followUpNavigationStartedAt = performance.now();
+                  response = yield* runPageStage("navigation", () =>
+                    page.goto(url, {
+                      referer: navigationReferer,
+                      waitUntil: context.browser.waitUntil,
+                      timeout: context.browser.timeoutMs,
+                    }),
+                  );
+                  if (!response) {
+                    return yield* Effect.fail(new Error("challenge-follow-up-response-missing"));
+                  }
+                  const followUpResponse = response;
+                  if (blockedRequestReason) {
+                    return yield* Effect.fail(new Error(blockedRequestReason));
+                  }
+                  const currentFollowUpNavigationDurationMs =
+                    performance.now() - followUpNavigationStartedAt;
+                  gotoDurationMs += currentFollowUpNavigationDurationMs;
+                  followUpNavigationCount += 1;
+                  followUpNavigationDurationMs += currentFollowUpNavigationDurationMs;
+                  if (shouldAttemptPostClearanceNetworkSettle(context.browser.waitUntil)) {
+                    loadStateMeasured = true;
+                    const postClearanceLoadStateStartedAt = performance.now();
+                    const postClearanceLoadStateReached = yield* runPageStage("load-state", () =>
+                      page.waitForLoadState("networkidle", {
+                        timeout: context.browser.timeoutMs,
+                      }),
+                    ).pipe(
+                      Effect.match({
+                        onFailure: () => false,
+                        onSuccess: () => true,
+                      }),
+                    );
+                    loadStateDurationMs += performance.now() - postClearanceLoadStateStartedAt;
+                    if (!postClearanceLoadStateReached) {
+                      challengeWarnings = [
+                        ...challengeWarnings,
+                        "cloudflare-solver:post-clearance-networkidle-unreached",
+                      ];
+                    }
+                  }
+                  const followUpDomReadStartedAt = performance.now();
+                  html = yield* runPageStage("dom-read", () => page.content());
+                  domReadDurationMs += performance.now() - followUpDomReadStartedAt;
+                  if (blockedRequestReason) {
+                    return yield* Effect.fail(new Error(blockedRequestReason));
+                  }
+                  const followUpHeaderReadStartedAt = performance.now();
+                  headers = yield* runPageStage("header-read", () => followUpResponse.allHeaders());
+                  headerReadDurationMs += performance.now() - followUpHeaderReadStartedAt;
+                  const followUpRequestGetter = Reflect.get(followUpResponse, "request");
+                  followUpRedirectCount +=
+                    typeof followUpRequestGetter === "function"
+                      ? countRedirectChain(followUpRequestGetter.call(followUpResponse))
+                      : 0;
+                }
+              }
+              if (requiresConfiguredPostNavigationWait) {
+                const finalizationWaitStartedAt = performance.now();
+                const finalizationWaitDurationMs = yield* runPageStage("post-navigation-wait", () =>
+                  applyBrowserPostNavigationWait({
+                    page,
+                    waitMs: context.browser.waitMs,
+                    waitSelector: context.browser.waitSelector,
+                    timeoutMs: context.browser.timeoutMs,
+                  }),
+                );
+                postNavigationWaitDurationMs +=
+                  finalizationWaitDurationMs > 0
+                    ? finalizationWaitDurationMs
+                    : performance.now() - finalizationWaitStartedAt;
+                const finalDomReadStartedAt = performance.now();
+                html = yield* runPageStage("dom-read", () => page.content());
+                domReadDurationMs += performance.now() - finalDomReadStartedAt;
+              }
+              let status = currentPageStatusOverride ?? response.status();
+              let finalUrl = resolveBrowserPageUrl(page.url(), initialFinalUrl);
+              const browserErrorPageCode = resolveBrowserErrorPageCode(html);
+              if (browserErrorPageCode !== undefined) {
+                return yield* Effect.fail(new Error(browserErrorPageCode));
+              }
+              let wallAnalysis = detectAccessWall({
+                statusCode: status,
+                requestedUrl: url,
+                finalUrl,
+                title: extractHtmlTitle(html),
+                text: html,
+              });
+              if (status >= 400 && !wallAnalysis.likelyAccessWall) {
+                return yield* Effect.fail(new Error(`HTTP ${status}`));
+              }
+              if (
+                mediationOutcome.status === "cleared" &&
+                shouldFollowUpNavigation &&
+                wallAnalysis.likelyAccessWall
+              ) {
+                challengeWarnings = [
+                  ...challengeWarnings,
+                  "cloudflare-solver:clearance-confirmation-retry",
+                ];
+                const confirmationWaitStartedAt = performance.now();
+                yield* runPageStage("post-navigation-wait", () =>
+                  waitForBrowserTimeout(
+                    page,
+                    Math.min(POST_CLEARANCE_CONFIRMATION_RETRY_WAIT_MS, context.browser.timeoutMs),
+                  ),
+                );
+                postNavigationWaitDurationMs += performance.now() - confirmationWaitStartedAt;
+
+                const confirmationNavigationStartedAt = performance.now();
+                response = yield* runPageStage("navigation", () =>
+                  page.goto(url, {
+                    referer: navigationReferer,
+                    waitUntil: context.browser.waitUntil,
+                    timeout: context.browser.timeoutMs,
+                  }),
+                );
+                if (!response) {
+                  return yield* Effect.fail(new Error("challenge-confirmation-response-missing"));
+                }
+                const confirmationResponse = response;
+                if (blockedRequestReason) {
+                  return yield* Effect.fail(new Error(blockedRequestReason));
+                }
+                const confirmationNavigationDurationMs =
+                  performance.now() - confirmationNavigationStartedAt;
+                gotoDurationMs += confirmationNavigationDurationMs;
+                followUpNavigationCount += 1;
+                followUpNavigationDurationMs += confirmationNavigationDurationMs;
+
+                if (shouldAttemptPostClearanceNetworkSettle(context.browser.waitUntil)) {
+                  loadStateMeasured = true;
+                  const confirmationLoadStateStartedAt = performance.now();
+                  const confirmationLoadStateReached = yield* runPageStage("load-state", () =>
+                    page.waitForLoadState("networkidle", {
+                      timeout: context.browser.timeoutMs,
+                    }),
+                  ).pipe(
+                    Effect.match({
+                      onFailure: () => false,
+                      onSuccess: () => true,
+                    }),
+                  );
+                  loadStateDurationMs += performance.now() - confirmationLoadStateStartedAt;
+                  if (!confirmationLoadStateReached) {
+                    challengeWarnings = [
+                      ...challengeWarnings,
+                      "cloudflare-solver:post-clearance-networkidle-unreached",
+                    ];
+                  }
+                }
+
+                const confirmationDomReadStartedAt = performance.now();
+                html = yield* runPageStage("dom-read", () => page.content());
+                domReadDurationMs += performance.now() - confirmationDomReadStartedAt;
+                if (blockedRequestReason) {
+                  return yield* Effect.fail(new Error(blockedRequestReason));
+                }
+
+                const confirmationHeaderReadStartedAt = performance.now();
+                headers = yield* runPageStage("header-read", () =>
+                  confirmationResponse.allHeaders(),
+                );
+                headerReadDurationMs += performance.now() - confirmationHeaderReadStartedAt;
+
+                const confirmationRequestGetter = Reflect.get(confirmationResponse, "request");
+                followUpRedirectCount +=
+                  typeof confirmationRequestGetter === "function"
+                    ? countRedirectChain(confirmationRequestGetter.call(confirmationResponse))
+                    : 0;
+
+                if (requiresConfiguredPostNavigationWait) {
+                  const confirmationFinalizationWaitStartedAt = performance.now();
+                  const confirmationFinalizationWaitDurationMs = yield* runPageStage(
+                    "post-navigation-wait",
+                    () =>
+                      applyBrowserPostNavigationWait({
+                        page,
+                        waitMs: context.browser.waitMs,
+                        waitSelector: context.browser.waitSelector,
+                        timeoutMs: context.browser.timeoutMs,
+                      }),
+                  );
+                  postNavigationWaitDurationMs +=
+                    confirmationFinalizationWaitDurationMs > 0
+                      ? confirmationFinalizationWaitDurationMs
+                      : performance.now() - confirmationFinalizationWaitStartedAt;
+                  const confirmationFinalDomReadStartedAt = performance.now();
+                  html = yield* runPageStage("dom-read", () => page.content());
+                  domReadDurationMs += performance.now() - confirmationFinalDomReadStartedAt;
+                }
+
+                status = response.status();
+                finalUrl = resolveBrowserPageUrl(page.url(), finalUrl);
+                const confirmationBrowserErrorPageCode = resolveBrowserErrorPageCode(html);
+                if (confirmationBrowserErrorPageCode !== undefined) {
+                  return yield* Effect.fail(new Error(confirmationBrowserErrorPageCode));
+                }
+                wallAnalysis = detectAccessWall({
+                  statusCode: status,
+                  requestedUrl: url,
+                  finalUrl,
+                  title: extractHtmlTitle(html),
+                  text: html,
+                });
+                if (!wallAnalysis.likelyAccessWall) {
+                  challengeWarnings = [
+                    ...challengeWarnings,
+                    "cloudflare-solver:clearance-confirmed-on-retry",
                   ];
                 }
               }
-              const followUpDomReadStartedAt = performance.now();
-              html = yield* runPageStage("dom-read", () => page.content());
-              domReadDurationMs += performance.now() - followUpDomReadStartedAt;
-              if (blockedRequestReason) {
-                return yield* Effect.fail(new Error(blockedRequestReason));
-              }
-              if (mediationResolution.outcome.status !== "none") {
+              if (mediationResolution.outcome.status !== "none" && followUpNavigationCount > 0) {
                 challengeWarnings = [
                   ...challengeWarnings,
                   `cloudflare-solver:follow-up-navigation-ms:${roundTiming(
@@ -710,100 +1241,90 @@ function executeBrowserProvider(
                   },
                 };
               }
-              const followUpHeaderReadStartedAt = performance.now();
-              headers = yield* runPageStage("header-read", () => followUpResponse.allHeaders());
-              headerReadDurationMs += performance.now() - followUpHeaderReadStartedAt;
-            }
-            const status = response.status();
-            const finalUrl = resolveValidatedUrl(page.url()).toString();
-            const wallAnalysis = detectAccessWall({
-              statusCode: status,
-              requestedUrl: url,
-              finalUrl,
-              title: extractHtmlTitle(html),
-              text: html,
-            });
-            if (status >= 400 && !wallAnalysis.likelyAccessWall) {
-              return yield* Effect.fail(new Error(`HTTP ${status}`));
-            }
-            if (mediationOutcome.status === "cleared" && wallAnalysis.likelyAccessWall) {
-              mediationOutcome = {
-                ...mediationOutcome,
-                status: "unresolved",
-                failureReason: "no-progress",
-              };
-              challengeWarnings = [...challengeWarnings, "cloudflare-solver:clearance-unconfirmed"];
-            }
-            const requestGetter = Reflect.get(response, "request");
-            const finalRedirectCount =
-              typeof requestGetter === "function"
-                ? countRedirectChain(requestGetter.call(response))
-                : 0;
-            const redirectCount = shouldFollowUpNavigation
-              ? initialRedirectCount + finalRedirectCount
-              : finalRedirectCount;
-            const finalSnapshot = {
-              requestedUrl: url,
-              finalUrl,
-              status,
-              title: extractHtmlTitle(html) ?? null,
-              contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
-              htmlLength: html.length,
-              redirectCount: finalRedirectCount,
-            } satisfies BrowserNavigationSnapshot;
-            stage = undefined;
-            currentBrowserStage = undefined;
-            currentBrowserHardTimeoutMs = pageStageHardTimeoutMs;
-            resetOuterHardTimeoutMs(pageStageHardTimeoutMs);
+              if (mediationOutcome.status === "cleared" && wallAnalysis.likelyAccessWall) {
+                mediationOutcome = {
+                  ...mediationOutcome,
+                  status: "unresolved",
+                  failureReason: "no-progress",
+                };
+                challengeWarnings = [
+                  ...challengeWarnings,
+                  "cloudflare-solver:clearance-unconfirmed",
+                ];
+              }
+              const requestGetter = Reflect.get(response, "request");
+              const finalRedirectCount =
+                typeof requestGetter === "function"
+                  ? countRedirectChain(requestGetter.call(response))
+                  : 0;
+              const redirectCount = shouldFollowUpNavigation
+                ? initialRedirectCount + followUpRedirectCount
+                : finalRedirectCount;
+              const finalSnapshot = {
+                requestedUrl: url,
+                finalUrl,
+                status,
+                title: extractHtmlTitle(html) ?? null,
+                contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
+                htmlLength: html.length,
+                redirectCount: finalRedirectCount,
+              } satisfies BrowserNavigationSnapshot;
+              stage = undefined;
+              currentBrowserStage = undefined;
+              currentBrowserHardTimeoutMs = pageStageHardTimeoutMs;
+              resetOuterHardTimeoutMs(pageStageHardTimeoutMs);
 
-            return {
-              url,
-              finalUrl,
-              status,
-              contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
-              contentLength: html.length,
-              html,
-              durationMs: Math.max(0.001, roundTiming(performance.now() - startedAt)),
-              execution: toExecutionMetadata(context),
-              timings: {
-                requestCount: redirectCount + 1 + (shouldFollowUpNavigation ? 1 : 0),
-                redirectCount,
-                blockedRequestCount,
-                routeRegistrationDurationMs: roundTiming(routeRegistrationDurationMs),
-                gotoDurationMs: roundTiming(gotoDurationMs),
-                ...(loadStateMeasured
-                  ? { loadStateDurationMs: roundTiming(loadStateDurationMs) }
-                  : {}),
-                domReadDurationMs: roundTiming(domReadDurationMs),
-                headerReadDurationMs: roundTiming(headerReadDurationMs),
-              },
-              mediation:
-                mediationOutcome.status === "none"
-                  ? mediationOutcome
-                  : {
-                      ...mediationOutcome,
-                      evidence: {
-                        ...mediationOutcome.evidence,
-                        postNavigation: finalSnapshot,
+              return {
+                url,
+                finalUrl,
+                status,
+                contentType: headers["content-type"] ?? headers["Content-Type"] ?? "",
+                contentLength: html.length,
+                html,
+                durationMs: Math.max(0.001, roundTiming(performance.now() - startedAt)),
+                execution: toExecutionMetadata(context),
+                timings: {
+                  requestCount: redirectCount + 1 + followUpNavigationCount,
+                  redirectCount,
+                  blockedRequestCount,
+                  routeRegistrationDurationMs: roundTiming(routeRegistrationDurationMs),
+                  gotoDurationMs: roundTiming(gotoDurationMs),
+                  ...(loadStateMeasured
+                    ? { loadStateDurationMs: roundTiming(loadStateDurationMs) }
+                    : {}),
+                  ...(postNavigationWaitDurationMs > 0
+                    ? { postNavigationWaitDurationMs: roundTiming(postNavigationWaitDurationMs) }
+                    : {}),
+                  domReadDurationMs: roundTiming(domReadDurationMs),
+                  headerReadDurationMs: roundTiming(headerReadDurationMs),
+                },
+                mediation:
+                  mediationOutcome.status === "none"
+                    ? mediationOutcome
+                    : {
+                        ...mediationOutcome,
+                        evidence: {
+                          ...mediationOutcome.evidence,
+                          postNavigation: finalSnapshot,
+                        },
                       },
-                    },
-              warnings: wallAnalysis.likelyAccessWall
-                ? [...toAccessWallWarnings(wallAnalysis.signals), ...challengeWarnings]
-                : challengeWarnings,
-            } satisfies AccessExecutionResult;
-          }).pipe(
-            Effect.mapError(
-              (error) =>
-                new BrowserError({
-                  message: `Browser access failed for ${url}`,
-                  details:
-                    stage === undefined
-                      ? formatUnknownError(error)
-                      : `${stage}: ${formatUnknownError(error)}`,
-                  ...(runtimeWarnings.length === 0 ? {} : { warnings: runtimeWarnings }),
-                }),
-            ),
-          );
+                warnings: wallAnalysis.likelyAccessWall
+                  ? [...toAccessWallWarnings(wallAnalysis.signals), ...challengeWarnings]
+                  : challengeWarnings,
+              } satisfies AccessExecutionResult;
+            }).pipe(
+              Effect.mapError(
+                (error) =>
+                  new BrowserError({
+                    message: `Browser access failed for ${url}`,
+                    details:
+                      stage === undefined
+                        ? formatUnknownError(error)
+                        : `${stage}: ${formatUnknownError(error)}`,
+                    ...(runtimeWarnings.length === 0 ? {} : { warnings: runtimeWarnings }),
+                  }),
+              ),
+            );
           },
         )
         .pipe(

@@ -93,6 +93,8 @@ const BooleanInputSchema = Schema.Union([
 export const BrowserExecutionOptionsSchema = Schema.Struct({
   waitUntil: Schema.optional(BrowserWaitUntilInputSchema),
   timeoutMs: Schema.optional(PositiveIntInputSchema),
+  waitMs: Schema.optional(PositiveIntInputSchema),
+  waitSelector: Schema.optional(NonEmptyTrimmedString),
   userAgent: Schema.optional(NonEmptyTrimmedString),
   challengeHandling: Schema.optional(
     Schema.Struct({
@@ -188,6 +190,7 @@ export const AccessPreviewResponseSchema = Schema.Struct({
         routeRegistrationDurationMs: Schema.optional(NonNegativeNumber),
         gotoDurationMs: Schema.optional(NonNegativeNumber),
         loadStateDurationMs: Schema.optional(NonNegativeNumber),
+        postNavigationWaitDurationMs: Schema.optional(NonNegativeNumber),
         domReadDurationMs: Schema.optional(NonNegativeNumber),
         headerReadDurationMs: Schema.optional(NonNegativeNumber),
       }),
@@ -240,6 +243,7 @@ const RenderPreviewTimingsArtifactSchema = Schema.Struct({
   routeRegistrationDurationMs: Schema.optional(NonNegativeNumber),
   gotoDurationMs: Schema.optional(NonNegativeNumber),
   loadStateDurationMs: Schema.optional(NonNegativeNumber),
+  postNavigationWaitDurationMs: Schema.optional(NonNegativeNumber),
   domReadDurationMs: Schema.optional(NonNegativeNumber),
   headerReadDurationMs: Schema.optional(NonNegativeNumber),
 });

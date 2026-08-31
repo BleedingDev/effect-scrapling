@@ -179,7 +179,7 @@ export function makeAccessCoreRuntimeModule(input: {
         browserRuntimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
         httpUserAgent: "effect-scrapling/0.0.1",
         browserUserAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
       }),
       [DEFAULT_LEASED_IDENTITY_PROFILE_ID]: createIdentityProfile({
         profileId: DEFAULT_LEASED_IDENTITY_PROFILE_ID,
@@ -187,21 +187,21 @@ export function makeAccessCoreRuntimeModule(input: {
         browserRuntimeProfileId: DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
         httpUserAgent: "effect-scrapling/0.0.1",
         browserUserAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
       }),
       [DEFAULT_STEALTH_IDENTITY_PROFILE_ID]: createIdentityProfile({
         profileId: DEFAULT_STEALTH_IDENTITY_PROFILE_ID,
         pluginId: BUILTIN_STEALTH_IDENTITY_PLUGIN_ID,
         browserRuntimeProfileId: DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID,
         browserUserAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
       }),
       [DEFAULT_LEASED_STEALTH_IDENTITY_PROFILE_ID]: createIdentityProfile({
         profileId: DEFAULT_LEASED_STEALTH_IDENTITY_PROFILE_ID,
         pluginId: input.leasedIdentityPluginId,
         browserRuntimeProfileId: DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID,
         browserUserAgent:
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
       }),
     },
   } satisfies AccessRuntimeModule;

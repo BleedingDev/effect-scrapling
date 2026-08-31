@@ -1,13 +1,13 @@
 {
   "benchmark": "e9-scrapling-live-parity",
   "comparisonId": "comparison-e9-scrapling-live-parity",
-  "generatedAt": "2026-03-13T00:42:41.114Z",
-  "caseCount": 2,
+  "generatedAt": "2026-03-13T01:21:48.284Z",
+  "caseCount": 3,
   "measurementMode": "live-upstream-cli-turnstile",
   "runtime": {
     "measurementMode": "live-upstream-cli-turnstile",
-    "ourCommand": "bun run src/standalone.ts extract run --mode browser --provider browser-stealth --solve-cloudflare",
-    "upstreamCommand": "scrapling extract stealthy-fetch --solve-cloudflare",
+    "ourCommand": "bun run src/standalone.ts extract run --mode browser --provider browser-stealth --network-idle --timeout 60000 --wait 2000 --wait-selector h1 --solve-cloudflare",
+    "upstreamCommand": "scrapling extract stealthy-fetch --real-chrome --block-webrtc --hide-canvas --solve-cloudflare --network-idle --timeout 60000 --wait 2000 --wait-selector h1 --css-selector h1",
     "upstreamCliPath": "/Users/satan/.local/bin/scrapling",
     "upstreamVersion": "0.4.2"
   },
@@ -46,7 +46,7 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 33189,
+        "durationMs": 25873,
         "value": "TESLA RoboStar W800 WiFi",
         "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm",
         "mediationStatus": "cleared",
@@ -56,10 +56,9 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 27163,
+        "durationMs": 18399,
         "value": "TESLA RoboStar W800 WiFi",
-        "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm",
-        "cloudflareSolved": true
+        "finalUrl": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm"
       }
     },
     {
@@ -74,7 +73,7 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 23420,
+        "durationMs": 34495,
         "value": "TESLA Sound EB20 - Pearl Pink",
         "finalUrl": "https://www.alza.cz/tesla-sound-eb20-d7915352.htm",
         "mediationStatus": "cleared",
@@ -84,10 +83,37 @@
         "fetchSuccess": true,
         "valueMatchesReference": true,
         "bypassSuccess": true,
-        "durationMs": 27178,
+        "durationMs": 46429,
         "value": "TESLA Sound EB20 - Pearl Pink",
         "finalUrl": "https://www.alza.cz/tesla-sound-eb20-pearl-pink-d7915352.htm",
         "cloudflareSolved": true
+      }
+    },
+    {
+      "caseId": "case-e9-live-alza-smart-heater-h300-redirect",
+      "retailer": "alza",
+      "entryUrl": "https://www.alza.cz/tesla-smart-heater-h300-d7911948.htm",
+      "selector": "h1",
+      "expectedValue": "Tesla Smart Air Purifier S300B",
+      "requiresBypass": true,
+      "valueAgreement": true,
+      "ours": {
+        "fetchSuccess": true,
+        "valueMatchesReference": true,
+        "bypassSuccess": true,
+        "durationMs": 31876,
+        "value": "Tesla Smart Air Purifier S300B",
+        "finalUrl": "https://www.alza.cz/tesla-smart-heater-h300-d7911948.htm",
+        "mediationStatus": "cleared",
+        "cloudflareSolved": true
+      },
+      "scrapling": {
+        "fetchSuccess": true,
+        "valueMatchesReference": true,
+        "bypassSuccess": true,
+        "durationMs": 18548,
+        "value": "Tesla Smart Air Purifier S300B",
+        "finalUrl": "https://www.alza.cz/tesla-smart-air-purifier-s300b-d7911948.htm"
       }
     }
   ],

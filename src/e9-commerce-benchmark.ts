@@ -1168,7 +1168,7 @@ async function buildDiscoveryPages(
     const result = await fetchHtml(url, {
       accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
       "user-agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
     });
     if (!result.ok || result.contentType === undefined) {
       return undefined;
@@ -1306,7 +1306,7 @@ async function buildSiteSummary(
   const homepageHttpFetch = await fetchHtml(homepageUrl, {
     accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
     "user-agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
   });
   const homepageHttp = Schema.decodeUnknownSync(ProbeResultSchema)({
     url: homepageUrl,

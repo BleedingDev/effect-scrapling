@@ -105,7 +105,7 @@ budgets.
 Template command:
 
 ```bash
-CI=1 bd create "[E2] Remediate: extraction performance budget breach" \
+CI=1 br create "[E2] Remediate: extraction performance budget breach" \
   --type bug \
   --priority 1 \
   --parent bd-8en \

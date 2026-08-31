@@ -1,0 +1,1892 @@
+{
+  "benchmark": "e9-commerce-corpus-freeze",
+  "generatedAt": "2026-03-14T18:46:55.581Z",
+  "sourceArtifactPath": "/tmp/tesla-electronics-partner-dataset-2026-03-12.strict.json",
+  "targetPageCount": 182,
+  "selectedPageCount": 182,
+  "selectedSiteCount": 7,
+  "minimumSiteCount": 7,
+  "siteCoverage": 1,
+  "pageCoverage": 1,
+  "shortfallCount": 0,
+  "pages": [
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/nabidka/tesla-purestar-e20-plus-flexibilni-bezdratovy-tycovy-vysavac-2v1-mop-17283447974",
+      "pageType": "product",
+      "title": "TESLA PureStar E20 Plus - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/bezsackovy-vysavac-tesla-aerostar-t500-a4e53851-13e1-4b22-9a16-e5a334a014a2",
+      "pageType": "product",
+      "title": "Bezsáčkový vysavač TESLA AeroStar T500 | oficiální e-shop",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-aircook-gril-qg600-multifunkcni-rodina-fritkovnica-gril-2000w-cb9faf20-62ba-4ab0-a56c-4c556afe510f",
+      "pageType": "product",
+      "title": "TESLA AirCook & Grill QG600 - multifunkční fritéza s grilem",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-aircook-q40-kompaktni-horkovzdusna-friteza-a5aaa031-14d7-41d7-aca3-f6b62745db6d",
+      "pageType": "product",
+      "title": "Multifunkční horkovzdušná fritéza TESLA AirCook Q40",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-aircook-q60-xxl-pro-multifunkcni-friteza-bez-tuku-b10d085e-3c27-4853-a537-c5caec7c6cbe",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q60 XXL",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-elitecook-k70-elektricky-tlakovy-hrnec-10-v-1-12d80b59-fbe0-44ea-9b27-ef53b866a7ef",
+      "pageType": "product",
+      "title": "Elektrický tlakový multifunkční hrnec TESLA EliteCook K70",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-elitecook-k70-wi-fi-duo-eb85edf7-ca76-419f-81a7-e9b9a8d3ed05",
+      "pageType": "product",
+      "title": "TESLA EliteCook K70 WiFi Duo - multifunkční elektrický tlakový hrnec a horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-elitecook-k70-wifi-8724e312-d693-4d15-87b1-a988c7d0df4f",
+      "pageType": "product",
+      "title": "TESLA EliteCook K70 WiFi - multifunkční elektrický tlakový hrnec",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-lifestar-uv550-rucni-antibakterialni-vysavac-s-uv-c-lampou-e16c9e20-6b88-4c2f-9431-e12f07f75e60",
+      "pageType": "product",
+      "title": "TESLA LifeStar UV550 - ruční antibakteriální vysavač s UV-C lampou",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-mediabox-xt850-hybridni-prehravac-s-dvb-t2-netflixem-af538fc4-0de7-4915-b933-0808378f50a6",
+      "pageType": "product",
+      "title": "Multimediální přehrávač a set-top box TESLA MediaBox XT850",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-multicook-mc600-pro-multifunkcni-elektricky-hrnec-e2896674-0269-4aed-9731-a829db0383ac",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook MC600 Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-qg800-chytra-friteza-wifi-12-l-1800-w-cerna-a26c1b97-0ba2-45bc-ad53-bb950b7f03af",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook & Grill QG800 WiFi",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tesla-robostar-iq660-laserovy-roboticky-vysavac-2-v-1-bily-9525b740-3089-44e8-b89a-39884b518266",
+      "pageType": "product",
+      "title": "Robotický vysavač TESLA RoboStar iQ660",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tycovy-vysavac-tesla-aerostar-t300-68afbb90-f648-4c37-9915-bfd4f6ac9297",
+      "pageType": "product",
+      "title": "TESLA AeroStar T300 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/tycovy-vysavac-tesla-purestar-e70-aqua-pro-cerny-1786e8b0-8705-4356-9449-3950dbc27134",
+      "pageType": "product",
+      "title": "Bezdrátový tyčový vysavač TESLA PureStar E70 Aqua Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "kind": "aggregator",
+      "state": "healthy",
+      "url": "https://allegro.cz/produkt/vysavac-bez-sacku-tesla-aerostar-t700-36958f9f-0697-4ea5-ae2e-b46bf1a593ba",
+      "pageType": "product",
+      "title": "TESLA AeroStar T700 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/maxi/tesla-powerstar-gt400-mop-z-mikrovlakna-sada-d6529288.htm",
+      "pageType": "product",
+      "title": "TESLA PowerStar GT400 - HEPA filtr",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/patona-pro-tesla-t10-t30-2500mah-14-4v-li-lon-d5653113.htm",
+      "pageType": "product",
+      "title": "TESLA RoboStar T10/T30/T40 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/pet/tesla-petcare-station-pro-tq500-d7792073.htm",
+      "pageType": "product",
+      "title": "TESLA PetCare Station TQ500 Pro - elektrické nůžky",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-aerostar-t300-bezsackovy-podlahovy-vysavac-d7052009.htm",
+      "pageType": "product",
+      "title": "TESLA AeroStar T300 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-aerostar-t500-d6190594.htm",
+      "pageType": "product",
+      "title": "TESLA AeroStar T500 - teleskopická trubice",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-aerostar-t700-d6592765.htm",
+      "pageType": "product",
+      "title": "TESLA AeroStar T700 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-aircook-dualzone-q450-xxl-d7850475.htm",
+      "pageType": "product",
+      "title": "TESLA AirCook DualZone Q450 XXL - nožka fritézy",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-aircook-q40-d7624144.htm",
+      "pageType": "product",
+      "title": "TESLA AirCook Q40 LE - multifunkční digitální horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-aircook-q60-xxl-pro-d12607638.htm",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q60 XXL",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-bulb-e27-8w-230v-806lm-25-000h-6500k-studena-bila-220st-d13129891.htm",
+      "pageType": "product",
+      "title": "TESLA BL270927–2 - LED filament retro bulb žárovka E27, 9W, 1055 lm, 2700K, teplá bílá, čirá",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-coffeemaster-es300-d9933362.htm",
+      "pageType": "product",
+      "title": "TESLA CoffeeMaster ES300 - kávovar s časovačem",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-cook-bbq200-d12585072.htm",
+      "pageType": "product",
+      "title": "TESLA Cook BBQ200 - bezdrátová teplotní sonda",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-elitecook-k70-wifi-d12751862.htm",
+      "pageType": "product",
+      "title": "TESLA EliteCook K70 WiFi Duo - multifunkční elektrický tlakový hrnec a horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-gelato-icy505-d12418900.htm",
+      "pageType": "product",
+      "title": "TESLA Gelato ICY505 - zmrzlinovač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-lifestar-uv550-d6369034.htm",
+      "pageType": "product",
+      "title": "TESLA LifeStar UV550 - ruční antibakteriální vysavač s UV-C lampou",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-mediabox-xg500-multimedialni-prehravac-s-google-tv-d7870043.htm",
+      "pageType": "product",
+      "title": "Multimediální přehrávač TESLA MediaBox XG500 Google TV",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-mediabox-xg600-google-tv-uhd-multimedialni-prehravac-d12941106.htm",
+      "pageType": "product",
+      "title": "TESLA MediaBox XG600 Google TV - UHD multimediální přehrávač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-mediabox-xt850-android-tv-multimedialni-prehravac-a-dvbt2-settop-box-d7994252.htm",
+      "pageType": "product",
+      "title": "Multimediální přehrávač a set-top box TESLA MediaBox XT850",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-multicook-m90-grill-d13133015.htm",
+      "pageType": "product",
+      "title": "TESLA MultiCook M90 Grill - multifunkční elektrický hrnec",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-multicook-mc600-pro-d7762710.htm",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook MC600 Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-multicook-rc400-low-carb-d12979180.htm",
+      "pageType": "product",
+      "title": "TESLA MultiCook RC400 Low Carb - nerezový koš",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-purestar-e50-powerdock-d13025055.htm",
+      "pageType": "product",
+      "title": "TESLA PureStar E50 PowerDock - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-robostar-iq300-d6231468.htm",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ300 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-robostar-iq400-plus-bila-barva-d7679042.htm",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ400 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-robostar-iq660-d13131246.htm",
+      "pageType": "product",
+      "title": "Robotický vysavač TESLA RoboStar iQ660",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-robostar-iq900-ultra-d13183174.htm",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ900 Ultra - nájezd do hlavní stanice",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-robostar-w800-wifi-d12956895.htm",
+      "pageType": "product",
+      "title": "TESLA RoboStar W800 WiFi - robotický čistič oken",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-secureq-sc10-d13162315.htm",
+      "pageType": "product",
+      "title": "TESLA SecureQ SC10 - vnitřní smart kamera",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-secureq-sc20-d13162313.htm",
+      "pageType": "product",
+      "title": "TESLA SecureQ SC20 - vnitřní smart kamera",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-secureq-sc45-d13197748.htm",
+      "pageType": "product",
+      "title": "TESLA SecureQ SC45 - venkovní smart kamera 4G",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-slowcook-s350-d7919788.htm",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S350 | TESLA oficiální e-shop",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-slowcook-s500-d7919787.htm",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S500",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-slowcook-s800-deluxe-d7579163.htm",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S800 Deluxe",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-smart-plug-dual-sd300-d12151283.htm",
+      "pageType": "product",
+      "title": "TESLA Smart Plug Dual SD300 - chytrá duální zásuvka",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-smart-plug-sp300-3-usb-d7987992.htm",
+      "pageType": "product",
+      "title": "TESLA Smart Plug SP300 - chytrá zásuvka",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-smart-zigbee-sv60-d13220851.htm",
+      "pageType": "product",
+      "title": "TESLA Zigbee SV60 - smart termostatická hlavice",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-sound-bs60-bezdratovy-bluetooth-reproduktor-vodeodolny-cerny-d7511663.htm",
+      "pageType": "product",
+      "title": "TESLA Sound BS60 - bezdrátový Bluetooth reproduktor voděodolný (šedá barva)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-sound-bs70-bluetooth-reproduktor-vodeodolny-d12691154.htm",
+      "pageType": "product",
+      "title": "TESLA Sound BS70 - bezdrátový Bluetooth voděodolný reproduktor",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-sound-eb10-bezdratova-bluetooth-sluchatka-metallic-blue-d7347627.htm",
+      "pageType": "product",
+      "title": "TESLA Sound EB10 - bezdrátová Bluetooth sluchátka (Ice Blue)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.alza.cz/tesla-sound-eb20-pearl-pink-d7915352.htm",
+      "pageType": "product",
+      "title": "Bezdrátová sluchátka TESLA Sound EB20 (Pearl Pink)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/chytry-prsten-tesla-ring-g55-velikost-8-18-20-mm-8595689804398-stribrny.html",
+      "pageType": "product",
+      "title": "TESLA Ring G55 - chytrý prsten (černý)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/friteza-horkovzdusna-tesla-aircook-q60-xxl-pro-nerez.html",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q60 XXL",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/friteza-horkovzdusna-tesla-aircook-q70-xxl-wifi-pro-cerna-nerez.html",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza s WiFi ovládáním TESLA AirCook Q70 XXL WiFi Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/friteza-tesla-easycook-ae300.html",
+      "pageType": "product",
+      "title": "TESLA EasyCook AE300 - fritéza na olej",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/kavovar-tesla-coffeemaster-es200-cerny.html",
+      "pageType": "product",
+      "title": "TESLA CoffeeMaster ES200 - kávovar na překapávanou kávu",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/kavovar-tesla-coffeemaster-es300-cerny.html",
+      "pageType": "product",
+      "title": "TESLA CoffeeMaster ES300 - kávovar s časovačem",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/multifunkcni-hrnec-tesla-multicook-mc600-pro.html",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook MC600 Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/multifunkcni-tlakovy-hrnec-tesla-elitecook-k70-wi-fi-cerny-nerez.html",
+      "pageType": "product",
+      "title": "TESLA EliteCook K70 WiFi Duo - multifunkční elektrický tlakový hrnec a horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/nabijecka-do-site-tesla-power-charger-t220-1-usb-1-usb-c-25-w-pd-3-0-8595689802301-bila.html",
+      "pageType": "product",
+      "title": "TESLA Power Charger T220 - duální rychlonabíječka 25 W PD 3.0/PPS (bílá barva)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/odstavnovac-tesla-slowjuicer-sj770-xxl-deluxe-cerny-stribrny.html",
+      "pageType": "product",
+      "title": "TESLA SlowJuicer SJ770 XXL Deluxe - šnek",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/parni-mop-tesla-steampower-fx50.html",
+      "pageType": "product",
+      "title": "TESLA SteamPower FX50 - příslušenství kompletní",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/podlahovy-vysavac-tesla-aerostar-t500.html",
+      "pageType": "product",
+      "title": "TESLA AeroStar T500 - teleskopická trubice",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/pomaly-hrnec-tesla-slowcook-s350-cerny.html",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S350 | TESLA oficiální e-shop",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/pomaly-hrnec-tesla-slowcook-s500-cerny.html",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S500",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/pomaly-hrnec-tesla-slowcook-s800-deluxe.html",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S800 Deluxe",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/roboticky-vysavac-tesla-robostar-iq700-bily.html",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ700 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/rucni-vysavac-tesla-lifestar-uv550-antibakterialni.html",
+      "pageType": "product",
+      "title": "TESLA LifeStar UV550 - ruční antibakteriální vysavač s UV-C lampou",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/sada-pro-peci-o-srst-tesla-petcare-station-pro-tq500.html",
+      "pageType": "product",
+      "title": "TESLA PetCare Station TQ500 Pro - HEPA H13 filtr + pěnový filtr",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/set-top-box-tesla-hybbrid-tv-t200-cerny/1.html",
+      "pageType": "product",
+      "title": "TESLA HYbbRID TV T200 - DVB-T2 set-top box s HbbTV",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/teplomer-do-masa-tesla-cook-bbq150-cerny-nerez.html",
+      "pageType": "product",
+      "title": "TESLA Cook BBQ150 – Sonda pro grilování (2 ks)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/tycovy-vysavac-tesla-aerostar-t300-cerny-sedy.html",
+      "pageType": "product",
+      "title": "TESLA AeroStar T300 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.datart.cz/tycovy-vysavac-tesla-purestar-e40/1.html",
+      "pageType": "product",
+      "title": "TESLA PureStar E40 - hliníková trubice",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/patona-baterie-pro-roboticky-vysavac-tesla-t50-t60-t80-pro-2600mah-148v-lilon+dp398468",
+      "pageType": "product",
+      "title": "TESLA RoboStar T50/T60/T80 Pro - baterie",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-aaa-gold-baterie-4ks-lr03+dp312843",
+      "pageType": "product",
+      "title": "TESLA BLUE+ AAA - baterie LR03, jednorázová, 4ks",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-cat-toilet-ct100-bag-3-role+dp723813",
+      "pageType": "product",
+      "title": "TESLA Smart Cat Toilet CT100 Bag - pytle na odpad (3×15 ks)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-cr2430-baterie-4ks+dp312840",
+      "pageType": "product",
+      "title": "TESLA CR2430 - lithiová knoflíková baterie 3V, 5ks",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-cr2450-baterie-4ks+dp312841",
+      "pageType": "product",
+      "title": "TESLA CR2450 - lithiová knoflíková baterie 3V, 5ks",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-robostar-t80-pro-roboticky-vysavac+dp353868",
+      "pageType": "product",
+      "title": "TESLA RoboStar T80 Pro - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-smart-plug-sp300-chytra-zasuvka-prehled-o-spotrebe-onoff-tlacitko-wifi-bt+dp633945",
+      "pageType": "product",
+      "title": "TESLA Smart Plug SP300 - chytrá zásuvka",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-smart-power-strip-ps300-chytry-prodluzovaci-kabel-3680w-4x-230v-ac-2x-usba-1x-usbc-wifi+dp620498",
+      "pageType": "product",
+      "title": "TESLA Smart Power Strip PS300 - chytrý prodlužovací kabel",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.mironet.cz/tesla-smart-robot-vacuum-laser-ai300-dust-bag-5ks-5x-sacek-pro-tesla-ai300+dp640011",
+      "pageType": "product",
+      "title": "TESLA Smart Robot Vacuum Laser AI300 - sáček na nečistoty (5 ks)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-ae300-easycook",
+      "pageType": "product",
+      "title": "TESLA EasyCook AE300 - fritéza na olej",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-bbq200-cook",
+      "pageType": "product",
+      "title": "TESLA Cook BBQ200 - bezdrátová teplotní sonda",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-e20-purestar-plus",
+      "pageType": "product",
+      "title": "TESLA PureStar E20 Plus - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-e50-purestar-powerdock",
+      "pageType": "product",
+      "title": "TESLA PureStar E50 PowerDock - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-e70-purestar-aqua-pro",
+      "pageType": "product",
+      "title": "Bezdrátový tyčový vysavač TESLA PureStar E70 Aqua Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-icy505-gelato",
+      "pageType": "product",
+      "title": "TESLA Gelato ICY505 - zmrzlinovač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-iq100-robostar",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ100/iQ550 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-iq400-robostar-plus",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ400 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-iq550-robostar",
+      "pageType": "product",
+      "title": "Robotický vysavač TESLA RoboStar iQ550 s laserovou navigací",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-iq660-robostar-white",
+      "pageType": "product",
+      "title": "Robotický vysavač TESLA RoboStar iQ660",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-iq700-robostar",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ700 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-k70-elitecook",
+      "pageType": "product",
+      "title": "TESLA EliteCook K70 WiFi Duo - multifunkční elektrický tlakový hrnec a horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-m80-multicook-deluxe",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook M80 Deluxe",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-m90-multicook",
+      "pageType": "product",
+      "title": "TESLA MultiCook M90 Grill - multifunkční elektrický hrnec",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-mc600-multicook-pro",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook MC600 Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-purestar-e40",
+      "pageType": "product",
+      "title": "TESLA PureStar E40 - hliníková trubice",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-q40-aircook",
+      "pageType": "product",
+      "title": "TESLA AirCook Q40 LE - multifunkční digitální horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-q450-aircook-dualzone-xxl",
+      "pageType": "product",
+      "title": "TESLA AirCook DualZone Q450 XXL - nožka fritézy",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-q60-aircook-xxl-pro",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q60 XXL",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-q670-aircook-dualzone-xxl-11-l",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q670 XXL – Dvě zóny, extra výkon",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-q70-aircook-xxl-wifi-pro",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza s WiFi ovládáním TESLA AirCook Q70 XXL WiFi Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-qg800-aircook-grill-wifi",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook & Grill QG800 WiFi",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-rc400-multicook",
+      "pageType": "product",
+      "title": "TESLA MultiCook RC400 Low Carb - nerezový koš",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-robostar-w800-wifi",
+      "pageType": "product",
+      "title": "TESLA RoboStar W800 WiFi - robotický čistič oken",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-s350-slowcook",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S350 | TESLA oficiální e-shop",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-s500-slowcook",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S500",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-s800-slowcook-deluxe",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S800 Deluxe",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-sj770-xxl-deluxe",
+      "pageType": "product",
+      "title": "TESLA SlowJuicer SJ770 XXL Deluxe - šnek",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-steampower-fx50",
+      "pageType": "product",
+      "title": "TESLA SteamPower FX50 - příslušenství kompletní",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-t500-aerostar",
+      "pageType": "product",
+      "title": "Bezsáčkový vysavač TESLA AeroStar T500 | oficiální e-shop",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-t700-aerostar",
+      "pageType": "product",
+      "title": "TESLA AeroStar T700 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-tmx3000-thermocook",
+      "pageType": "product",
+      "title": "TESLA ThermoCook TMX3000 - sekací nůž",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-tq500-petcare-station-pro",
+      "pageType": "product",
+      "title": "TESLA PetCare Station TQ500 Pro - elektrické nůžky",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-uv550-lifestar",
+      "pageType": "product",
+      "title": "TESLA LifeStar UV550 - ruční antibakteriální vysavač s UV-C lampou",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-w700-robostar-wifi",
+      "pageType": "product",
+      "title": "TESLA RoboStar W700 WiFi - čisticí utěrka z mikrovlákna (2 ks)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.planeo.cz/tesla-xg600-google-tv-uhd-4k",
+      "pageType": "product",
+      "title": "TESLA MediaBox XG600 Google TV - UHD multimediální přehrávač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-aerostar-t300",
+      "pageType": "product",
+      "title": "TESLA AeroStar T300 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-aircook-dualzone-q670-xxl",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q670 XXL – Dvě zóny, extra výkon",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-aircook-grill-qg800-wifi",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook & Grill QG800 WiFi",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-aircook-q40-cerna",
+      "pageType": "product",
+      "title": "TESLA AirCook Q40 LE - multifunkční digitální horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-aircook-q60-xxl-pro",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q60 XXL",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-aircook-q70-xxl-wifi-pro",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza s WiFi ovládáním TESLA AirCook Q70 XXL WiFi Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-cook-bbq200-bezdratova-teplotni-sonda",
+      "pageType": "product",
+      "title": "TESLA Cook BBQ200 - bezdrátová teplotní sonda",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-lifestar-uv550",
+      "pageType": "product",
+      "title": "TESLA LifeStar UV550 - ruční antibakteriální vysavač s UV-C lampou",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-multicook-m80-deluxe",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook M80 Deluxe",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-multicook-m90-grill",
+      "pageType": "product",
+      "title": "TESLA MultiCook M90 Grill - multifunkční elektrický hrnec",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-multicook-mc600-pro",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook MC600 Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-purestar-e20",
+      "pageType": "product",
+      "title": "TESLA PureStar E20 Plus - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-purestar-e50-powerdock",
+      "pageType": "product",
+      "title": "TESLA PureStar E50 PowerDock - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-purestar-e70-aqua-pro",
+      "pageType": "product",
+      "title": "Bezdrátový tyčový vysavač TESLA PureStar E70 Aqua Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-ring-g55-silver-vel-12",
+      "pageType": "product",
+      "title": "TESLA Ring G55 - chytrý prsten (černý)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-iq100",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ100/iQ550 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-iq300-white",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ300 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-iq400-plus-white",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ400 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-iq550",
+      "pageType": "product",
+      "title": "Robotický vysavač TESLA RoboStar iQ550 s laserovou navigací",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-iq660",
+      "pageType": "product",
+      "title": "Robotický vysavač TESLA RoboStar iQ660",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-iq700",
+      "pageType": "product",
+      "title": "TESLA RoboStar iQ700 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-t50",
+      "pageType": "product",
+      "title": "TESLA RoboStar T50/T60 - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-t80-pro",
+      "pageType": "product",
+      "title": "TESLA RoboStar T80 Pro - nabíjecí základna",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-w700-wifi",
+      "pageType": "product",
+      "title": "TESLA RoboStar W700 WiFi - čisticí utěrka z mikrovlákna (2 ks)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-robostar-w800-wifi",
+      "pageType": "product",
+      "title": "TESLA RoboStar W800 WiFi - robotický čistič oken",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.robotworld.cz/tesla-steampower-fx50",
+      "pageType": "product",
+      "title": "TESLA SteamPower FX50 - příslušenství kompletní",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aerostar-t300_d425829",
+      "pageType": "product",
+      "title": "TESLA AeroStar T300 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aerostar-t500_d361736",
+      "pageType": "product",
+      "title": "Bezsáčkový vysavač TESLA AeroStar T500 | oficiální e-shop",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aerostar-t700_d382587",
+      "pageType": "product",
+      "title": "TESLA AeroStar T700 - bezsáčkový podlahový vysavač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aircook-dualheat-qd575-xxl-dualni-horkovzdusna-friteza_d575706",
+      "pageType": "product",
+      "title": "TESLA AirCook DualHeat QD575 XXL - multifunkční duální digitální horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aircook-dualzone-q670-xxl_d566279",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q670 XXL – Dvě zóny, extra výkon",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aircook-grill-qg600_d500699",
+      "pageType": "product",
+      "title": "TESLA AirCook & Grill QG600 - multifunkční fritéza s grilem",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aircook-grill-qg800-wifi_d488219",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook & Grill QG800 WiFi",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-aircook-q60-xxl-pro_d540860",
+      "pageType": "product",
+      "title": "Horkovzdušná fritéza TESLA AirCook Q60 XXL",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-cook-bbq200-bezdratova-teplotni-sonda_d553586",
+      "pageType": "product",
+      "title": "TESLA Cook BBQ200 - bezdrátová teplotní sonda",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-easycook-ae300_d485104",
+      "pageType": "product",
+      "title": "TESLA EasyCook AE300 - fritéza na olej",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-elitecook-k70-wifi-duo-multifunkcni-elektricky-tlakovy-hrnec-a-horkovzdusna-friteza_d551911",
+      "pageType": "product",
+      "title": "TESLA EliteCook K70 WiFi Duo - multifunkční elektrický tlakový hrnec a horkovzdušná fritéza",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-gelato-icy505-zmrzlinovac_d527485",
+      "pageType": "product",
+      "title": "TESLA Gelato ICY505 - zmrzlinovač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-lifestar-uv550_d455154",
+      "pageType": "product",
+      "title": "TESLA LifeStar UV550 - ruční antibakteriální vysavač s UV-C lampou",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-mediabox-xg600-google-tv-uhd-multimedialni-prehravac_d554661",
+      "pageType": "product",
+      "title": "TESLA MediaBox XG600 Google TV - UHD multimediální přehrávač",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-multicook-m90-grill-multifunkcni-elektricky-hrnec_d554132",
+      "pageType": "product",
+      "title": "TESLA MultiCook M90 Grill - multifunkční elektrický hrnec",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-multicook-mc600-pro_d488221",
+      "pageType": "product",
+      "title": "Multifunkční elektrický hrnec TESLA MultiCook MC600 Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-multicook-rc400-low-carb_d555159",
+      "pageType": "product",
+      "title": "TESLA MultiCook RC400 Low Carb - nerezový koš",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-power-charger-t100_d540923",
+      "pageType": "product",
+      "title": "TESLA Power Charger T100 - rychlonabíječka 20 W PD 3.0/PPS (bílá barva)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-power-charger-t220_d540921",
+      "pageType": "product",
+      "title": "TESLA Power Charger T220 - duální rychlonabíječka 25 W PD 3.0/PPS (bílá barva)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-primesound-hq-995x-dolby-atmos-soundbar-2-1_d570826",
+      "pageType": "product",
+      "title": "TESLA PrimeSound HQ‒995X - Dolby Atmos soundbar 2.1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-purestar-e20_d479208",
+      "pageType": "product",
+      "title": "TESLA PureStar E20 Plus - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-purestar-e50-powerdock-flexibilni-bezdratovy-tycovy-vysavac-2v1_d553566",
+      "pageType": "product",
+      "title": "TESLA PureStar E50 PowerDock - flexibilní bezdrátový tyčový vysavač 2v1",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-purestar-e70-aqua-pro_d515097",
+      "pageType": "product",
+      "title": "Bezdrátový tyčový vysavač TESLA PureStar E70 Aqua Pro",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-robostar-iq660-bily_d564814",
+      "pageType": "product",
+      "title": "Robotický vysavač TESLA RoboStar iQ660",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-robostar-w800-wifi-roboticky-cistic-oken_d553563",
+      "pageType": "product",
+      "title": "TESLA RoboStar W800 WiFi - robotický čistič oken",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-slowcook-s500_d507121",
+      "pageType": "product",
+      "title": "Pomalý hrnec TESLA SlowCook S500",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-slowjuicer-sj770-xxl-deluxe_d527845",
+      "pageType": "product",
+      "title": "TESLA SlowJuicer SJ770 XXL Deluxe - šnek",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-smart-plug-sp300_d525717",
+      "pageType": "product",
+      "title": "TESLA Smart Plug SP300 - chytrá zásuvka",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-smart-power-strip-ps300-chytry-prodluzovaci-kabel_d556660",
+      "pageType": "product",
+      "title": "TESLA Smart Power Strip PS300 - chytrý prodlužovací kabel",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-sound-bs60_d555146",
+      "pageType": "product",
+      "title": "TESLA Sound BS60 - bezdrátový Bluetooth reproduktor voděodolný (šedá barva)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-sound-bs70_d555147",
+      "pageType": "product",
+      "title": "TESLA Sound BS70 - bezdrátový Bluetooth voděodolný reproduktor",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-sound-eb10-bezdratova-bluetooth-sluchatka-metallic-blue_d554261",
+      "pageType": "product",
+      "title": "TESLA Sound EB10 - bezdrátová Bluetooth sluchátka (Ice Blue)",
+      "challengeSignals": []
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "kind": "retailer",
+      "state": "healthy",
+      "url": "https://www.tsbohemia.cz/tesla-sound-eb20-bezdratova-bluetooth-sluchatka-blossom-pink_d554265",
+      "pageType": "product",
+      "title": "Bezdrátová sluchátka TESLA Sound EB20 (Pearl Pink)",
+      "challengeSignals": []
+    }
+  ],
+  "allocations": [
+    {
+      "siteId": "allegro-cz",
+      "domain": "allegro.cz",
+      "state": "healthy",
+      "kind": "aggregator",
+      "availableSelectedPageCount": 16,
+      "allocatedPageCount": 16
+    },
+    {
+      "siteId": "alza-cz",
+      "domain": "alza.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 40,
+      "allocatedPageCount": 40
+    },
+    {
+      "siteId": "datart-cz",
+      "domain": "datart.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 22,
+      "allocatedPageCount": 22
+    },
+    {
+      "siteId": "mironet-cz",
+      "domain": "mironet.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 9,
+      "allocatedPageCount": 9
+    },
+    {
+      "siteId": "planeo-cz",
+      "domain": "planeo.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 36,
+      "allocatedPageCount": 36
+    },
+    {
+      "siteId": "robotworld-cz",
+      "domain": "robotworld.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 26,
+      "allocatedPageCount": 26
+    },
+    {
+      "siteId": "tsbohemia-cz",
+      "domain": "tsbohemia.cz",
+      "state": "healthy",
+      "kind": "retailer",
+      "availableSelectedPageCount": 33,
+      "allocatedPageCount": 33
+    }
+  ]
+}

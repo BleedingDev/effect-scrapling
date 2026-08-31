@@ -8,6 +8,8 @@ import {
 } from "../../src/sdk/access-health-gateway.ts";
 import {
   AccessHealthPolicyRegistry,
+  makeStaticAccessHealthPolicyRegistry,
+  makeStaticAccessHealthSubjectStrategy,
   AccessHealthSubjectStrategy,
 } from "../../src/sdk/access-health-policy-runtime.ts";
 import { AccessHealthRuntimeLive } from "../../src/sdk/access-health-runtime-service.ts";
@@ -204,5 +206,68 @@ describe("sdk access health gateway", () => {
         ),
       ),
     ),
+  );
+
+  it.effect(
+    "can isolate access health to egress subjects without quarantining provider or domain",
+    () =>
+      Effect.gen(function* () {
+        const gateway = yield* AccessHealthGateway;
+        const failure = new NetworkError({
+          message: "Access failed for https://example.com/products/sku-1",
+        });
+
+        yield* gateway.recordFailure(healthContext, failure);
+        yield* gateway.recordFailure(healthContext, failure);
+
+        const providerContext = {
+          ...healthContext,
+          context: {
+            ...healthContext.context,
+            egress: {
+              ...healthContext.context.egress,
+              profileId: "leased-direct",
+              poolId: "leased-direct-pool",
+              routePolicyId: "leased-direct-route",
+              routeKey: "leased-direct-route",
+              egressKey: "leased-direct-egress-b",
+              release: Effect.void,
+            },
+          },
+        } satisfies AccessHealthContext;
+
+        const originalPath = yield* gateway.assertHealthy(healthContext).pipe(
+          Effect.match({
+            onSuccess: () => "healthy",
+            onFailure: (error) => error,
+          }),
+        );
+        const differentEgressPath = yield* gateway.assertHealthy(providerContext).pipe(
+          Effect.match({
+            onSuccess: () => "healthy",
+            onFailure: (error) => error,
+          }),
+        );
+
+        expect(originalPath).toBeInstanceOf(AccessQuarantinedError);
+        expect(differentEgressPath).toBe("healthy");
+      }).pipe(
+        Effect.provide(
+          makeAccessHealthGatewayLiveLayer().pipe(
+            Layer.provide(
+              Layer.mergeAll(
+                AccessHealthRuntimeLive,
+                Layer.succeed(AccessHealthPolicyRegistry, makeStaticAccessHealthPolicyRegistry()),
+                Layer.succeed(
+                  AccessHealthSubjectStrategy,
+                  makeStaticAccessHealthSubjectStrategy({
+                    includeKinds: ["egress", "egress-profile", "egress-plugin"],
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
   );
 });

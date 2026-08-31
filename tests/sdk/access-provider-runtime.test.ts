@@ -170,6 +170,506 @@ describe("sdk access provider runtime", () => {
     }),
   );
 
+  it.effect("uses an upstream-compatible Google referer for browser navigations by default", () =>
+    Effect.suspend(() => {
+      let receivedReferer: string | undefined;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-basic");
+        const result = yield* provider.execute({
+          url: "https://example.com/browser-default-referer",
+          context: {
+            targetUrl: "https://example.com/browser-default-referer",
+            targetDomain: "example.com",
+            providerId: "browser-basic",
+            mode: "browser",
+            timeoutMs: 900,
+            egress: {
+              allocationMode: "static",
+              pluginId: "test-egress",
+              profileId: "direct",
+              poolId: "direct-pool",
+              routePolicyId: "direct-route",
+              routeKind: "direct",
+              routeKey: "direct",
+              egressKey: "direct",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-default",
+              browserUserAgent: "Identity Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            browser: {
+              runtimeProfileId: "patchright-default",
+              waitUntil: "commit",
+              timeoutMs: 900,
+              userAgent: "Browser Agent",
+              poolKey: "browser-basic::patchright-default::direct::identity-a",
+            },
+            warnings: [],
+          },
+        });
+
+        expect(receivedReferer).toBe("https://www.google.com/");
+        expect(result.status).toBe(200);
+      }).pipe(
+        Effect.provide(AccessProviderRegistryLive),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (_options, use) =>
+            use({
+              goto: async (_url, options) => {
+                receivedReferer = options.referer;
+                return {
+                  status: () => 200,
+                  allHeaders: async () => ({
+                    "content-type": "text/html; charset=utf-8",
+                  }),
+                  request: () => ({
+                    url: () => "https://example.com/browser-default-referer",
+                    redirectedFrom: () => null,
+                  }),
+                };
+              },
+              content: async () =>
+                "<html><head><title>Browser Runtime</title></head><body>ok</body></html>",
+              url: () => "https://example.com/browser-default-referer",
+              waitForLoadState: async () => undefined,
+              route: async () => undefined,
+              close: async () => undefined,
+            }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
+  it.effect(
+    "applies configured browser wait delay and selector gating before final DOM capture",
+    () =>
+      Effect.suspend(() => {
+        const waitCalls = new Array<number>();
+        let selectorReady = false;
+        let domReadCount = 0;
+
+        return Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("browser-basic");
+          const result = yield* provider.execute({
+            url: "https://example.com/post-navigation-wait",
+            context: {
+              targetUrl: "https://example.com/post-navigation-wait",
+              targetDomain: "example.com",
+              providerId: "browser-basic",
+              mode: "browser",
+              timeoutMs: 900,
+              egress: {
+                allocationMode: "static",
+                pluginId: "test-egress",
+                profileId: "direct",
+                poolId: "direct-pool",
+                routePolicyId: "direct-route",
+                routeKind: "direct",
+                routeKey: "direct",
+                egressKey: "direct",
+                requestHeaders: {},
+                warnings: [],
+                release: Effect.void,
+              },
+              identity: {
+                allocationMode: "static",
+                pluginId: "test-identity",
+                profileId: "persona-a",
+                tenantId: "tenant-a",
+                identityKey: "identity-a",
+                browserRuntimeProfileId: "patchright-default",
+                browserUserAgent: "Identity Agent",
+                warnings: [],
+                release: Effect.void,
+              },
+              browser: {
+                runtimeProfileId: "patchright-default",
+                waitUntil: "commit",
+                timeoutMs: 900,
+                waitMs: 200,
+                waitSelector: "h1",
+                userAgent: "Browser Agent",
+                poolKey: "browser-basic::patchright-default::direct::identity-a",
+              },
+              warnings: [],
+            },
+          });
+
+          expect(waitCalls).toContain(200);
+          expect(domReadCount).toBe(2);
+          expect(result.html).toContain("<h1>Final</h1>");
+          expect(result.timings.postNavigationWaitDurationMs).toBeDefined();
+        }).pipe(
+          Effect.provide(AccessProviderRegistryLive),
+          Effect.provideService(BrowserRuntime, {
+            readPoolLimits: () => ({
+              maxContexts: 1,
+              maxPages: 1,
+              maxQueue: 1,
+            }),
+            withPage: (_options, use) =>
+              use({
+                goto: async () => ({
+                  status: () => 200,
+                  allHeaders: async () => ({
+                    "content-type": "text/html; charset=utf-8",
+                  }),
+                  request: () => ({
+                    url: () => "https://example.com/post-navigation-wait",
+                    redirectedFrom: () => null,
+                  }),
+                }),
+                content: async () => {
+                  domReadCount += 1;
+                  return selectorReady
+                    ? "<html><head><title>Final</title></head><body><h1>Final</h1></body></html>"
+                    : "<html><head><title>Initial</title></head><body><div>loading</div></body></html>";
+                },
+                url: () => "https://example.com/post-navigation-wait",
+                waitForLoadState: async () => undefined,
+                waitForTimeout: async (timeoutMs) => {
+                  waitCalls.push(timeoutMs);
+                  selectorReady = true;
+                },
+                locator: () => ({
+                  last: () => ({
+                    isVisible: async () => selectorReady,
+                    boundingBox: async () =>
+                      selectorReady
+                        ? {
+                            x: 10,
+                            y: 10,
+                            width: 50,
+                            height: 20,
+                          }
+                        : null,
+                  }),
+                  isVisible: async () => selectorReady,
+                  boundingBox: async () =>
+                    selectorReady
+                      ? {
+                          x: 10,
+                          y: 10,
+                          width: 50,
+                          height: 20,
+                        }
+                      : null,
+                }),
+                route: async () => undefined,
+                close: async () => undefined,
+              }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+            getSnapshot: () =>
+              Effect.succeed({
+                limits: {
+                  maxContexts: 1,
+                  maxPages: 1,
+                  maxQueue: 1,
+                },
+                activeContexts: 0,
+                activePages: 0,
+                queuedRequests: 0,
+                maxObservedActiveContexts: 0,
+                maxObservedActivePages: 0,
+                maxObservedQueuedRequests: 0,
+              }),
+            setTestConfig: () => Effect.void,
+            close: () => Effect.void,
+            resetForTests: () => Effect.void,
+          }),
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+      }),
+  );
+
+  it.effect("treats a wait selector as ready when any matched node is visible", () =>
+    Effect.suspend(() => {
+      let domReadCount = 0;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-basic");
+        const result = yield* provider.execute({
+          url: "https://example.com/post-navigation-wait-any-match",
+          context: {
+            targetUrl: "https://example.com/post-navigation-wait-any-match",
+            targetDomain: "example.com",
+            providerId: "browser-basic",
+            mode: "browser",
+            timeoutMs: 900,
+            egress: {
+              allocationMode: "static",
+              pluginId: "test-egress",
+              profileId: "direct",
+              poolId: "direct-pool",
+              routePolicyId: "direct-route",
+              routeKind: "direct",
+              routeKey: "direct",
+              egressKey: "direct",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-default",
+              browserUserAgent: "Identity Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            browser: {
+              runtimeProfileId: "patchright-default",
+              waitUntil: "commit",
+              timeoutMs: 900,
+              waitSelector: "h1",
+              userAgent: "Browser Agent",
+              poolKey: "browser-basic::patchright-default::direct::identity-a",
+            },
+            warnings: [],
+          },
+        });
+
+        expect(domReadCount).toBeGreaterThanOrEqual(1);
+        expect(result.html).toContain("<h1>Visible</h1>");
+        expect(result.timings.postNavigationWaitDurationMs).toBeDefined();
+      }).pipe(
+        Effect.provide(AccessProviderRegistryLive),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (_options, use) =>
+            use({
+              goto: async () => ({
+                status: () => 200,
+                allHeaders: async () => ({
+                  "content-type": "text/html; charset=utf-8",
+                }),
+                request: () => ({
+                  url: () => "https://example.com/post-navigation-wait-any-match",
+                  redirectedFrom: () => null,
+                }),
+              }),
+              content: async () => {
+                domReadCount += 1;
+                return "<html><head><title>Final</title></head><body><h1>Visible</h1><h1 hidden>Hidden</h1></body></html>";
+              },
+              url: () => "https://example.com/post-navigation-wait-any-match",
+              waitForLoadState: async () => undefined,
+              waitForTimeout: async () => undefined,
+              locator: () => ({
+                count: async () => 2,
+                nth: (index) => ({
+                  isVisible: async () => index === 0,
+                  boundingBox: async () =>
+                    index === 0
+                      ? {
+                          x: 10,
+                          y: 10,
+                          width: 50,
+                          height: 20,
+                        }
+                      : null,
+                }),
+                last: () => ({
+                  isVisible: async () => false,
+                  boundingBox: async () => null,
+                }),
+                isVisible: async () => false,
+                boundingBox: async () => null,
+              }),
+              route: async () => undefined,
+              close: async () => undefined,
+            }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
+  it.effect("fails browser execution when a configured wait selector never resolves", () =>
+    Effect.suspend(
+      () =>
+        Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("browser-basic");
+          const exit = yield* provider
+            .execute({
+              url: "https://example.com/wait-selector-timeout",
+              context: {
+                targetUrl: "https://example.com/wait-selector-timeout",
+                targetDomain: "example.com",
+                providerId: "browser-basic",
+                mode: "browser",
+                timeoutMs: 300,
+                egress: {
+                  allocationMode: "static",
+                  pluginId: "test-egress",
+                  profileId: "direct",
+                  poolId: "direct-pool",
+                  routePolicyId: "direct-route",
+                  routeKind: "direct",
+                  routeKey: "direct",
+                  egressKey: "direct",
+                  requestHeaders: {},
+                  warnings: [],
+                  release: Effect.void,
+                },
+                identity: {
+                  allocationMode: "static",
+                  pluginId: "test-identity",
+                  profileId: "persona-a",
+                  tenantId: "tenant-a",
+                  identityKey: "identity-a",
+                  browserRuntimeProfileId: "patchright-default",
+                  browserUserAgent: "Identity Agent",
+                  warnings: [],
+                  release: Effect.void,
+                },
+                browser: {
+                  runtimeProfileId: "patchright-default",
+                  waitUntil: "commit",
+                  timeoutMs: 300,
+                  waitSelector: "h1",
+                  userAgent: "Browser Agent",
+                  poolKey: "browser-basic::patchright-default::direct::identity-a",
+                },
+                warnings: [],
+              },
+            })
+            .pipe(Effect.exit);
+
+          expect(Exit.isFailure(exit)).toBe(true);
+          if (Exit.isFailure(exit)) {
+            const defect = exit.cause.toJSON();
+            expect(JSON.stringify(defect)).toContain("post-navigation-wait");
+            expect(JSON.stringify(defect)).toContain("selector-wait-timeout:h1");
+          }
+        }).pipe(
+          Effect.provide(AccessProviderRegistryLive),
+          Effect.provideService(BrowserRuntime, {
+            readPoolLimits: () => ({
+              maxContexts: 1,
+              maxPages: 1,
+              maxQueue: 1,
+            }),
+            withPage: (_options, use) =>
+              use({
+                goto: async () => ({
+                  status: () => 200,
+                  allHeaders: async () => ({
+                    "content-type": "text/html; charset=utf-8",
+                  }),
+                  request: () => ({
+                    url: () => "https://example.com/wait-selector-timeout",
+                    redirectedFrom: () => null,
+                  }),
+                }),
+                content: async () =>
+                  "<html><head><title>Initial</title></head><body><div>loading</div></body></html>",
+                url: () => "https://example.com/wait-selector-timeout",
+                waitForLoadState: async () => undefined,
+                waitForTimeout: async () => undefined,
+                locator: () => ({
+                  last: () => ({
+                    isVisible: async () => false,
+                    boundingBox: async () => null,
+                  }),
+                  isVisible: async () => false,
+                  boundingBox: async () => null,
+                }),
+                route: async () => undefined,
+                close: async () => undefined,
+              }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+            getSnapshot: () =>
+              Effect.succeed({
+                limits: {
+                  maxContexts: 1,
+                  maxPages: 1,
+                  maxQueue: 1,
+                },
+                activeContexts: 0,
+                activePages: 0,
+                queuedRequests: 0,
+                maxObservedActiveContexts: 0,
+                maxObservedActivePages: 0,
+                maxObservedQueuedRequests: 0,
+              }),
+            setTestConfig: () => Effect.void,
+            close: () => Effect.void,
+            resetForTests: () => Effect.void,
+          }),
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>,
+    ),
+  );
+
   it.effect(
     "refreshes browser metadata through a follow-up navigation when mediation requests metadata refresh",
     () =>
@@ -1258,6 +1758,761 @@ describe("sdk access provider runtime", () => {
       }),
   );
 
+  it.effect("waits for a managed Cloudflare page to settle before the first follow-up reload", () =>
+    Effect.suspend(() => {
+      let gotoCount = 0;
+      let settleReadCount = 0;
+      let currentPageCleared = false;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-stealth");
+        const result = yield* provider.execute({
+          url: "https://example.com/challenge-settles-before-follow-up",
+          context: {
+            targetUrl: "https://example.com/challenge-settles-before-follow-up",
+            targetDomain: "example.com",
+            providerId: "browser-stealth",
+            mode: "browser",
+            timeoutMs: 5_000,
+            egress: {
+              allocationMode: "static",
+              pluginId: "test-egress",
+              profileId: "direct",
+              poolId: "direct-pool",
+              routePolicyId: "direct-route",
+              routeKind: "direct",
+              routeKey: "direct",
+              egressKey: "direct",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-stealth",
+              browserUserAgent: "Identity Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            browser: {
+              runtimeProfileId: "patchright-stealth",
+              waitUntil: "domcontentloaded",
+              timeoutMs: 60_000,
+              userAgent: "Browser Agent",
+              poolKey: "browser-stealth::patchright-stealth::direct::identity-a",
+              challengeHandling: {
+                solveCloudflare: true,
+              },
+            },
+            warnings: [],
+          },
+        });
+
+        expect(gotoCount).toBe(1);
+        expect(result.status).toBe(200);
+        expect(result.mediation).toMatchObject({
+          kind: "challenge",
+          status: "cleared",
+          resolutionKind: "click",
+        });
+        expect(result.warnings).toEqual(
+          expect.arrayContaining([
+            "cloudflare-solver:post-clearance-settle-before-follow-up",
+            "cloudflare-solver:post-clearance-settled-before-follow-up",
+            "cloudflare-solver:post-clearance-strategy-override:reuse-current",
+          ]),
+        );
+      }).pipe(
+        Effect.provide(makeAccessProviderRegistryLive()),
+        Effect.provideService(BrowserMediationRuntime, {
+          mediate: () =>
+            Effect.succeed({
+              policy: {
+                mode: "solve",
+                vendors: ["cloudflare"],
+                maxAttempts: 4,
+                timeBudgetMs: 60_000,
+                postClearanceStrategy: "reload-target",
+                captureEvidence: true,
+              },
+              outcome: {
+                kind: "challenge",
+                status: "cleared",
+                vendor: "cloudflare",
+                resolutionKind: "click",
+                attemptCount: 1,
+                evidence: {
+                  signals: [],
+                },
+                timings: {},
+              },
+              followUpNavigationRequired: true,
+              currentPageRefreshRequired: false,
+              postClearanceStrategy: "reload-target",
+              warnings: ["cloudflare-solver:clearance-observed:managed"],
+            }),
+        }),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (_options, use) =>
+            use({
+              goto: async () => {
+                gotoCount += 1;
+                return {
+                  status: () => (gotoCount >= 2 && currentPageCleared ? 200 : 403),
+                  allHeaders: async () => ({
+                    "content-type": "text/html; charset=utf-8",
+                  }),
+                  request: () => ({
+                    url: () => "https://example.com/challenge-settles-before-follow-up",
+                    redirectedFrom: () => null,
+                  }),
+                };
+              },
+              content: async () => {
+                if (currentPageCleared) {
+                  return "<html><head><title>Solved</title></head><body>ok</body></html>";
+                }
+
+                if (gotoCount === 1 && !currentPageCleared) {
+                  settleReadCount += 1;
+                  if (settleReadCount >= 3) {
+                    currentPageCleared = true;
+                    return "<html><head><title>Solved</title></head><body>ok</body></html>";
+                  }
+                }
+
+                return "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>";
+              },
+              url: () => "https://example.com/challenge-settles-before-follow-up",
+              waitForLoadState: async () => undefined,
+              waitForTimeout: async () => undefined,
+              locator: () => ({
+                last: () => ({
+                  boundingBox: async () => ({
+                    x: 100,
+                    y: 100,
+                    width: 40,
+                    height: 40,
+                  }),
+                }),
+                boundingBox: async () => ({
+                  x: 100,
+                  y: 100,
+                  width: 40,
+                  height: 40,
+                }),
+              }),
+              mouse: {
+                click: async () => undefined,
+              },
+              route: async () => undefined,
+              close: async () => undefined,
+            }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
+  it.effect("skips current-page reuse when the settled page is a Chromium block error", () =>
+    Effect.suspend(() => {
+      let gotoCount = 0;
+      let settleReadCount = 0;
+      let currentPageCleared = false;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-stealth");
+        const result = yield* provider.execute({
+          url: "https://example.com/challenge-clears-on-current-page",
+          context: {
+            targetUrl: "https://example.com/challenge-clears-on-current-page",
+            targetDomain: "example.com",
+            providerId: "browser-stealth",
+            mode: "browser",
+            timeoutMs: 5_000,
+            egress: {
+              allocationMode: "static",
+              pluginId: "test-egress",
+              profileId: "direct",
+              poolId: "direct-pool",
+              routePolicyId: "direct-route",
+              routeKind: "direct",
+              routeKey: "direct",
+              egressKey: "direct",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-stealth",
+              browserUserAgent: "Identity Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            browser: {
+              runtimeProfileId: "patchright-stealth",
+              waitUntil: "domcontentloaded",
+              timeoutMs: 60_000,
+              userAgent: "Browser Agent",
+              poolKey: "browser-stealth::patchright-stealth::direct::identity-a",
+              challengeHandling: {
+                solveCloudflare: true,
+              },
+            },
+            warnings: [],
+          },
+        });
+
+        expect(gotoCount).toBe(2);
+        expect(result.status).toBe(200);
+        expect(result.finalUrl).toBe("https://example.com/challenge-clears-on-current-page");
+        expect(result.mediation).toMatchObject({
+          kind: "challenge",
+          status: "cleared",
+          resolutionKind: "click",
+        });
+        expect(result.warnings).toEqual(
+          expect.arrayContaining([
+            "cloudflare-solver:post-clearance-strategy-override-skipped:browser-error:ERR_BLOCKED_BY_CLIENT",
+          ]),
+        );
+      }).pipe(
+        Effect.provide(makeAccessProviderRegistryLive()),
+        Effect.provideService(BrowserMediationRuntime, {
+          mediate: () =>
+            Effect.succeed({
+              policy: {
+                mode: "solve",
+                vendors: ["cloudflare"],
+                maxAttempts: 4,
+                timeBudgetMs: 60_000,
+                postClearanceStrategy: "reload-target",
+                captureEvidence: true,
+              },
+              outcome: {
+                kind: "challenge",
+                status: "cleared",
+                vendor: "cloudflare",
+                resolutionKind: "click",
+                attemptCount: 1,
+                evidence: {
+                  signals: [],
+                },
+                timings: {},
+              },
+              followUpNavigationRequired: true,
+              currentPageRefreshRequired: false,
+              postClearanceStrategy: "reload-target",
+              warnings: ["cloudflare-solver:clearance-observed:managed"],
+            }),
+        }),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (_options, use) =>
+            use({
+              goto: async () => {
+                gotoCount += 1;
+                return {
+                  status: () => (gotoCount >= 2 ? 200 : 403),
+                  allHeaders: async () => ({
+                    "content-type": "text/html; charset=utf-8",
+                  }),
+                  request: () => ({
+                    url: () => "https://example.com/challenge-clears-on-current-page",
+                    redirectedFrom: () => null,
+                  }),
+                };
+              },
+              content: async () => {
+                if (gotoCount >= 2) {
+                  return "<html><head><title>Solved</title></head><body>ok</body></html>";
+                }
+
+                if (currentPageCleared) {
+                  return `<html><head><title>www.example.com</title></head><body>This page has been blocked by Chromium ERR_BLOCKED_BY_CLIENT Reload</body></html>`;
+                }
+
+                settleReadCount += 1;
+                if (settleReadCount >= 3) {
+                  currentPageCleared = true;
+                  return "<html><head><title>Solved</title></head><body>ok</body></html>";
+                }
+
+                return "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>";
+              },
+              url: () =>
+                currentPageCleared
+                  ? "chrome-error://chromewebdata/"
+                  : "https://example.com/challenge-clears-on-current-page",
+              waitForLoadState: async () => undefined,
+              waitForTimeout: async () => undefined,
+              locator: () => ({
+                last: () => ({
+                  boundingBox: async () => ({
+                    x: 100,
+                    y: 100,
+                    width: 40,
+                    height: 40,
+                  }),
+                }),
+                boundingBox: async () => ({
+                  x: 100,
+                  y: 100,
+                  width: 40,
+                  height: 40,
+                }),
+              }),
+              mouse: {
+                click: async () => undefined,
+              },
+              route: async () => undefined,
+              close: async () => undefined,
+            }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
+  it.effect("reuses the current page after delayed Chromium block-page recovery", () =>
+    Effect.suspend(() => {
+      let gotoCount = 0;
+      let settleReadCount = 0;
+      let recoveryReadCount = 0;
+      let currentPageCleared = false;
+
+      return Effect.gen(function* () {
+        const registry = yield* AccessProviderRegistry;
+        const provider = yield* registry.resolve("browser-stealth");
+        const result = yield* provider.execute({
+          url: "https://example.com/challenge-clears-after-delayed-browser-error",
+          context: {
+            targetUrl: "https://example.com/challenge-clears-after-delayed-browser-error",
+            targetDomain: "example.com",
+            providerId: "browser-stealth",
+            mode: "browser",
+            timeoutMs: 5_000,
+            egress: {
+              allocationMode: "static",
+              pluginId: "test-egress",
+              profileId: "direct",
+              poolId: "direct-pool",
+              routePolicyId: "direct-route",
+              routeKind: "direct",
+              routeKey: "direct",
+              egressKey: "direct",
+              requestHeaders: {},
+              warnings: [],
+              release: Effect.void,
+            },
+            identity: {
+              allocationMode: "static",
+              pluginId: "test-identity",
+              profileId: "persona-a",
+              tenantId: "tenant-a",
+              identityKey: "identity-a",
+              browserRuntimeProfileId: "patchright-stealth",
+              browserUserAgent: "Identity Agent",
+              warnings: [],
+              release: Effect.void,
+            },
+            browser: {
+              runtimeProfileId: "patchright-stealth",
+              waitUntil: "domcontentloaded",
+              timeoutMs: 60_000,
+              userAgent: "Browser Agent",
+              poolKey: "browser-stealth::patchright-stealth::direct::identity-a",
+              challengeHandling: {
+                solveCloudflare: true,
+              },
+            },
+            warnings: [],
+          },
+        });
+
+        expect(gotoCount).toBe(1);
+        expect(result.status).toBe(200);
+        expect(result.html).toContain("Solved");
+        expect(result.mediation).toMatchObject({
+          kind: "challenge",
+          status: "cleared",
+          resolutionKind: "click",
+        });
+        expect(result.warnings).toEqual(
+          expect.arrayContaining([
+            "cloudflare-solver:post-clearance-browser-error-recovery",
+            "cloudflare-solver:post-clearance-browser-error-recovered",
+            "cloudflare-solver:post-clearance-strategy-override:reuse-current",
+          ]),
+        );
+      }).pipe(
+        Effect.provide(makeAccessProviderRegistryLive()),
+        Effect.provideService(BrowserMediationRuntime, {
+          mediate: () =>
+            Effect.succeed({
+              policy: {
+                mode: "solve",
+                vendors: ["cloudflare"],
+                maxAttempts: 4,
+                timeBudgetMs: 60_000,
+                postClearanceStrategy: "reload-target",
+                captureEvidence: true,
+              },
+              outcome: {
+                kind: "challenge",
+                status: "cleared",
+                vendor: "cloudflare",
+                resolutionKind: "click",
+                attemptCount: 1,
+                evidence: {
+                  signals: [],
+                },
+                timings: {},
+              },
+              followUpNavigationRequired: true,
+              currentPageRefreshRequired: false,
+              postClearanceStrategy: "reload-target",
+              warnings: ["cloudflare-solver:clearance-observed:managed"],
+            }),
+        }),
+        Effect.provideService(BrowserRuntime, {
+          readPoolLimits: () => ({
+            maxContexts: 1,
+            maxPages: 1,
+            maxQueue: 1,
+          }),
+          withPage: (_options, use) =>
+            use({
+              goto: async () => {
+                gotoCount += 1;
+                return {
+                  status: () => (gotoCount >= 2 ? 200 : 403),
+                  allHeaders: async () => ({
+                    "content-type": "text/html; charset=utf-8",
+                  }),
+                  request: () => ({
+                    url: () => "https://example.com/challenge-clears-after-delayed-browser-error",
+                    redirectedFrom: () => null,
+                  }),
+                };
+              },
+              content: async () => {
+                if (gotoCount >= 2) {
+                  return "<html><head><title>Reloaded</title></head><body>unexpected follow-up</body></html>";
+                }
+
+                if (currentPageCleared) {
+                  recoveryReadCount += 1;
+                  return recoveryReadCount >= 18
+                    ? "<html><head><title>Solved</title></head><body>ok</body></html>"
+                    : "<html><head><title>www.example.com</title></head><body>This page has been blocked by Chromium ERR_BLOCKED_BY_CLIENT Reload</body></html>";
+                }
+
+                settleReadCount += 1;
+                if (settleReadCount >= 3) {
+                  currentPageCleared = true;
+                  recoveryReadCount += 1;
+                  return "<html><head><title>www.example.com</title></head><body>This page has been blocked by Chromium ERR_BLOCKED_BY_CLIENT Reload</body></html>";
+                }
+
+                return "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>";
+              },
+              url: () =>
+                currentPageCleared && recoveryReadCount < 18
+                  ? "chrome-error://chromewebdata/"
+                  : "https://example.com/challenge-clears-after-delayed-browser-error",
+              waitForLoadState: async () => undefined,
+              waitForTimeout: async () => undefined,
+              locator: () => ({
+                last: () => ({
+                  boundingBox: async () => ({
+                    x: 100,
+                    y: 100,
+                    width: 40,
+                    height: 40,
+                  }),
+                }),
+                boundingBox: async () => ({
+                  x: 100,
+                  y: 100,
+                  width: 40,
+                  height: 40,
+                }),
+              }),
+              mouse: {
+                click: async () => undefined,
+              },
+              route: async () => undefined,
+              close: async () => undefined,
+            }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+          getSnapshot: () =>
+            Effect.succeed({
+              limits: {
+                maxContexts: 1,
+                maxPages: 1,
+                maxQueue: 1,
+              },
+              activeContexts: 0,
+              activePages: 0,
+              queuedRequests: 0,
+              maxObservedActiveContexts: 0,
+              maxObservedActivePages: 0,
+              maxObservedQueuedRequests: 0,
+            }),
+          setTestConfig: () => Effect.void,
+          close: () => Effect.void,
+          resetForTests: () => Effect.void,
+        }),
+        Effect.provideService(FetchService, {
+          fetch: globalThis.fetch,
+        }),
+      ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+    }),
+  );
+
+  it.effect("caps Chromium block-page recovery waits to the configured browser timeout", () =>
+    Effect.suspend(() => {
+      const originalNow = Date.now;
+      let fakeNow = 0;
+      let gotoCount = 0;
+      let contentReadCount = 0;
+      const recoveryWaitCalls: number[] = [];
+
+      Date.now = () => fakeNow;
+      try {
+        return Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("browser-stealth");
+          const result = yield* provider.execute({
+            url: "https://example.com/challenge-clears-with-short-recovery-budget",
+            context: {
+              targetUrl: "https://example.com/challenge-clears-with-short-recovery-budget",
+              targetDomain: "example.com",
+              providerId: "browser-stealth",
+              mode: "browser",
+              timeoutMs: 5_000,
+              egress: {
+                allocationMode: "static",
+                pluginId: "test-egress",
+                profileId: "direct",
+                poolId: "direct-pool",
+                routePolicyId: "direct-route",
+                routeKind: "direct",
+                routeKey: "direct",
+                egressKey: "direct",
+                requestHeaders: {},
+                warnings: [],
+                release: Effect.void,
+              },
+              identity: {
+                allocationMode: "static",
+                pluginId: "test-identity",
+                profileId: "persona-a",
+                tenantId: "tenant-a",
+                identityKey: "identity-a",
+                browserRuntimeProfileId: "patchright-stealth",
+                browserUserAgent: "Identity Agent",
+                warnings: [],
+                release: Effect.void,
+              },
+              browser: {
+                runtimeProfileId: "patchright-stealth",
+                waitUntil: "domcontentloaded",
+                timeoutMs: 25,
+                userAgent: "Browser Agent",
+                poolKey: "browser-stealth::patchright-stealth::direct::identity-a",
+                challengeHandling: {
+                  solveCloudflare: true,
+                },
+              },
+              warnings: [],
+            },
+          });
+
+          expect(gotoCount).toBe(1);
+          expect(result.status).toBe(200);
+          expect(result.warnings).toEqual(
+            expect.arrayContaining([
+              "cloudflare-solver:post-clearance-browser-error-recovered",
+              "cloudflare-solver:post-clearance-strategy-override:reuse-current",
+            ]),
+          );
+          expect(Math.max(...recoveryWaitCalls)).toBeLessThanOrEqual(25);
+        }).pipe(
+          Effect.provide(makeAccessProviderRegistryLive()),
+          Effect.provideService(BrowserMediationRuntime, {
+            mediate: () =>
+              Effect.succeed({
+                policy: {
+                  mode: "solve",
+                  vendors: ["cloudflare"],
+                  maxAttempts: 4,
+                  timeBudgetMs: 60_000,
+                  postClearanceStrategy: "reload-target",
+                  captureEvidence: true,
+                },
+                outcome: {
+                  kind: "challenge",
+                  status: "cleared",
+                  vendor: "cloudflare",
+                  resolutionKind: "click",
+                  attemptCount: 1,
+                  evidence: {
+                    signals: [],
+                  },
+                  timings: {},
+                },
+                followUpNavigationRequired: true,
+                currentPageRefreshRequired: false,
+                postClearanceStrategy: "reload-target",
+                warnings: ["cloudflare-solver:clearance-observed:managed"],
+              }),
+          }),
+          Effect.provideService(BrowserRuntime, {
+            readPoolLimits: () => ({
+              maxContexts: 1,
+              maxPages: 1,
+              maxQueue: 1,
+            }),
+            withPage: (_options, use) =>
+              use({
+                goto: async () => {
+                  gotoCount += 1;
+                  return {
+                    status: () => (gotoCount >= 2 ? 200 : 403),
+                    allHeaders: async () => ({
+                      "content-type": "text/html; charset=utf-8",
+                    }),
+                    request: () => ({
+                      url: () => "https://example.com/challenge-clears-with-short-recovery-budget",
+                      redirectedFrom: () => null,
+                    }),
+                  };
+                },
+                content: async () => {
+                  contentReadCount += 1;
+                  if (contentReadCount === 1) {
+                    return "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>";
+                  }
+                  if (contentReadCount <= 3) {
+                    return "<html><head><title>www.example.com</title></head><body>This page has been blocked by Chromium ERR_BLOCKED_BY_CLIENT Reload</body></html>";
+                  }
+                  return "<html><head><title>Solved</title></head><body>ok</body></html>";
+                },
+                url: () => "https://example.com/challenge-clears-with-short-recovery-budget",
+                waitForLoadState: async () => undefined,
+                waitForTimeout: async (timeoutMs) => {
+                  recoveryWaitCalls.push(timeoutMs);
+                  fakeNow += timeoutMs;
+                },
+                locator: () => ({
+                  last: () => ({
+                    boundingBox: async () => ({
+                      x: 100,
+                      y: 100,
+                      width: 40,
+                      height: 40,
+                    }),
+                  }),
+                  boundingBox: async () => ({
+                    x: 100,
+                    y: 100,
+                    width: 40,
+                    height: 40,
+                  }),
+                }),
+                mouse: {
+                  click: async () => undefined,
+                },
+                route: async () => undefined,
+                close: async () => undefined,
+              }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+            getSnapshot: () =>
+              Effect.succeed({
+                limits: {
+                  maxContexts: 1,
+                  maxPages: 1,
+                  maxQueue: 1,
+                },
+                activeContexts: 0,
+                activePages: 0,
+                queuedRequests: 0,
+                maxObservedActiveContexts: 0,
+                maxObservedActivePages: 0,
+                maxObservedQueuedRequests: 0,
+              }),
+            setTestConfig: () => Effect.void,
+            close: () => Effect.void,
+            resetForTests: () => Effect.void,
+          }),
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+      } finally {
+        Date.now = originalNow;
+      }
+    }),
+  );
+
   it.effect(
     "downgrades cleared mediation outcomes when the follow-up navigation still lands on an access wall",
     () =>
@@ -1314,7 +2569,7 @@ describe("sdk access provider runtime", () => {
             },
           });
 
-          expect(gotoCount).toBe(2);
+          expect(gotoCount).toBe(3);
           expect(result.status).toBe(403);
           expect(result.mediation).toMatchObject({
             kind: "challenge",
@@ -1322,7 +2577,10 @@ describe("sdk access provider runtime", () => {
             failureReason: "no-progress",
           });
           expect(result.warnings).toEqual(
-            expect.arrayContaining(["cloudflare-solver:clearance-unconfirmed"]),
+            expect.arrayContaining([
+              "cloudflare-solver:clearance-confirmation-retry",
+              "cloudflare-solver:clearance-unconfirmed",
+            ]),
           );
         }).pipe(
           Effect.provide(AccessProviderRegistryLive),
@@ -1382,6 +2640,162 @@ describe("sdk access provider runtime", () => {
                     challengeCleared = true;
                   },
                 },
+                route: async () => undefined,
+                close: async () => undefined,
+              }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
+            getSnapshot: () =>
+              Effect.succeed({
+                limits: {
+                  maxContexts: 1,
+                  maxPages: 1,
+                  maxQueue: 1,
+                },
+                activeContexts: 0,
+                activePages: 0,
+                queuedRequests: 0,
+                maxObservedActiveContexts: 0,
+                maxObservedActivePages: 0,
+                maxObservedQueuedRequests: 0,
+              }),
+            setTestConfig: () => Effect.void,
+            close: () => Effect.void,
+            resetForTests: () => Effect.void,
+          }),
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ) as Effect.Effect<void, InvalidInputError | NetworkError | BrowserError, never>;
+      }),
+  );
+
+  it.effect(
+    "confirms clearance on a second follow-up navigation when the first reload stays blocked",
+    () =>
+      Effect.suspend(() => {
+        let gotoCount = 0;
+
+        return Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("browser-stealth");
+          const result = yield* provider.execute({
+            url: "https://example.com/challenge-confirmed-on-retry",
+            context: {
+              targetUrl: "https://example.com/challenge-confirmed-on-retry",
+              targetDomain: "example.com",
+              providerId: "browser-stealth",
+              mode: "browser",
+              timeoutMs: 5_000,
+              egress: {
+                allocationMode: "static",
+                pluginId: "test-egress",
+                profileId: "direct",
+                poolId: "direct-pool",
+                routePolicyId: "direct-route",
+                routeKind: "direct",
+                routeKey: "direct",
+                egressKey: "direct",
+                requestHeaders: {},
+                warnings: [],
+                release: Effect.void,
+              },
+              identity: {
+                allocationMode: "static",
+                pluginId: "test-identity",
+                profileId: "persona-a",
+                tenantId: "tenant-a",
+                identityKey: "identity-a",
+                browserRuntimeProfileId: "patchright-stealth",
+                browserUserAgent: "Identity Agent",
+                warnings: [],
+                release: Effect.void,
+              },
+              browser: {
+                runtimeProfileId: "patchright-stealth",
+                waitUntil: "domcontentloaded",
+                timeoutMs: 60_000,
+                userAgent: "Browser Agent",
+                poolKey: "browser-stealth::patchright-stealth::direct::identity-a",
+                challengeHandling: {
+                  solveCloudflare: true,
+                },
+              },
+              warnings: [],
+            },
+          });
+
+          expect(gotoCount).toBe(3);
+          expect(result.status).toBe(200);
+          expect(result.mediation).toMatchObject({
+            kind: "challenge",
+            status: "cleared",
+            resolutionKind: "click",
+          });
+          expect(result.warnings).toEqual(
+            expect.arrayContaining([
+              "cloudflare-solver:clearance-confirmation-retry",
+              "cloudflare-solver:clearance-confirmed-on-retry",
+            ]),
+          );
+        }).pipe(
+          Effect.provide(makeAccessProviderRegistryLive()),
+          Effect.provideService(BrowserMediationRuntime, {
+            mediate: () =>
+              Effect.succeed({
+                policy: {
+                  mode: "solve",
+                  vendors: ["cloudflare"],
+                  maxAttempts: 4,
+                  timeBudgetMs: 60_000,
+                  postClearanceStrategy: "reload-target",
+                  captureEvidence: true,
+                },
+                outcome: {
+                  kind: "challenge",
+                  status: "cleared",
+                  vendor: "cloudflare",
+                  resolutionKind: "click",
+                  attemptCount: 1,
+                  evidence: {
+                    signals: [],
+                  },
+                  timings: {},
+                },
+                followUpNavigationRequired: true,
+                currentPageRefreshRequired: false,
+                postClearanceStrategy: "reload-target",
+                warnings: ["cloudflare-solver:clearance-observed:managed"],
+              }),
+          }),
+          Effect.provideService(BrowserRuntime, {
+            readPoolLimits: () => ({
+              maxContexts: 1,
+              maxPages: 1,
+              maxQueue: 1,
+            }),
+            withPage: (_options, use) =>
+              use({
+                goto: async () => {
+                  gotoCount += 1;
+                  return {
+                    status: () => (gotoCount >= 3 ? 200 : 403),
+                    allHeaders: async () => ({
+                      "content-type": "text/html; charset=utf-8",
+                    }),
+                    request: () => ({
+                      url: () => "https://example.com/challenge-confirmed-on-retry",
+                      redirectedFrom: () => null,
+                    }),
+                  };
+                },
+                content: async () =>
+                  gotoCount >= 3
+                    ? "<html><head><title>Recovered</title></head><body>ok</body></html>"
+                    : "<html><head><title>Still blocked</title></head><body>cookies wall</body></html>",
+                url: () => "https://example.com/challenge-confirmed-on-retry",
+                waitForLoadState: async () => undefined,
+                waitForTimeout: async () => undefined,
+                locator: () => undefined,
+                mouse: undefined,
                 route: async () => undefined,
                 close: async () => undefined,
               }).pipe(Effect.map((value) => ({ value, warnings: [] }))),
@@ -2019,112 +3433,114 @@ describe("sdk access provider runtime", () => {
     ),
   );
 
-  it.effect("fails cleanup hangs after the page callback finishes instead of stalling indefinitely", () =>
-    Effect.suspend(() =>
-      Effect.gen(function* () {
-        const registry = yield* AccessProviderRegistry;
-        const provider = yield* registry.resolve("browser-basic");
-        const failure = yield* provider
-          .execute({
-            url: "https://example.com/browser-runtime-cleanup-timeout",
-            context: {
-              targetUrl: "https://example.com/browser-runtime-cleanup-timeout",
-              targetDomain: "example.com",
-              providerId: "browser-basic",
-              mode: "browser",
-              timeoutMs: 25,
-              egress: {
-                allocationMode: "static",
-                pluginId: "test-egress",
-                profileId: "direct",
-                poolId: "direct-pool",
-                routePolicyId: "direct-route",
-                routeKind: "direct",
-                routeKey: "direct",
-                egressKey: "direct",
-                requestHeaders: {},
-                warnings: [],
-                release: Effect.void,
-              },
-              identity: {
-                allocationMode: "static",
-                pluginId: "test-identity",
-                profileId: "persona-a",
-                tenantId: "tenant-a",
-                identityKey: "identity-a",
-                browserRuntimeProfileId: "patchright-default",
-                browserUserAgent: "Identity Agent",
-                warnings: [],
-                release: Effect.void,
-              },
-              browser: {
-                runtimeProfileId: "patchright-default",
-                waitUntil: "domcontentloaded",
+  it.effect(
+    "fails cleanup hangs after the page callback finishes instead of stalling indefinitely",
+    () =>
+      Effect.suspend(() =>
+        Effect.gen(function* () {
+          const registry = yield* AccessProviderRegistry;
+          const provider = yield* registry.resolve("browser-basic");
+          const failure = yield* provider
+            .execute({
+              url: "https://example.com/browser-runtime-cleanup-timeout",
+              context: {
+                targetUrl: "https://example.com/browser-runtime-cleanup-timeout",
+                targetDomain: "example.com",
+                providerId: "browser-basic",
+                mode: "browser",
                 timeoutMs: 25,
-                userAgent: "Browser Agent",
-                poolKey: "browser-basic::patchright-default::direct::identity-a",
+                egress: {
+                  allocationMode: "static",
+                  pluginId: "test-egress",
+                  profileId: "direct",
+                  poolId: "direct-pool",
+                  routePolicyId: "direct-route",
+                  routeKind: "direct",
+                  routeKey: "direct",
+                  egressKey: "direct",
+                  requestHeaders: {},
+                  warnings: [],
+                  release: Effect.void,
+                },
+                identity: {
+                  allocationMode: "static",
+                  pluginId: "test-identity",
+                  profileId: "persona-a",
+                  tenantId: "tenant-a",
+                  identityKey: "identity-a",
+                  browserRuntimeProfileId: "patchright-default",
+                  browserUserAgent: "Identity Agent",
+                  warnings: [],
+                  release: Effect.void,
+                },
+                browser: {
+                  runtimeProfileId: "patchright-default",
+                  waitUntil: "domcontentloaded",
+                  timeoutMs: 25,
+                  userAgent: "Browser Agent",
+                  poolKey: "browser-basic::patchright-default::direct::identity-a",
+                },
+                warnings: [],
               },
-              warnings: [],
-            },
-          })
-          .pipe(Effect.flip);
+            })
+            .pipe(Effect.flip);
 
-        expect(failure._tag).toBe("BrowserError");
-        if (failure._tag !== "BrowserError") {
-          throw new Error(`Expected BrowserError, received ${failure._tag}`);
-        }
+          expect(failure._tag).toBe("BrowserError");
+          if (failure._tag !== "BrowserError") {
+            throw new Error(`Expected BrowserError, received ${failure._tag}`);
+          }
 
-        expect(failure.details).toContain("hard timeout");
-        expect(failure.details).toContain("stage=unknown");
-      }).pipe(
-        Effect.provide(AccessProviderRegistryLive),
-        Effect.provideService(BrowserRuntime, {
-          readPoolLimits: () => ({
-            maxContexts: 1,
-            maxPages: 1,
-            maxQueue: 1,
-          }),
-          withPage: (_options, use) =>
-            use({
-              route: async () => undefined,
-              goto: async () => ({
-                status: () => 200,
-                allHeaders: async () => ({
-                  "content-type": "text/html; charset=utf-8",
-                }),
-                request: () => ({
-                  url: () => "https://example.com/browser-runtime-cleanup-timeout",
-                  redirectedFrom: () => null,
-                }),
-              }),
-              content: async () => "<html><head><title>ok</title></head><body>ok</body></html>",
-              url: () => "https://example.com/browser-runtime-cleanup-timeout",
-              waitForLoadState: async () => undefined,
-              close: async () => undefined,
-            } as never).pipe(Effect.flatMap(() => Effect.never)),
-          getSnapshot: () =>
-            Effect.succeed({
-              limits: {
-                maxContexts: 1,
-                maxPages: 1,
-                maxQueue: 1,
-              },
-              activeContexts: 0,
-              activePages: 0,
-              queuedRequests: 0,
-              maxObservedActiveContexts: 0,
-              maxObservedActivePages: 0,
-              maxObservedQueuedRequests: 0,
+          expect(failure.details).toContain("hard timeout");
+          expect(failure.details).toContain("stage=unknown");
+        }).pipe(
+          Effect.provide(AccessProviderRegistryLive),
+          Effect.provideService(BrowserRuntime, {
+            readPoolLimits: () => ({
+              maxContexts: 1,
+              maxPages: 1,
+              maxQueue: 1,
             }),
-          setTestConfig: () => Effect.void,
-          close: () => Effect.void,
-          resetForTests: () => Effect.void,
-        }),
-        Effect.provideService(FetchService, {
-          fetch: globalThis.fetch,
-        }),
+            withPage: (_options, use) =>
+              use({
+                route: async () => undefined,
+                goto: async () => ({
+                  status: () => 200,
+                  allHeaders: async () => ({
+                    "content-type": "text/html; charset=utf-8",
+                  }),
+                  request: () => ({
+                    url: () => "https://example.com/browser-runtime-cleanup-timeout",
+                    redirectedFrom: () => null,
+                  }),
+                }),
+                content: async () => "<html><head><title>ok</title></head><body>ok</body></html>",
+                url: () => "https://example.com/browser-runtime-cleanup-timeout",
+                waitForLoadState: async () => undefined,
+                close: async () => undefined,
+              } as never).pipe(Effect.flatMap(() => Effect.never)),
+            getSnapshot: () =>
+              Effect.succeed({
+                limits: {
+                  maxContexts: 1,
+                  maxPages: 1,
+                  maxQueue: 1,
+                },
+                activeContexts: 0,
+                activePages: 0,
+                queuedRequests: 0,
+                maxObservedActiveContexts: 0,
+                maxObservedActivePages: 0,
+                maxObservedQueuedRequests: 0,
+              }),
+            setTestConfig: () => Effect.void,
+            close: () => Effect.void,
+            resetForTests: () => Effect.void,
+          }),
+          Effect.provideService(FetchService, {
+            fetch: globalThis.fetch,
+          }),
+        ),
       ),
-    ),
   );
 
   it.effect("includes the active browser stage in hard-timeout details", () =>

@@ -298,7 +298,7 @@ changing thresholds or widening runtime allowances. Use a command in this
 shape:
 
 ```bash
-CI=1 bd create \
+CI=1 br create \
   --title "[E5] Remediate: workflow simulation budget breach" \
   --description $'Capture the breached metric names, measured values, artifact path, reproduction command, and suspected cause from the failing E5 simulation gate.' \
   --type task \

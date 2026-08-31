@@ -17,6 +17,7 @@ const MANAGED_SPINNER_POLL_INTERVAL_MS = 500;
 const MAX_EMBEDDED_ATTEMPT_CLEARANCE_WINDOW_MS = 750;
 const MAX_MANAGED_ATTEMPT_CLEARANCE_WINDOW_MS = 10_000;
 const MAX_TRANSIENT_CONTENT_READ_ATTEMPTS = 3;
+const MANAGED_CLEARANCE_CONFIRMATION_POLL_INTERVAL_MS = 100;
 
 export type CloudflareChallengeType = "non-interactive" | "managed" | "interactive" | "embedded";
 
@@ -69,6 +70,21 @@ function toSolverWarning(message: string) {
   return `cloudflare-solver:${message}`;
 }
 
+function isTransientDomRace(error: unknown) {
+  const details =
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : typeof error === "string"
+        ? error
+        : "";
+  return (
+    details.includes("page is navigating") ||
+    details.includes("changing the content") ||
+    details.includes("Execution context was destroyed") ||
+    details.includes("most likely because of a navigation")
+  );
+}
+
 export function detectCloudflareChallengeType(
   pageContent: string,
 ): CloudflareChallengeType | undefined {
@@ -113,6 +129,33 @@ async function waitForNetworkSettle(page: PatchrightPage, timeoutMs: number) {
   }
 }
 
+function isTransientLocatorNavigationError(error: unknown) {
+  const details =
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : typeof error === "string"
+        ? error
+        : "";
+  return (
+    details.includes("Execution context was destroyed") ||
+    details.includes("page is navigating") ||
+    details.includes("changing the content")
+  );
+}
+
+function isInvalidLocatorCountCapabilityError(error: unknown) {
+  const details =
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : typeof error === "string"
+        ? error
+        : "";
+  return (
+    details.includes("count is not a function") ||
+    details.includes("count: value: expected integer, got object")
+  );
+}
+
 async function resolveFrameBoundingBox(page: PatchrightPage) {
   const frame = page.frame?.({
     url: CLOUDFLARE_CHALLENGE_FRAME_PATTERN,
@@ -121,13 +164,31 @@ async function resolveFrameBoundingBox(page: PatchrightPage) {
     return undefined;
   }
 
-  const frameElement = await frame.frameElement();
-  if (!(await frameElement.isVisible())) {
+  const frameElement = await frame.frameElement().catch((error) => {
+    if (isTransientLocatorNavigationError(error)) {
+      return undefined;
+    }
+    throw error;
+  });
+  if (frameElement === undefined) {
+    return undefined;
+  }
+  const boundingBox = await frameElement.boundingBox().catch(() => null);
+  if (boundingBox !== null) {
+    return boundingBox;
+  }
+
+  const frameVisible = await frameElement.isVisible().catch((error) => {
+    if (isTransientLocatorNavigationError(error)) {
+      return false;
+    }
+    throw error;
+  });
+  if (!frameVisible) {
     return undefined;
   }
 
-  const boundingBox = await frameElement.boundingBox();
-  return boundingBox ?? undefined;
+  return (await frameElement.boundingBox().catch(() => null)) ?? undefined;
 }
 
 async function resolveLocatorBoundingBox(page: PatchrightPage, selector: string) {
@@ -136,13 +197,63 @@ async function resolveLocatorBoundingBox(page: PatchrightPage, selector: string)
     return undefined;
   }
 
-  const target = locator.last?.() ?? locator;
-  if (target.isVisible !== undefined && !(await target.isVisible())) {
-    return undefined;
+  if (typeof locator.count === "function") {
+    try {
+      if ((await locator.count()) === 0) {
+        return undefined;
+      }
+    } catch (error) {
+      if (isTransientDomRace(error)) {
+        return undefined;
+      }
+      if (!isInvalidLocatorCountCapabilityError(error)) {
+        throw error;
+      }
+    }
   }
 
-  const boundingBox = await target.boundingBox();
-  return boundingBox ?? undefined;
+  const target = typeof locator.last === "function" ? locator.last() : locator;
+  if (typeof target.evaluate === "function") {
+    const domRect = await target
+      .evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        };
+      })
+      .catch(() => undefined);
+    if (
+      domRect !== undefined &&
+      (domRect.width > 0 || domRect.height > 0) &&
+      Number.isFinite(domRect.x) &&
+      Number.isFinite(domRect.y)
+    ) {
+      return domRect;
+    }
+  }
+
+  const boundingBox = await target.boundingBox().catch(() => null);
+  if (boundingBox !== null) {
+    return boundingBox;
+  }
+
+  if (typeof target.isVisible === "function") {
+    try {
+      if (!(await target.isVisible())) {
+        return undefined;
+      }
+    } catch (error) {
+      if (isTransientDomRace(error)) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  return (await target.boundingBox().catch(() => null)) ?? undefined;
 }
 
 async function resolveTurnstileBoundingBox(
@@ -198,14 +309,7 @@ async function readChallengeState(page: PatchrightPage): Promise<ChallengeState>
       };
     } catch (error) {
       lastError = error;
-      const details =
-        error instanceof Error
-          ? `${error.name}: ${error.message}`
-          : typeof error === "string"
-            ? error
-            : "";
-      const isTransientNavigationRace =
-        details.includes("page is navigating") || details.includes("changing the content");
+      const isTransientNavigationRace = isTransientDomRace(error);
       if (!isTransientNavigationRace || attemptIndex + 1 >= MAX_TRANSIENT_CONTENT_READ_ATTEMPTS) {
         throw error;
       }
@@ -263,6 +367,25 @@ async function waitForChallengeToClear(page: PatchrightPage, deadlineAt: number)
   return false;
 }
 
+async function waitForManagedChallengeAttemptToSettle(page: PatchrightPage, deadlineAt: number) {
+  while (Date.now() < deadlineAt) {
+    const state = await readChallengeState(page);
+    if (isChallengeCleared(state)) {
+      return {
+        cleared: true as const,
+        state,
+      };
+    }
+
+    await pause(page, MANAGED_CLEARANCE_CONFIRMATION_POLL_INTERVAL_MS);
+  }
+
+  return {
+    cleared: false as const,
+    state: await readChallengeState(page),
+  };
+}
+
 async function waitForChallengeIteration(
   page: PatchrightPage,
   deadlineAt: number,
@@ -289,6 +412,31 @@ async function waitForChallengeIteration(
   return {
     cleared: false,
     exhausted: true,
+  };
+}
+
+async function confirmChallengeClearance(input: {
+  readonly page: PatchrightPage;
+  readonly challengeType: CloudflareChallengeType;
+  readonly deadlineAt: number;
+}) {
+  if (input.challengeType !== "embedded") {
+    while (Date.now() < input.deadlineAt) {
+      const state = await readChallengeState(input.page);
+      if (!state.waitingInterstitial) {
+        break;
+      }
+
+      await pause(input.page, MANAGED_CLEARANCE_CONFIRMATION_POLL_INTERVAL_MS);
+    }
+  }
+
+  await waitForNetworkSettle(input.page, Math.max(1, input.deadlineAt - Date.now()));
+  const stateAfterConfirmation = await readChallengeState(input.page);
+
+  return {
+    cleared: isChallengeCleared(stateAfterConfirmation),
+    state: stateAfterConfirmation,
   };
 }
 
@@ -415,7 +563,38 @@ export async function resolveBrowserChallenges(input: {
   ) {
     const stateBeforeAttempt =
       attemptIndex === 0 ? initialState : await readChallengeState(input.page);
+    const preAttemptDeadlineAt = resolveAttemptDeadline(
+      deadlineAt,
+      attemptIndex,
+      maxAttempts,
+      currentType,
+    );
     if (isChallengeCleared(stateBeforeAttempt)) {
+      const confirmedClearance = await confirmChallengeClearance({
+        page: input.page,
+        challengeType: currentType,
+        deadlineAt: preAttemptDeadlineAt,
+      });
+      if (!confirmedClearance.cleared) {
+        currentType = confirmedClearance.state.type ?? currentType;
+        warnings.push(toSolverWarning(`clearance-unconfirmed:${currentType}`));
+        if (attemptIndex + 1 < maxAttempts && Date.now() < deadlineAt) {
+          warnings.push(toSolverWarning(`retrying:${currentType}`));
+          continue;
+        }
+
+        return {
+          detected: true,
+          followUpNavigationRequired: false,
+          currentPageRefreshRequired: false,
+          challengeType: currentType,
+          resolutionKind: attemptCount > 0 ? "click" : "wait",
+          failureReason:
+            Date.now() >= deadlineAt ? ("budget-exhausted" as const) : ("no-progress" as const),
+          attemptCount,
+          warnings,
+        };
+      }
       return {
         detected: true,
         followUpNavigationRequired: true,
@@ -498,6 +677,31 @@ export async function resolveBrowserChallenges(input: {
     await waitForManagedSpinnerToSettle(input.page, attemptDeadlineAt);
     const stateAfterSettle = await readChallengeState(input.page);
     if (isChallengeCleared(stateAfterSettle)) {
+      const confirmedClearance = await confirmChallengeClearance({
+        page: input.page,
+        challengeType: currentType,
+        deadlineAt: attemptDeadlineAt,
+      });
+      if (!confirmedClearance.cleared) {
+        currentType = confirmedClearance.state.type ?? currentType;
+        warnings.push(toSolverWarning(`clearance-unconfirmed:${currentType}`));
+        if (attemptIndex + 1 < maxAttempts && Date.now() < deadlineAt) {
+          warnings.push(toSolverWarning(`retrying:${currentType}`));
+          continue;
+        }
+
+        return {
+          detected: true,
+          followUpNavigationRequired: false,
+          currentPageRefreshRequired: false,
+          challengeType: currentType,
+          resolutionKind: attemptCount > 0 ? "click" : "wait",
+          failureReason:
+            Date.now() >= deadlineAt ? ("budget-exhausted" as const) : ("no-progress" as const),
+          attemptCount,
+          warnings,
+        };
+      }
       return {
         detected: true,
         followUpNavigationRequired: true,
@@ -522,6 +726,31 @@ export async function resolveBrowserChallenges(input: {
     if (targetBoundingBox === undefined) {
       const stateAfterTargetMiss = await readChallengeState(input.page);
       if (isChallengeCleared(stateAfterTargetMiss)) {
+        const confirmedClearance = await confirmChallengeClearance({
+          page: input.page,
+          challengeType: currentType,
+          deadlineAt: attemptDeadlineAt,
+        });
+        if (!confirmedClearance.cleared) {
+          currentType = confirmedClearance.state.type ?? currentType;
+          warnings.push(toSolverWarning(`clearance-unconfirmed:${currentType}`));
+          if (attemptIndex + 1 < maxAttempts && Date.now() < deadlineAt) {
+            warnings.push(toSolverWarning(`retrying:${currentType}`));
+            await pause(input.page, CLEARANCE_POLL_INTERVAL_MS);
+            continue;
+          }
+          return {
+            detected: true,
+            followUpNavigationRequired: false,
+            currentPageRefreshRequired: false,
+            challengeType: currentType,
+            resolutionKind: attemptCount > 0 ? "click" : "wait",
+            failureReason:
+              Date.now() >= deadlineAt ? ("budget-exhausted" as const) : ("no-progress" as const),
+            attemptCount,
+            warnings,
+          };
+        }
         return {
           detected: true,
           followUpNavigationRequired: true,
@@ -589,20 +818,44 @@ export async function resolveBrowserChallenges(input: {
     warnings.push(toSolverWarning(`click-dispatched:${currentType}`));
     await waitForNetworkSettle(input.page, input.timeoutMs);
 
-    const iteration = await waitForChallengeIteration(
-      input.page,
-      attemptDeadlineAt,
-      currentSignature,
-    );
+    const iteration =
+      currentType === "embedded"
+        ? await waitForChallengeIteration(input.page, attemptDeadlineAt, currentSignature)
+        : await waitForManagedChallengeAttemptToSettle(input.page, attemptDeadlineAt);
     if (iteration.cleared) {
+      const confirmedClearance = await confirmChallengeClearance({
+        page: input.page,
+        challengeType: currentType,
+        deadlineAt: attemptDeadlineAt,
+      });
+      if (confirmedClearance.cleared) {
+        return {
+          detected: true,
+          followUpNavigationRequired: true,
+          currentPageRefreshRequired: true,
+          challengeType: currentType,
+          resolutionKind: "click",
+          attemptCount,
+          warnings: [...warnings, toSolverWarning(`clearance-observed:${currentType}`)],
+        };
+      }
+
+      currentType = confirmedClearance.state.type ?? currentType;
+      warnings.push(toSolverWarning(`clearance-unconfirmed:${currentType}`));
+      if (attemptIndex + 1 < maxAttempts && Date.now() < deadlineAt) {
+        warnings.push(toSolverWarning(`retrying:${currentType}`));
+        continue;
+      }
       return {
         detected: true,
-        followUpNavigationRequired: true,
-        currentPageRefreshRequired: true,
+        followUpNavigationRequired: false,
+        currentPageRefreshRequired: false,
         challengeType: currentType,
         resolutionKind: "click",
+        failureReason:
+          Date.now() >= deadlineAt ? ("budget-exhausted" as const) : ("no-progress" as const),
         attemptCount,
-        warnings: [...warnings, toSolverWarning(`clearance-observed:${currentType}`)],
+        warnings,
       };
     }
 

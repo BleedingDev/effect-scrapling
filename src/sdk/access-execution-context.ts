@@ -26,6 +26,8 @@ export type ResolvedBrowserExecution = {
   readonly runtimeProfileId: BrowserRuntimeProfileId;
   readonly waitUntil: BrowserWaitUntil;
   readonly timeoutMs: number;
+  readonly waitMs?: number | undefined;
+  readonly waitSelector?: string | undefined;
   readonly userAgent?: string | undefined;
   readonly challengeHandling?:
     | {

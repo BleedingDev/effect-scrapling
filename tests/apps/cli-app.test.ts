@@ -295,6 +295,41 @@ describe("cli app", () => {
     );
   });
 
+  it("supports browser waiting aliases through CLI explain", async () => {
+    const result = await executeCli([
+      "extract",
+      "explain",
+      "--url",
+      "https://example.com/alza-like",
+      "--selector",
+      "h1",
+      "--mode",
+      "browser",
+      "--provider",
+      "browser-stealth",
+      "--network-idle",
+      "--timeout",
+      "60000",
+      "--wait",
+      "2000",
+      "--wait-selector",
+      "h1",
+      "--solve-cloudflare",
+    ]);
+    const payload = JSON.parse(result.output);
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.resolved.driverId).toBe("browser-stealth");
+    expect(payload.resolved.browser.waitUntil).toBe("networkidle");
+    expect(payload.resolved.browser.timeoutMs).toBe(60_000);
+    expect(payload.resolved.browser.waitMs).toBe(2000);
+    expect(payload.resolved.browser.waitSelector).toBe("h1");
+    expect(Number(payload.normalizedPayload.timeoutMs)).toBe(60_000);
+    expect(payload.normalizedPayload.execution.browser.waitUntil).toBe("networkidle");
+    expect(Number(payload.normalizedPayload.execution.browser.waitMs)).toBe(2000);
+    expect(payload.normalizedPayload.execution.browser.waitSelector).toBe("h1");
+  });
+
   it("runs doctor through the CLI boundary with the expected JSON envelope", async () => {
     const result = await executeCli(["doctor"]);
     const payload = JSON.parse(result.output);
@@ -794,7 +829,7 @@ describe("cli app", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.output).toContain(
-      "access preview --url <url> [--timeout-ms <ms>] [--mode <http|browser>]",
+      "access preview --url <url> [--timeout-ms <ms>|--timeout <ms>] [--mode <http|browser>]",
     );
     expect(result.output).toContain(
       'access preview --url "https://example.com" --mode browser --provider browser-stealth',

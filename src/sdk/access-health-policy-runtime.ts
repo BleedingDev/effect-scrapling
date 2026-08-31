@@ -48,6 +48,8 @@ export type AccessHealthSubjectInput =
       readonly pluginId: string;
     };
 
+export type AccessHealthSubjectKind = AccessHealthSubjectInput["kind"];
+
 const DEFAULT_ACCESS_HEALTH_POLICY = {
   domain: {
     failureThreshold: 3,
@@ -91,12 +93,16 @@ const DEFAULT_ACCESS_HEALTH_POLICY = {
   },
 } as const satisfies Record<AccessHealthSubjectInput["kind"], AccessHealthPolicy>;
 
-export function makeStaticAccessHealthSubjectStrategy() {
+export function makeStaticAccessHealthSubjectStrategy(input?: {
+  readonly includeKinds?: ReadonlyArray<AccessHealthSubjectKind> | undefined;
+}) {
+  const includedKinds = input?.includeKinds === undefined ? undefined : new Set(input.includeKinds);
+
   return {
     subjectsFor: (context: AccessHealthContext) => {
       const domain = context.context.targetDomain;
 
-      return [
+      const subjects = [
         {
           kind: "domain",
           domain,
@@ -142,6 +148,10 @@ export function makeStaticAccessHealthSubjectStrategy() {
           identityKey: context.context.identity.identityKey,
         },
       ] satisfies ReadonlyArray<AccessHealthSubjectInput>;
+
+      return includedKinds === undefined
+        ? subjects
+        : subjects.filter((subject) => includedKinds.has(subject.kind));
     },
   } satisfies {
     readonly subjectsFor: (context: AccessHealthContext) => ReadonlyArray<AccessHealthSubjectInput>;

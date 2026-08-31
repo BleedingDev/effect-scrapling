@@ -206,10 +206,10 @@ If `docs/artifacts/e7-performance-budget-scorecard.json` reports
 Use a blocking remediation bead command like:
 
 ```bash
-CI=1 bd create "[E7] Remediate: quality harness performance budget breach" \
+CI=1 br create "[E7] Remediate: quality harness performance budget breach" \
   --type bug \
   --priority 2 \
-  --depends-on bd-i62.13 \
+  --deps blocks:bd-i62.13 \
   --description "Investigate the failing E7 performance budget scorecard before changing thresholds."
 ```
 

@@ -12,6 +12,12 @@ import {
 import { normalizeText } from "@effect-scrapling/foundation-core/domain-normalizers";
 import { ExtractRunResponseSchema } from "./sdk/schemas.ts";
 import { ReferencePackDomainSchema } from "./e9-reference-packs.ts";
+import {
+  buildProductIdentity,
+  detectProductIdentitySignals,
+  tokenizeProductIdentity,
+  type E9ProductIdentitySignals,
+} from "./e9-product-identity.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const NonNegativeNumberSchema = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0));
@@ -21,6 +27,23 @@ const UnitIntervalSchema = Schema.Number.check(Schema.isGreaterThanOrEqualTo(0))
 const MeasurementModeSchema = Schema.Literal("live-upstream-cli-turnstile");
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const LIVE_BROWSER_TIMEOUT_MS = 60_000;
+const LIVE_POST_NAVIGATION_WAIT_MS = 2_000;
+const DISALLOWED_EXTRA_STATUS_TOKENS = new Set([
+  "bazar",
+  "openbox",
+  "open-box",
+  "pouzity",
+  "pouzite",
+  "pouzita",
+  "refurbished",
+  "renewed",
+  "rozbalene",
+  "used",
+]);
+export const E9_EFFECT_SCRAPLING_LIVE_COMMAND =
+  "bun run src/standalone.ts extract run --mode browser --provider browser-stealth --network-idle --timeout 60000 --wait 2000 --wait-selector h1 --solve-cloudflare";
+export const E9_UPSTREAM_SCRAPLING_LIVE_COMMAND =
+  "scrapling extract stealthy-fetch --real-chrome --block-webrtc --hide-canvas --solve-cloudflare --network-idle --timeout 60000 --wait 2000 --wait-selector h1 --css-selector h1";
 
 export const E9ScraplingLiveParityCaseInputSchema = Schema.Struct({
   caseId: CanonicalIdentifierSchema,
@@ -77,6 +100,14 @@ const E9EqualOrBetterSchema = Schema.Struct({
   bypassSuccess: Schema.Boolean,
   referenceMatch: Schema.Boolean,
 });
+const NonEmptyLiveCaseArraySchema = Schema.Array(E9ScraplingLiveParityCaseInputSchema).pipe(
+  Schema.refine(
+    (cases): cases is readonly [LiveCaseInput, ...LiveCaseInput[]] => cases.length > 0,
+    {
+      message: "Expected at least one live parity case.",
+    },
+  ),
+);
 
 export const E9ScraplingLiveParityArtifactSchema = Schema.Struct({
   benchmark: Schema.Literal("e9-scrapling-live-parity"),
@@ -106,14 +137,14 @@ type CommandResult = {
   readonly durationMs: number;
 };
 
+type PythonCommandCandidate = ReadonlyArray<string>;
+type EffectScraplingLiveParityInput = Pick<LiveCaseInput, "expectedValue" | "requiresBypass">;
+
 const DEFAULT_LIVE_CASES = Schema.decodeUnknownSync(
   Schema.Array(E9ScraplingLiveParityCaseInputSchema).pipe(
-    Schema.refine(
-      (cases): cases is ReadonlyArray<LiveCaseInput> => cases.length === 2,
-      {
-        message: "Expected a deterministic 2-case live Turnstile parity corpus.",
-      },
-    ),
+    Schema.refine((cases): cases is ReadonlyArray<LiveCaseInput> => cases.length === 3, {
+      message: "Expected a deterministic 3-case live Turnstile parity corpus.",
+    }),
   ),
 )([
   {
@@ -132,10 +163,18 @@ const DEFAULT_LIVE_CASES = Schema.decodeUnknownSync(
     expectedValue: "TESLA Sound EB20 - Pearl Pink",
     requiresBypass: true,
   },
+  {
+    caseId: "case-e9-live-alza-smart-heater-h300-redirect",
+    retailer: "alza",
+    entryUrl: "https://www.alza.cz/tesla-smart-heater-h300-d7911948.htm",
+    selector: "h1",
+    expectedValue: "Tesla Smart Air Purifier S300B",
+    requiresBypass: true,
+  },
 ]);
 
 export function createDefaultE9ScraplingLiveParityCorpus() {
-  return [...DEFAULT_LIVE_CASES];
+  return DEFAULT_LIVE_CASES.map((currentCase) => ({ ...currentCase }));
 }
 
 async function runCommand(
@@ -197,6 +236,234 @@ async function normalizeComparableText(value: string) {
   return normalized.trim();
 }
 
+function tokenizeShebangCommand(value: string) {
+  const segments = value.match(/"[^"]*"|'[^']*'|\S+/gu) ?? [];
+  return segments.map((segment) => segment.replace(/^["']|["']$/gu, ""));
+}
+
+function isEnvAssignmentToken(token: string) {
+  return /^[A-Za-z_][A-Za-z0-9_]*=.*/u.test(token);
+}
+
+function stripEnvPrefixTokens(tokens: ReadonlyArray<string>) {
+  let commandStartIndex = 0;
+  while (commandStartIndex < tokens.length) {
+    const token = tokens[commandStartIndex];
+    if (token === undefined || token === "--") {
+      commandStartIndex += 1;
+      break;
+    }
+    if (token.startsWith("-") || isEnvAssignmentToken(token)) {
+      commandStartIndex += 1;
+      continue;
+    }
+    break;
+  }
+
+  return tokens.slice(commandStartIndex);
+}
+
+function hasSignalPresenceMismatch(
+  left: E9ProductIdentitySignals,
+  right: E9ProductIdentitySignals,
+) {
+  return (
+    left.accessory.length > 0 !== right.accessory.length > 0 ||
+    left.bundle.length > 0 !== right.bundle.length > 0 ||
+    left.compatible.length > 0 !== right.compatible.length > 0 ||
+    left.replacement.length > 0 !== right.replacement.length > 0
+  );
+}
+
+function isSubset(left: ReadonlyArray<string>, right: ReadonlySet<string>) {
+  return left.every((token) => right.has(token));
+}
+
+function isModelLikeToken(token: string) {
+  return /\d/u.test(token);
+}
+
+function hasDisallowedExtraStatusTokens(
+  baselineTokenSet: ReadonlySet<string>,
+  observedTokens: ReadonlyArray<string>,
+) {
+  return observedTokens.some(
+    (token) => !baselineTokenSet.has(token) && DISALLOWED_EXTRA_STATUS_TOKENS.has(token),
+  );
+}
+
+function hasUnexpectedExtraModelTokens(
+  baselineTokenSet: ReadonlySet<string>,
+  observedTokens: ReadonlyArray<string>,
+) {
+  return observedTokens.some((token) => !baselineTokenSet.has(token) && isModelLikeToken(token));
+}
+
+function hasOnlyPrefixExtras(
+  baselineTokenSet: ReadonlySet<string>,
+  observedTokens: ReadonlyArray<string>,
+) {
+  const firstSharedTokenIndex = observedTokens.findIndex((token) => baselineTokenSet.has(token));
+  if (firstSharedTokenIndex < 0) {
+    return false;
+  }
+
+  return observedTokens.every(
+    (token, index) => baselineTokenSet.has(token) || index < firstSharedTokenIndex,
+  );
+}
+
+function toMeaningfulObservedValue(rawValue: string | undefined) {
+  if (rawValue === undefined) {
+    return undefined;
+  }
+
+  const trimmedValue = rawValue.trim();
+  return trimmedValue === "" ? undefined : trimmedValue;
+}
+
+export async function compareE9ScraplingLiveParityTitleValues(
+  expectedValue: string,
+  actualValue: string,
+) {
+  const normalizedExpected = await normalizeComparableText(expectedValue);
+  const normalizedActual = await normalizeComparableText(actualValue);
+
+  if (normalizedExpected === normalizedActual) {
+    return true;
+  }
+
+  const [expectedTokens, actualTokens, expectedSignals, actualSignals] = await Promise.all([
+    Effect.runPromise(tokenizeProductIdentity(expectedValue)),
+    Effect.runPromise(tokenizeProductIdentity(actualValue)),
+    Effect.runPromise(detectProductIdentitySignals(expectedValue)),
+    Effect.runPromise(detectProductIdentitySignals(actualValue)),
+  ]);
+
+  if (expectedTokens.length === 0 || actualTokens.length === 0) {
+    return false;
+  }
+
+  if (hasSignalPresenceMismatch(expectedSignals, actualSignals)) {
+    return false;
+  }
+
+  const expectedTokenSet = new Set(expectedTokens);
+  const actualTokenSet = new Set(actualTokens);
+  if (!isSubset(expectedTokens, actualTokenSet) || actualTokenSet.size < expectedTokenSet.size) {
+    return false;
+  }
+
+  return (
+    hasOnlyPrefixExtras(expectedTokenSet, actualTokens) &&
+    !hasUnexpectedExtraModelTokens(expectedTokenSet, actualTokens) &&
+    !hasDisallowedExtraStatusTokens(expectedTokenSet, actualTokens)
+  );
+}
+
+async function compareObservedLiveParityValues(
+  expectedValue: string,
+  leftValue: string,
+  rightValue: string,
+  valuesMatchReference: boolean,
+) {
+  const valuesAreTextuallyEqual = await compareNormalizedLiveParityValues(leftValue, rightValue);
+  if (valuesAreTextuallyEqual) {
+    return true;
+  }
+
+  if (valuesMatchReference) {
+    const [referenceIdentity, leftIdentity, rightIdentity] = await Promise.all([
+      Effect.runPromise(buildProductIdentity({ title: expectedValue })),
+      Effect.runPromise(buildProductIdentity({ title: leftValue })),
+      Effect.runPromise(buildProductIdentity({ title: rightValue })),
+    ]);
+    const referenceModelTokens =
+      referenceIdentity.normalizedModelTokens.length > 0
+        ? referenceIdentity.normalizedModelTokens
+        : referenceIdentity.canonicalTokens.filter(isModelLikeToken);
+    const [referenceAwareLeftIdentity, referenceAwareRightIdentity] = await Promise.all([
+      Effect.runPromise(
+        buildProductIdentity({
+          title: leftValue,
+          modelTokens: referenceModelTokens,
+        }),
+      ),
+      Effect.runPromise(
+        buildProductIdentity({
+          title: rightValue,
+          modelTokens: referenceModelTokens,
+        }),
+      ),
+    ]);
+    const [baselineIdentity, observedIdentity] =
+      leftIdentity.canonicalTokens.length <= rightIdentity.canonicalTokens.length
+        ? [leftIdentity, rightIdentity]
+        : [rightIdentity, leftIdentity];
+    const baselineTokenSet = new Set(baselineIdentity.canonicalTokens);
+    const observedTokenSet = new Set(observedIdentity.canonicalTokens);
+
+    return (
+      !hasSignalPresenceMismatch(leftIdentity.signals, rightIdentity.signals) &&
+      compareNormalizedLiveParityAnchoredModels(
+        referenceAwareLeftIdentity.anchoredModelTokens,
+        referenceAwareRightIdentity.anchoredModelTokens,
+      ) &&
+      compareNormalizedLiveParityVariantTokens(
+        referenceIdentity.variantTokens,
+        referenceAwareLeftIdentity.variantTokens,
+        referenceAwareRightIdentity.variantTokens,
+      ) &&
+      isSubset(baselineIdentity.canonicalTokens, observedTokenSet) &&
+      hasOnlyPrefixExtras(baselineTokenSet, observedIdentity.canonicalTokens) &&
+      !hasUnexpectedExtraModelTokens(baselineTokenSet, observedIdentity.canonicalTokens) &&
+      !hasDisallowedExtraStatusTokens(baselineTokenSet, observedIdentity.canonicalTokens)
+    );
+  }
+
+  return false;
+}
+
+function compareNormalizedLiveParityAnchoredModels(
+  leftAnchoredModelTokens: ReadonlyArray<string>,
+  rightAnchoredModelTokens: ReadonlyArray<string>,
+) {
+  if (leftAnchoredModelTokens.length !== rightAnchoredModelTokens.length) {
+    return false;
+  }
+
+  const rightAnchoredModelTokenSet = new Set(rightAnchoredModelTokens);
+  return leftAnchoredModelTokens.every((token) => rightAnchoredModelTokenSet.has(token));
+}
+
+async function compareNormalizedLiveParityValues(leftValue: string, rightValue: string) {
+  const [normalizedLeft, normalizedRight] = await Promise.all([
+    normalizeComparableText(leftValue),
+    normalizeComparableText(rightValue),
+  ]);
+  return normalizedLeft === normalizedRight;
+}
+
+function compareNormalizedLiveParityVariantTokens(
+  expectedVariantTokens: ReadonlyArray<string>,
+  leftVariantTokens: ReadonlyArray<string>,
+  rightVariantTokens: ReadonlyArray<string>,
+) {
+  if (leftVariantTokens.length !== rightVariantTokens.length) {
+    return false;
+  }
+
+  const expectedVariantTokenSet = new Set(expectedVariantTokens);
+  const leftVariantTokenSet = new Set(leftVariantTokens);
+  const rightVariantTokenSet = new Set(rightVariantTokens);
+
+  return (
+    leftVariantTokenSet.size === rightVariantTokenSet.size &&
+    [...leftVariantTokenSet].every((token) => rightVariantTokenSet.has(token)) &&
+    [...leftVariantTokenSet].every((token) => expectedVariantTokenSet.has(token))
+  );
+}
+
 function fragmentToText(fragment: string) {
   if (typeof DOMParser === "function") {
     const document = new DOMParser().parseFromString(fragment, "text/html");
@@ -206,7 +473,10 @@ function fragmentToText(fragment: string) {
     }
   }
 
-  const stripped = fragment.replace(/<[^>]+>/gu, " ").replace(/\s+/gu, " ").trim();
+  const stripped = fragment
+    .replace(/<[^>]+>/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
   return stripped === "" ? undefined : stripped;
 }
 
@@ -224,8 +494,13 @@ async function runEffectScraplingCase(input: LiveCaseInput): Promise<LiveParityO
     "browser",
     "--provider",
     "browser-stealth",
-    "--browser-timeout-ms",
+    "--network-idle",
+    "--timeout",
     String(LIVE_BROWSER_TIMEOUT_MS),
+    "--wait",
+    String(LIVE_POST_NAVIGATION_WAIT_MS),
+    "--wait-selector",
+    input.selector,
     "--solve-cloudflare",
   ]);
   if (result.exitCode !== 0) {
@@ -251,55 +526,111 @@ async function runEffectScraplingCase(input: LiveCaseInput): Promise<LiveParityO
     });
   }
 
-  const rawValue = payload.data.values[0];
-  const normalizedExpected = await normalizeComparableText(input.expectedValue);
-  const normalizedValue =
-    rawValue === undefined ? undefined : await normalizeComparableText(rawValue);
+  return createEffectScraplingLiveParityOutcome(
+    input,
+    {
+      url: payload.data.url,
+      values: payload.data.values,
+      mediationStatus: payload.data.mediation?.status,
+    },
+    result.durationMs,
+  );
+}
+
+export async function createEffectScraplingLiveParityOutcome(
+  input: EffectScraplingLiveParityInput,
+  payload: {
+    readonly url: string;
+    readonly values: ReadonlyArray<string>;
+    readonly mediationStatus?: string;
+  },
+  durationMs: number,
+): Promise<LiveParityOutcome> {
+  const rawValue = toMeaningfulObservedValue(payload.values[0]);
   const valueMatchesReference =
-    normalizedValue !== undefined && normalizedValue === normalizedExpected;
+    rawValue === undefined
+      ? false
+      : await compareE9ScraplingLiveParityTitleValues(input.expectedValue, rawValue);
+  const bypassSuccess = rawValue !== undefined;
 
   return Schema.decodeUnknownSync(E9ScraplingLiveParityOutcomeSchema)({
     fetchSuccess: rawValue !== undefined,
     valueMatchesReference,
-    bypassSuccess: input.requiresBypass ? valueMatchesReference : rawValue !== undefined,
-    durationMs: result.durationMs,
+    bypassSuccess,
+    durationMs,
     ...(rawValue === undefined ? {} : { value: rawValue }),
-    finalUrl: payload.data.url,
-    ...(payload.data.mediation?.status === undefined
+    finalUrl: payload.url,
+    ...(payload.mediationStatus === undefined ? {} : { mediationStatus: payload.mediationStatus }),
+    ...(payload.mediationStatus === undefined
       ? {}
-      : { mediationStatus: payload.data.mediation.status }),
-    ...(payload.data.mediation?.status === undefined
-      ? {}
-      : { cloudflareSolved: payload.data.mediation.status === "cleared" }),
+      : { cloudflareSolved: payload.mediationStatus === "cleared" }),
     ...(rawValue === undefined ? { diagnostic: "Effect-Scrapling CLI returned no values." } : {}),
   });
 }
 
+export function extractPythonCommandCandidatesFromLauncher(launcher: string) {
+  const pythonCandidates = new Array<PythonCommandCandidate>();
+
+  const addPythonCandidate = (candidate: ReadonlyArray<string>) => {
+    if (
+      candidate.length === 0 ||
+      pythonCandidates.some(
+        (currentCandidate) =>
+          currentCandidate.length === candidate.length &&
+          currentCandidate.every((token, index) => token === candidate[index]),
+      )
+    ) {
+      return;
+    }
+
+    pythonCandidates.push(candidate);
+  };
+
+  const firstLine = launcher.split(/\r?\n/u, 1)[0];
+  if (typeof firstLine === "string" && firstLine.startsWith("#!")) {
+    const shebang = firstLine.slice(2).trim();
+    if (shebang !== "") {
+      const shebangTokens = tokenizeShebangCommand(shebang).filter((token) => token !== "");
+      if (shebangTokens[0] === "/usr/bin/env" || shebangTokens[0] === "env") {
+        const envTokens = shebangTokens.slice(1);
+        const splitModeIndex = envTokens.indexOf("-S");
+        if (splitModeIndex >= 0) {
+          addPythonCandidate(
+            stripEnvPrefixTokens(
+              tokenizeShebangCommand(envTokens.slice(splitModeIndex + 1).join(" ")).filter(
+                (token) => token !== "",
+              ),
+            ),
+          );
+        } else {
+          addPythonCandidate(stripEnvPrefixTokens(envTokens));
+        }
+      } else {
+        addPythonCandidate(shebangTokens);
+      }
+    }
+  }
+  for (const pythonExecutable of ["python3", "python"] as const) {
+    addPythonCandidate([pythonExecutable]);
+  }
+
+  return pythonCandidates;
+}
+
 async function resolveUpstreamScraplingVersion(upstreamCliPath: string) {
-  const pythonCandidates = new Array<string>();
+  let pythonCandidates = extractPythonCommandCandidatesFromLauncher("");
 
   try {
     const launcher = await readFile(upstreamCliPath, "utf8");
-    const firstLine = launcher.split(/\r?\n/u, 1)[0];
-    if (typeof firstLine === "string" && firstLine.startsWith("#!")) {
-      const shebang = firstLine.slice(2).trim();
-      if (shebang !== "") {
-        pythonCandidates.push(shebang);
-      }
-    }
+    pythonCandidates = extractPythonCommandCandidatesFromLauncher(launcher);
   } catch {
     // Best effort only; fall back to common interpreters below.
   }
 
-  for (const pythonExecutable of ["python3", "python"] as const) {
-    if (!pythonCandidates.includes(pythonExecutable)) {
-      pythonCandidates.push(pythonExecutable);
-    }
-  }
-
-  for (const pythonExecutable of pythonCandidates) {
+  for (const [pythonExecutable, ...pythonExecutableArgs] of pythonCandidates) {
     try {
       const result = await runCommand(pythonExecutable, [
+        ...pythonExecutableArgs,
         "-c",
         "import scrapling; print(scrapling.__version__)",
       ]);
@@ -325,9 +656,8 @@ async function resolveRuntime() {
 
   return Schema.decodeUnknownSync(E9ScraplingLiveParityRuntimeSchema)({
     measurementMode: "live-upstream-cli-turnstile",
-    ourCommand:
-      "bun run src/standalone.ts extract run --mode browser --provider browser-stealth --solve-cloudflare",
-    upstreamCommand: "scrapling extract stealthy-fetch --solve-cloudflare",
+    ourCommand: E9_EFFECT_SCRAPLING_LIVE_COMMAND,
+    upstreamCommand: E9_UPSTREAM_SCRAPLING_LIVE_COMMAND,
     upstreamCliPath,
     upstreamVersion: await resolveUpstreamScraplingVersion(upstreamCliPath),
   });
@@ -344,13 +674,21 @@ async function runUpstreamScraplingCase(
     const result = await runCommand(runtime.upstreamCliPath, [
       "extract",
       "stealthy-fetch",
-      input.entryUrl,
-      outputPath,
+      "--real-chrome",
+      "--block-webrtc",
+      "--hide-canvas",
       "--solve-cloudflare",
+      "--network-idle",
       "--timeout",
       String(LIVE_BROWSER_TIMEOUT_MS),
+      "--wait",
+      String(LIVE_POST_NAVIGATION_WAIT_MS),
+      "--wait-selector",
+      input.selector,
       "--css-selector",
       input.selector,
+      input.entryUrl,
+      outputPath,
     ]);
 
     if (result.exitCode !== 0) {
@@ -366,27 +704,41 @@ async function runUpstreamScraplingCase(
       });
     }
 
-    const fragment = await readFile(outputPath, "utf8");
+    let fragment: string;
+    try {
+      fragment = await readFile(outputPath, "utf8");
+    } catch (error) {
+      return Schema.decodeUnknownSync(E9ScraplingLiveParityOutcomeSchema)({
+        fetchSuccess: false,
+        valueMatchesReference: false,
+        bypassSuccess: false,
+        durationMs: result.durationMs,
+        ...(getLastFetchedUrl(result.stderr) === undefined
+          ? {}
+          : { finalUrl: getLastFetchedUrl(result.stderr) }),
+        diagnostic: `Upstream Scrapling CLI exited successfully but no output artifact was readable: ${String(error)}`,
+      });
+    }
     const rawValue = fragmentToText(fragment);
-    const normalizedExpected = await normalizeComparableText(input.expectedValue);
-    const normalizedValue =
-      rawValue === undefined ? undefined : await normalizeComparableText(rawValue);
     const valueMatchesReference =
-      normalizedValue !== undefined && normalizedValue === normalizedExpected;
+      rawValue === undefined
+        ? false
+        : await compareE9ScraplingLiveParityTitleValues(input.expectedValue, rawValue);
+    const bypassSuccess = input.requiresBypass ? rawValue !== undefined : rawValue !== undefined;
 
     return Schema.decodeUnknownSync(E9ScraplingLiveParityOutcomeSchema)({
       fetchSuccess: rawValue !== undefined,
       valueMatchesReference,
-      bypassSuccess: input.requiresBypass ? valueMatchesReference : rawValue !== undefined,
+      bypassSuccess,
       durationMs: result.durationMs,
       ...(rawValue === undefined ? {} : { value: rawValue }),
       ...(getLastFetchedUrl(result.stderr) === undefined
         ? {}
         : { finalUrl: getLastFetchedUrl(result.stderr) }),
-      ...(result.stderr.includes("Cloudflare captcha is solved")
-        ? { cloudflareSolved: true }
+      ...(result.stderr.includes("Cloudflare captcha is solved") ? { cloudflareSolved: true } : {}),
+      ...(rawValue === undefined
+        ? { diagnostic: "Upstream Scrapling CLI returned no values." }
         : {}),
-      ...(rawValue === undefined ? { diagnostic: "Upstream Scrapling CLI returned no values." } : {}),
     });
   } finally {
     await rm(tempDir, { recursive: true, force: true });
@@ -398,25 +750,34 @@ function summarizeCases(
 ): Schema.Schema.Type<typeof E9ScraplingLiveParityArtifactSchema>["summary"] {
   const total = cases.length;
   const highFrictionCases = cases.filter(({ requiresBypass }) => requiresBypass).length;
+  const computeParityAgreementRate = (side: "ours" | "scrapling") =>
+    cases.filter((currentCase) => {
+      const currentOutcome = currentCase[side];
+      const otherOutcome = side === "ours" ? currentCase.scrapling : currentCase.ours;
+
+      if (!currentOutcome.fetchSuccess) {
+        return false;
+      }
+
+      return otherOutcome.fetchSuccess
+        ? currentCase.valueAgreement
+        : currentOutcome.valueMatchesReference;
+    }).length / total;
   const ours = Schema.decodeUnknownSync(E9ParitySummarySchema)({
     measurementMode: "live-upstream-cli-turnstile",
     fetchSuccessRate: cases.filter(({ ours }) => ours.fetchSuccess).length / total,
-    parityAgreementRate:
-      cases.filter(({ valueAgreement, ours }) => ours.fetchSuccess && valueAgreement).length / total,
+    parityAgreementRate: computeParityAgreementRate("ours"),
     bypassSuccessRate:
       highFrictionCases === 0
         ? 1
         : cases.filter(({ requiresBypass, ours }) => requiresBypass && ours.bypassSuccess).length /
           highFrictionCases,
-    referenceMatchRate:
-      cases.filter(({ ours }) => ours.valueMatchesReference).length / total,
+    referenceMatchRate: cases.filter(({ ours }) => ours.valueMatchesReference).length / total,
   });
   const scrapling = Schema.decodeUnknownSync(E9ParitySummarySchema)({
     measurementMode: "live-upstream-cli-turnstile",
     fetchSuccessRate: cases.filter(({ scrapling }) => scrapling.fetchSuccess).length / total,
-    parityAgreementRate:
-      cases.filter(({ valueAgreement, scrapling }) => scrapling.fetchSuccess && valueAgreement)
-        .length / total,
+    parityAgreementRate: computeParityAgreementRate("scrapling"),
     bypassSuccessRate:
       highFrictionCases === 0
         ? 1
@@ -452,7 +813,7 @@ export async function runE9ScraplingLiveParity(
   } = {},
 ) {
   const generatedAt = dependencies.generatedAt ?? new Date().toISOString();
-  const cases = Schema.decodeUnknownSync(Schema.Array(E9ScraplingLiveParityCaseInputSchema))(
+  const cases = Schema.decodeUnknownSync(NonEmptyLiveCaseArraySchema)(
     dependencies.selectCases === undefined
       ? createDefaultE9ScraplingLiveParityCorpus()
       : await dependencies.selectCases(),
@@ -471,7 +832,12 @@ export async function runE9ScraplingLiveParity(
     const valueAgreement =
       ours.value !== undefined &&
       scrapling.value !== undefined &&
-      (await normalizeComparableText(ours.value)) === (await normalizeComparableText(scrapling.value));
+      (await compareObservedLiveParityValues(
+        currentCase.expectedValue,
+        ours.value,
+        scrapling.value,
+        ours.valueMatchesReference && scrapling.valueMatchesReference,
+      ));
     caseResults.push(
       Schema.decodeUnknownSync(E9ScraplingLiveParityCaseSchema)({
         caseId: currentCase.caseId,
@@ -503,8 +869,11 @@ export async function runE9ScraplingLiveParity(
     summary.equalOrBetter.bypassSuccess &&
     summary.equalOrBetter.referenceMatch &&
     caseResults.every(
-      ({ ours, valueAgreement }) =>
-        !ours.fetchSuccess || valueAgreement || ours.valueMatchesReference,
+      ({ ours, scrapling, valueAgreement }) =>
+        !ours.fetchSuccess ||
+        !scrapling.fetchSuccess ||
+        valueAgreement ||
+        !scrapling.valueMatchesReference,
     )
       ? "pass"
       : "fail";

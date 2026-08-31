@@ -207,7 +207,7 @@ const builtinIdentityProfiles = Object.freeze({
       DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID satisfies BrowserRuntimeProfileId,
     httpUserAgent: "effect-scrapling/0.0.1",
     browserUserAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
     locale: undefined,
     timezoneId: undefined,
     warnings: [],
@@ -221,7 +221,7 @@ const builtinIdentityProfiles = Object.freeze({
       DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID satisfies BrowserRuntimeProfileId,
     httpUserAgent: "effect-scrapling/0.0.1",
     browserUserAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
     locale: undefined,
     timezoneId: undefined,
     warnings: [],
@@ -235,7 +235,7 @@ const builtinIdentityProfiles = Object.freeze({
       DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID satisfies BrowserRuntimeProfileId,
     httpUserAgent: undefined,
     browserUserAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
     locale: undefined,
     timezoneId: undefined,
     warnings: [],
@@ -249,7 +249,7 @@ const builtinIdentityProfiles = Object.freeze({
       DEFAULT_PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID satisfies BrowserRuntimeProfileId,
     httpUserAgent: undefined,
     browserUserAgent:
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
     locale: undefined,
     timezoneId: undefined,
     warnings: [],

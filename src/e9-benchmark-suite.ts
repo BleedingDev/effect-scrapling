@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
-import { Effect, Exit, Schema, Scope } from "effect";
+import { Effect, Exit, Layer, Schema, Scope } from "effect";
 import { chromium } from "patchright";
 import { CanonicalIdentifierSchema, IsoDateTimeSchema } from "@effect-scrapling/foundation-core";
 import {
@@ -23,14 +23,31 @@ import {
   type PreferredPathOverrideKind,
 } from "./sdk/access-health-warning-runtime.ts";
 import {
+  AccessHealthSubjectStrategy,
+  makeStaticAccessHealthSubjectStrategy,
+  type AccessHealthSubjectKind,
+} from "./sdk/access-health-policy-runtime.ts";
+import {
+  EgressLeaseManagerService,
+  IdentityLeaseManagerService,
+} from "./sdk/access-allocation-plugin-runtime.ts";
+import { makeBuiltinAccessRuntimeModules } from "./sdk/access-builtin-modules.ts";
+import {
+  AccessModuleRegistry,
+  makeStaticAccessModuleRegistry,
+  type AccessRuntimeModule,
+} from "./sdk/access-module-runtime.ts";
+import {
   AccessExecutionRuntime,
   DEFAULT_BROWSER_PROVIDER_ID,
   DEFAULT_HTTP_PROVIDER_ID,
+  DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
   type ResolvedExecutionPlan,
 } from "./sdk/access-runtime.ts";
 import { RECOVERED_BROWSER_ALLOCATION_WARNING_PREFIX } from "./sdk/browser-pool.ts";
 import { makeSdkRuntimeHandle, type SdkRuntimeHandle } from "./sdk/runtime-layer.ts";
 import { accessPreview, renderPreview } from "./sdk/scraper.ts";
+import { type AccessExecutionProfile } from "./sdk/schemas.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const PositiveIntSchema = Schema.Int.check(Schema.isGreaterThan(0));
@@ -57,6 +74,7 @@ const BenchmarkProfileSchema = Schema.Literals([
   "effect-http",
   "native-fetch",
   "effect-browser",
+  "effect-hybrid-stealth",
   "patchright-browser",
   "scrapling-parser",
 ] as const);
@@ -71,10 +89,12 @@ const BenchmarkPresetSchema = Schema.Literals([
   "scale-study",
   "full-corpus",
   "competitor-calibration",
+  "state-of-the-art",
 ] as const);
 const HttpBenchmarkProfileSchema = Schema.Literals(["effect-http", "native-fetch"] as const);
 const BrowserBenchmarkProfileSchema = Schema.Literals([
   "effect-browser",
+  "effect-hybrid-stealth",
   "patchright-browser",
 ] as const);
 
@@ -306,6 +326,13 @@ const E9BenchmarkSuiteSummarySchema = Schema.Struct({
   browserBestThroughputPagesPerMinute: NonNegativeNumberSchema,
   httpBestEffectiveThroughputPagesPerMinute: NonNegativeNumberSchema,
   browserBestEffectiveThroughputPagesPerMinute: NonNegativeNumberSchema,
+  compositeAttemptCount: Schema.optional(NonNegativeIntSchema),
+  compositeHttpResolvedCount: Schema.optional(NonNegativeIntSchema),
+  compositeBrowserResolvedCount: Schema.optional(NonNegativeIntSchema),
+  compositeFailureCount: Schema.optional(NonNegativeIntSchema),
+  topCompositeHttpResolvedDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topCompositeBrowserResolvedDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
+  topCompositeFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
   topHttpFailureDomains: Schema.Array(BenchmarkReportItemSchema),
   topBrowserFailureDomains: Schema.Array(BenchmarkReportItemSchema),
   topRemoteFailureDomains: Schema.optional(Schema.Array(BenchmarkReportItemSchema)),
@@ -411,6 +438,319 @@ const browserResponseFailureCategories = [
   "browser-header-read-failed",
 ] as const satisfies readonly BenchmarkFailureCategory[];
 type BenchmarkExecutionMetadata = Schema.Schema.Type<typeof BenchmarkExecutionMetadataSchema>;
+type BenchmarkExecutionSelectors = Pick<AccessExecutionProfile, "egress" | "identity">;
+export type BenchmarkExecutionVariant = {
+  readonly key: string;
+  readonly selectors: BenchmarkExecutionSelectors;
+  readonly rotationPriority?: number | undefined;
+};
+
+export type BenchmarkExecutionRotation = {
+  readonly variants: ReadonlyArray<BenchmarkExecutionVariant>;
+  readonly maxAttempts: number;
+};
+
+type BenchmarkRunnerSdkOptions = {
+  readonly modules?: ReadonlyArray<AccessRuntimeModule> | undefined;
+  readonly execution?: BenchmarkExecutionSelectors | undefined;
+  readonly executionRotation?: BenchmarkExecutionRotation | undefined;
+};
+
+function mergeAttemptWarnings(...inputs: ReadonlyArray<ReadonlyArray<string> | undefined>) {
+  return [...new Set(inputs.flatMap((warnings) => warnings ?? []))];
+}
+
+function mergeBenchmarkExecutionSelectors(
+  base: BenchmarkExecutionSelectors | undefined,
+  override: BenchmarkExecutionSelectors | undefined,
+): BenchmarkExecutionSelectors | undefined {
+  if (base === undefined) {
+    return override;
+  }
+  if (override === undefined) {
+    return base;
+  }
+
+  const egress =
+    base.egress === undefined
+      ? override.egress
+      : override.egress === undefined
+        ? base.egress
+        : { ...base.egress, ...override.egress };
+  const identity =
+    base.identity === undefined
+      ? override.identity
+      : override.identity === undefined
+        ? base.identity
+        : { ...base.identity, ...override.identity };
+
+  return {
+    ...(egress === undefined ? {} : { egress }),
+    ...(identity === undefined ? {} : { identity }),
+  };
+}
+
+function sumOptionalAttemptMetric(
+  results: ReadonlyArray<AttemptResult>,
+  key: keyof Pick<
+    AttemptResult,
+    | "reportedDurationMs"
+    | "requestCount"
+    | "redirectCount"
+    | "blockedRequestCount"
+    | "responseHeadersDurationMs"
+    | "bodyReadDurationMs"
+    | "contextCreateDurationMs"
+    | "pageCreateDurationMs"
+    | "routeRegistrationDurationMs"
+    | "gotoDurationMs"
+    | "loadStateDurationMs"
+    | "domReadDurationMs"
+    | "headerReadDurationMs"
+    | "titleReadDurationMs"
+    | "cleanupDurationMs"
+  >,
+) {
+  const definedValues = results
+    .map((result) => result[key])
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+  if (definedValues.length === 0) {
+    return undefined;
+  }
+
+  return roundToThree(definedValues.reduce((sum, value) => sum + value, 0));
+}
+
+function getOrderedExecutionVariantsForUrl(
+  url: string,
+  variants: ReadonlyArray<BenchmarkExecutionVariant>,
+) {
+  if (variants.length <= 1) {
+    return [...variants];
+  }
+
+  const variantsByPriority = new Map<number, Array<BenchmarkExecutionVariant>>();
+
+  for (const variant of variants) {
+    const priority = variant.rotationPriority ?? 0;
+    const existingGroup = variantsByPriority.get(priority);
+    if (existingGroup === undefined) {
+      variantsByPriority.set(priority, [variant]);
+      continue;
+    }
+
+    existingGroup.push(variant);
+  }
+
+  return [...variantsByPriority.entries()]
+    .sort(([leftPriority], [rightPriority]) => leftPriority - rightPriority)
+    .flatMap(([priority, group]) => {
+      if (group.length <= 1) {
+        return group;
+      }
+
+      const startIndex = hashString(`${url}#rotation-priority:${priority}`) % group.length;
+      return group.map((_, index) => group[(startIndex + index) % group.length]!);
+    });
+}
+
+function analyzeAttemptResult(page: FrozenPage, result: AttemptResult) {
+  const locallyDetectedChallengeSignals = detectChallengeSignals({
+    requestedUrl: page.url,
+    statusCode: result.statusCode,
+    finalUrl: result.finalUrl,
+  });
+  const augmentedLocalSignals =
+    result.observedChallengeSignals.length === 0
+      ? locallyDetectedChallengeSignals
+      : locallyDetectedChallengeSignals.filter((signal) => !STATUS_ACCESS_WALL_SIGNALS.has(signal));
+  const observedChallengeSignals = mergeChallengeSignals(
+    result.observedChallengeSignals,
+    augmentedLocalSignals,
+  );
+  const challengeDetected = result.challengeDetected || observedChallengeSignals.length > 0;
+  const success =
+    result.error === undefined &&
+    result.statusCode !== undefined &&
+    result.statusCode < 400 &&
+    !challengeDetected &&
+    result.contentBytes > 0;
+  const retryableBlockedOutcome =
+    challengeDetected ||
+    result.statusCode === 401 ||
+    result.statusCode === 403 ||
+    result.statusCode === 429;
+  const failureCategory = classifyAttemptFailureCategory({
+    result: {
+      ...result,
+      challengeDetected,
+      observedChallengeSignals,
+    },
+    success,
+  });
+  const retryableRemoteFailure =
+    failureCategory === "timeout" ||
+    failureCategory === "browser-navigation-timeout" ||
+    failureCategory === "browser-navigation-connection" ||
+    failureCategory === "browser-navigation-response-missing" ||
+    failureCategory === "browser-navigation-aborted" ||
+    failureCategory === "browser-navigation-http-error" ||
+    failureCategory === "browser-header-read-failed";
+  const retryableRotationOutcome = retryableBlockedOutcome || retryableRemoteFailure;
+
+  return {
+    observedChallengeSignals,
+    challengeDetected,
+    success,
+    failureCategory,
+    retryableBlockedOutcome,
+    retryableRemoteFailure,
+    retryableRotationOutcome,
+  } as const;
+}
+
+function mergeRotatedAttemptResults(input: {
+  readonly attempts: ReadonlyArray<{
+    readonly variant: BenchmarkExecutionVariant;
+    readonly result: AttemptResult;
+    readonly analysis: ReturnType<typeof analyzeAttemptResult>;
+  }>;
+  readonly exhausted: boolean;
+}) {
+  const finalAttempt = input.attempts.at(-1);
+  if (finalAttempt === undefined) {
+    throw new Error("Rotation merge requires at least one attempt.");
+  }
+
+  const results = input.attempts.map((attempt) => attempt.result);
+  const attemptedVariantKeys = input.attempts.map((attempt) => attempt.variant.key);
+  const rotationWarnings = [
+    `wireproxy-rotation:attempt-count:${input.attempts.length}`,
+    `wireproxy-rotation:attempted-variants:${attemptedVariantKeys.join(",")}`,
+    ...input.attempts
+      .slice(0, -1)
+      .flatMap((attempt) =>
+        attempt.analysis.retryableBlockedOutcome
+          ? [`wireproxy-rotation:retryable-blocked:${attempt.variant.key}`]
+          : attempt.analysis.retryableRemoteFailure
+            ? [`wireproxy-rotation:retryable-remote-failure:${attempt.variant.key}`]
+            : [],
+      ),
+    ...(input.exhausted ? ["wireproxy-rotation:exhausted"] : []),
+  ];
+
+  return {
+    ...finalAttempt.result,
+    durationMs: roundToThree(results.reduce((sum, result) => sum + result.durationMs, 0)),
+    ...(sumOptionalAttemptMetric(results, "reportedDurationMs") === undefined
+      ? {}
+      : { reportedDurationMs: sumOptionalAttemptMetric(results, "reportedDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "requestCount") === undefined
+      ? {}
+      : { requestCount: sumOptionalAttemptMetric(results, "requestCount") }),
+    ...(sumOptionalAttemptMetric(results, "redirectCount") === undefined
+      ? {}
+      : { redirectCount: sumOptionalAttemptMetric(results, "redirectCount") }),
+    ...(sumOptionalAttemptMetric(results, "blockedRequestCount") === undefined
+      ? {}
+      : { blockedRequestCount: sumOptionalAttemptMetric(results, "blockedRequestCount") }),
+    ...(sumOptionalAttemptMetric(results, "responseHeadersDurationMs") === undefined
+      ? {}
+      : {
+          responseHeadersDurationMs: sumOptionalAttemptMetric(results, "responseHeadersDurationMs"),
+        }),
+    ...(sumOptionalAttemptMetric(results, "bodyReadDurationMs") === undefined
+      ? {}
+      : { bodyReadDurationMs: sumOptionalAttemptMetric(results, "bodyReadDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "contextCreateDurationMs") === undefined
+      ? {}
+      : { contextCreateDurationMs: sumOptionalAttemptMetric(results, "contextCreateDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "pageCreateDurationMs") === undefined
+      ? {}
+      : { pageCreateDurationMs: sumOptionalAttemptMetric(results, "pageCreateDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "routeRegistrationDurationMs") === undefined
+      ? {}
+      : {
+          routeRegistrationDurationMs: sumOptionalAttemptMetric(
+            results,
+            "routeRegistrationDurationMs",
+          ),
+        }),
+    ...(sumOptionalAttemptMetric(results, "gotoDurationMs") === undefined
+      ? {}
+      : { gotoDurationMs: sumOptionalAttemptMetric(results, "gotoDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "loadStateDurationMs") === undefined
+      ? {}
+      : { loadStateDurationMs: sumOptionalAttemptMetric(results, "loadStateDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "domReadDurationMs") === undefined
+      ? {}
+      : { domReadDurationMs: sumOptionalAttemptMetric(results, "domReadDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "headerReadDurationMs") === undefined
+      ? {}
+      : { headerReadDurationMs: sumOptionalAttemptMetric(results, "headerReadDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "titleReadDurationMs") === undefined
+      ? {}
+      : { titleReadDurationMs: sumOptionalAttemptMetric(results, "titleReadDurationMs") }),
+    ...(sumOptionalAttemptMetric(results, "cleanupDurationMs") === undefined
+      ? {}
+      : { cleanupDurationMs: sumOptionalAttemptMetric(results, "cleanupDurationMs") }),
+    warnings: mergeAttemptWarnings(...results.map((result) => result.warnings), rotationWarnings),
+  } satisfies AttemptResult;
+}
+
+export async function runPageWithExecutionRotation(input: {
+  readonly page: FrozenPage;
+  readonly rotation: BenchmarkExecutionRotation;
+  readonly executeVariant: (input: {
+    readonly variant: BenchmarkExecutionVariant;
+    readonly attemptIndex: number;
+  }) => Promise<AttemptResult>;
+}) {
+  const orderedVariants = getOrderedExecutionVariantsForUrl(
+    input.page.url,
+    input.rotation.variants,
+  ).slice(0, input.rotation.maxAttempts);
+  const attempts: Array<{
+    readonly variant: BenchmarkExecutionVariant;
+    readonly result: AttemptResult;
+    readonly analysis: ReturnType<typeof analyzeAttemptResult>;
+  }> = [];
+
+  for (const [attemptIndex, variant] of orderedVariants.entries()) {
+    const result = await input.executeVariant({
+      variant,
+      attemptIndex,
+    });
+    const analysis = analyzeAttemptResult(input.page, result);
+    attempts.push({
+      variant,
+      result: {
+        ...result,
+        challengeDetected: analysis.challengeDetected,
+        observedChallengeSignals: analysis.observedChallengeSignals,
+      },
+      analysis,
+    });
+    if (analysis.success || !analysis.retryableRotationOutcome) {
+      break;
+    }
+  }
+  const finalAttempt = attempts.at(-1);
+
+  return mergeRotatedAttemptResults({
+    attempts,
+    exhausted:
+      finalAttempt !== undefined &&
+      attempts.length >= orderedVariants.length &&
+      !finalAttempt.analysis.success &&
+      finalAttempt.analysis.retryableRotationOutcome,
+  });
+}
+
+function isCompositeBenchmarkProfile(profile: BenchmarkProfile) {
+  return profile === "effect-hybrid-stealth";
+}
 export type E9BenchmarkSuiteArtifact = Schema.Schema.Type<typeof E9BenchmarkSuiteArtifactSchema>;
 export type E9BenchmarkSuiteProgressEvent =
   | {
@@ -637,6 +977,8 @@ const DEFAULT_HTTP_CONCURRENCY = [1, 2, 4, 8, 16, 32] as const;
 const DEFAULT_BROWSER_CONCURRENCY = [1, 2, 4, 8] as const;
 const DEFAULT_HTTP_TIMEOUT_MS = 15_000;
 const DEFAULT_BROWSER_TIMEOUT_MS = 20_000;
+const DEFAULT_SOTA_BROWSER_TIMEOUT_MS = 60_000;
+const DEFAULT_SOTA_BROWSER_WAIT_MS = 2_000;
 const DEFAULT_SAMPLE_SEED = "e9-benchmark-suite-v1";
 const ADAPTIVE_STOP_MIN_GAIN = 1.12;
 const ADAPTIVE_STOP_MIN_PARALLEL_EFFICIENCY = 0.6;
@@ -645,7 +987,7 @@ const ADAPTIVE_STOP_MAX_BLOCKED_DELTA = 0.01;
 const ADAPTIVE_STOP_MAX_CHALLENGE_DELTA = 0.01;
 const DEFAULT_HTTP_USER_AGENT = "effect-scrapling-benchmark/1.0";
 const DEFAULT_BROWSER_USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36";
 const STATUS_ACCESS_WALL_SIGNALS = new Set(["status-401", "status-403", "status-429"]);
 
 function compareStrings(left: string, right: string) {
@@ -765,6 +1107,15 @@ function resolveBenchmarkPreset(preset: BenchmarkPreset): BenchmarkPresetDefinit
         browserConcurrency: [1, 4, 8],
         samplePageCount: 96,
         adaptiveStop: false,
+      };
+    case "state-of-the-art":
+      return {
+        phases: ["browser"],
+        httpProfiles: ["effect-http"],
+        browserProfiles: ["effect-hybrid-stealth"],
+        httpConcurrency: [],
+        browserConcurrency: [1, 4],
+        adaptiveStop: true,
       };
   }
 }
@@ -1010,38 +1361,20 @@ function buildAttempt(input: {
   readonly page: FrozenPage;
   readonly result: AttemptResult;
 }) {
-  const locallyDetectedChallengeSignals = detectChallengeSignals({
-    requestedUrl: input.page.url,
-    statusCode: input.result.statusCode,
-    finalUrl: input.result.finalUrl,
-  });
-  const augmentedLocalSignals =
-    input.result.observedChallengeSignals.length === 0
-      ? locallyDetectedChallengeSignals
-      : locallyDetectedChallengeSignals.filter((signal) => !STATUS_ACCESS_WALL_SIGNALS.has(signal));
-  const observedChallengeSignals = mergeChallengeSignals(
-    input.result.observedChallengeSignals,
-    augmentedLocalSignals,
-  );
-  const challengeDetected = input.result.challengeDetected || observedChallengeSignals.length > 0;
+  const analysis = analyzeAttemptResult(input.page, input.result);
   const timings = buildAttemptTimings(input.result);
-  const success =
-    input.result.error === undefined &&
-    input.result.statusCode !== undefined &&
-    input.result.statusCode < 400 &&
-    !challengeDetected &&
-    input.result.contentBytes > 0;
+  const success = analysis.success;
 
   const blocked =
-    challengeDetected ||
+    analysis.challengeDetected ||
     input.result.error !== undefined ||
     input.result.statusCode === 403 ||
     input.result.statusCode === 429;
   const failureCategory = classifyAttemptFailureCategory({
     result: {
       ...input.result,
-      challengeDetected,
-      observedChallengeSignals,
+      challengeDetected: analysis.challengeDetected,
+      observedChallengeSignals: analysis.observedChallengeSignals,
     },
     success,
   });
@@ -1060,8 +1393,8 @@ function buildAttempt(input: {
     success,
     blocked,
     redirected: input.result.redirected,
-    challengeDetected,
-    observedChallengeSignals,
+    challengeDetected: analysis.challengeDetected,
+    observedChallengeSignals: analysis.observedChallengeSignals,
     durationMs: timings.totalWallMs,
     contentBytes: Math.max(0, Math.round(input.result.contentBytes)),
     titlePresent: input.result.titlePresent,
@@ -1187,21 +1520,80 @@ function benchmarkExecutionMetadataFromExecuted(metadata: {
   });
 }
 
+function makeAccessModuleRegistryOverrideLayer(
+  modules: ReadonlyArray<AccessRuntimeModule> | undefined,
+) {
+  if (modules === undefined || modules.length === 0) {
+    return undefined;
+  }
+
+  return Layer.effect(
+    AccessModuleRegistry,
+    Effect.gen(function* () {
+      const builtinModules = yield* makeBuiltinAccessRuntimeModules({
+        egressLeaseManager: yield* EgressLeaseManagerService,
+        identityLeaseManager: yield* IdentityLeaseManagerService,
+      });
+
+      return makeStaticAccessModuleRegistry({
+        modules: [...builtinModules, ...modules],
+      });
+    }),
+  );
+}
+
+const BENCHMARK_ROTATION_ACCESS_HEALTH_SUBJECT_KINDS = [
+  "egress",
+  "egress-profile",
+  "egress-plugin",
+] as const satisfies ReadonlyArray<AccessHealthSubjectKind>;
+
+function makeBenchmarkAccessHealthOverrideLayer(input: {
+  readonly isolateRotationToEgressSubjects?: boolean | undefined;
+}) {
+  if (input.isolateRotationToEgressSubjects !== true) {
+    return undefined;
+  }
+
+  return Layer.succeed(
+    AccessHealthSubjectStrategy,
+    makeStaticAccessHealthSubjectStrategy({
+      includeKinds: BENCHMARK_ROTATION_ACCESS_HEALTH_SUBJECT_KINDS,
+    }),
+  );
+}
+
+function createBenchmarkExecutionProfile(input: {
+  readonly mode: "http" | "browser";
+  readonly timeoutMs: number;
+  readonly userAgent: string;
+  readonly selectors?: BenchmarkExecutionSelectors | undefined;
+}): AccessExecutionProfile {
+  return {
+    mode: input.mode,
+    ...(input.selectors?.egress === undefined ? {} : { egress: input.selectors.egress }),
+    ...(input.selectors?.identity === undefined ? {} : { identity: input.selectors.identity }),
+    ...(input.mode === "http"
+      ? {
+          http: {
+            userAgent: input.userAgent,
+          },
+        }
+      : {
+          browser: {
+            timeoutMs: input.timeoutMs,
+            userAgent: input.userAgent,
+          },
+        }),
+  };
+}
+
 async function resolveBenchmarkExecutionPlan(input: {
   readonly provideRuntime: SdkRuntimeHandle["provideRuntime"];
   readonly url: string;
   readonly defaultTimeoutMs: number;
   readonly defaultProviderId: string;
-  readonly execution: {
-    readonly mode?: "http" | "browser" | undefined;
-    readonly http?: { readonly userAgent?: string | undefined } | undefined;
-    readonly browser?:
-      | {
-          readonly timeoutMs?: number | undefined;
-          readonly userAgent?: string | undefined;
-        }
-      | undefined;
-  };
+  readonly execution: AccessExecutionProfile;
 }) {
   const plan = await Effect.runPromise(
     Effect.gen(function* () {
@@ -1830,85 +2222,111 @@ function selectBenchmarkPages(input: {
   };
 }
 
-async function createEffectHttpRunner(input: { readonly timeoutMs: number }): Promise<SweepRunner> {
-  const sdkEnvironment = await makeScopedSdkEnvironmentProvider();
+async function createEffectHttpRunner(
+  input: { readonly timeoutMs: number } & BenchmarkRunnerSdkOptions,
+): Promise<SweepRunner> {
+  const sdkEnvironment = await makeScopedSdkEnvironmentProvider({
+    modules: input.modules,
+    isolateRotationToEgressSubjects: input.executionRotation !== undefined,
+  });
+  const createExecution = (selectors: BenchmarkExecutionSelectors | undefined) =>
+    createBenchmarkExecutionProfile({
+      mode: "http",
+      timeoutMs: input.timeoutMs,
+      userAgent: DEFAULT_HTTP_USER_AGENT,
+      selectors,
+    });
+
+  const runSingleAttempt = async (
+    page: FrozenPage,
+    selectors: BenchmarkExecutionSelectors | undefined,
+  ): Promise<AttemptResult> => {
+    const startedAt = performance.now();
+    let plannedExecution: Awaited<ReturnType<typeof resolveBenchmarkExecutionPlan>> | undefined;
+    const execution = createExecution(selectors);
+
+    try {
+      plannedExecution = await resolveBenchmarkExecutionPlan({
+        provideRuntime: sdkEnvironment.provideRuntime,
+        url: page.url,
+        defaultTimeoutMs: input.timeoutMs,
+        defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+        execution,
+      });
+      const response = await Effect.runPromise(
+        accessPreview({
+          url: page.url,
+          timeoutMs: input.timeoutMs,
+          execution,
+        }).pipe(sdkEnvironment.provide),
+      );
+      const warningSignals = readAccessWallSignalsFromWarnings(response.warnings);
+      const challengeSignals = mergeChallengeSignals(
+        warningSignals,
+        detectChallengeSignals({
+          requestedUrl: page.url,
+          statusCode: response.data.status,
+          finalUrl: response.data.finalUrl,
+        }),
+      );
+
+      return {
+        statusCode: response.data.status,
+        redirected: response.data.finalUrl !== response.data.url,
+        challengeDetected: challengeSignals.length > 0,
+        observedChallengeSignals: challengeSignals,
+        durationMs: roundToThree(performance.now() - startedAt),
+        reportedDurationMs: toFinite(response.data.durationMs),
+        requestCount: response.data.timings?.requestCount,
+        redirectCount: response.data.timings?.redirectCount,
+        blockedRequestCount: response.data.timings?.blockedRequestCount,
+        responseHeadersDurationMs: response.data.timings?.responseHeadersDurationMs,
+        bodyReadDurationMs: response.data.timings?.bodyReadDurationMs,
+        contentBytes: Math.max(0, response.data.contentLength),
+        titlePresent: false,
+        finalUrl: response.data.finalUrl,
+        executionMetadata: benchmarkExecutionMetadataFromExecuted(response.data.execution),
+        warnings: dedupeWarnings([...plannedExecution.warnings, ...response.warnings]),
+      } satisfies AttemptResult;
+    } catch (error) {
+      const errorWarnings = extractAttemptErrorWarnings(error);
+      return {
+        redirected: false,
+        challengeDetected: false,
+        observedChallengeSignals: [],
+        durationMs: roundToThree(performance.now() - startedAt),
+        contentBytes: 0,
+        titlePresent: false,
+        error: formatAttemptError(error),
+        ...(plannedExecution === undefined
+          ? {}
+          : {
+              executionMetadata: plannedExecution.executionMetadata,
+              warnings: dedupeWarnings([...plannedExecution.warnings, ...errorWarnings]),
+            }),
+      } satisfies AttemptResult;
+    }
+  };
 
   return {
     runPage: async (page) => {
-      const startedAt = performance.now();
-      let plannedExecution: Awaited<ReturnType<typeof resolveBenchmarkExecutionPlan>> | undefined;
-
-      try {
-        plannedExecution = await resolveBenchmarkExecutionPlan({
-          provideRuntime: sdkEnvironment.provideRuntime,
-          url: page.url,
-          defaultTimeoutMs: input.timeoutMs,
-          defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
-          execution: {
-            mode: "http",
-            http: {
-              userAgent: DEFAULT_HTTP_USER_AGENT,
-            },
-          },
-        });
-        const response = await Effect.runPromise(
-          accessPreview({
-            url: page.url,
-            timeoutMs: input.timeoutMs,
-            execution: {
-              mode: "http",
-              http: {
-                userAgent: DEFAULT_HTTP_USER_AGENT,
-              },
-            },
-          }).pipe(sdkEnvironment.provide),
-        );
-        const warningSignals = readAccessWallSignalsFromWarnings(response.warnings);
-        const challengeSignals = mergeChallengeSignals(
-          warningSignals,
-          detectChallengeSignals({
-            requestedUrl: page.url,
-            statusCode: response.data.status,
-            finalUrl: response.data.finalUrl,
-          }),
-        );
-
-        return {
-          statusCode: response.data.status,
-          redirected: response.data.finalUrl !== response.data.url,
-          challengeDetected: challengeSignals.length > 0,
-          observedChallengeSignals: challengeSignals,
-          durationMs: roundToThree(performance.now() - startedAt),
-          reportedDurationMs: toFinite(response.data.durationMs),
-          requestCount: response.data.timings?.requestCount,
-          redirectCount: response.data.timings?.redirectCount,
-          blockedRequestCount: response.data.timings?.blockedRequestCount,
-          responseHeadersDurationMs: response.data.timings?.responseHeadersDurationMs,
-          bodyReadDurationMs: response.data.timings?.bodyReadDurationMs,
-          contentBytes: Math.max(0, response.data.contentLength),
-          titlePresent: false,
-          finalUrl: response.data.finalUrl,
-          executionMetadata: benchmarkExecutionMetadataFromExecuted(response.data.execution),
-          warnings: dedupeWarnings([...plannedExecution.warnings, ...response.warnings]),
-        } satisfies AttemptResult;
-      } catch (error) {
-        const errorWarnings = extractAttemptErrorWarnings(error);
-        return {
-          redirected: false,
-          challengeDetected: false,
-          observedChallengeSignals: [],
-          durationMs: roundToThree(performance.now() - startedAt),
-          contentBytes: 0,
-          titlePresent: false,
-          error: formatAttemptError(error),
-          ...(plannedExecution === undefined
-            ? {}
-            : {
-                executionMetadata: plannedExecution.executionMetadata,
-                warnings: dedupeWarnings([...plannedExecution.warnings, ...errorWarnings]),
-              }),
-        } satisfies AttemptResult;
+      if (
+        input.executionRotation === undefined ||
+        input.executionRotation.variants.length <= 1 ||
+        input.executionRotation.maxAttempts <= 1
+      ) {
+        return runSingleAttempt(page, input.execution);
       }
+
+      return runPageWithExecutionRotation({
+        page,
+        rotation: input.executionRotation,
+        executeVariant: ({ variant }) =>
+          runSingleAttempt(
+            page,
+            mergeBenchmarkExecutionSelectors(input.execution, variant.selectors),
+          ),
+      });
     },
     close: async () => {
       await sdkEnvironment.close();
@@ -1981,98 +2399,120 @@ async function createNativeFetchRunner(input: {
   };
 }
 
-async function createEffectBrowserRunner(input: {
-  readonly timeoutMs: number;
-}): Promise<SweepRunner> {
-  const sdkEnvironment = await makeScopedSdkEnvironmentProvider();
+async function createEffectBrowserRunner(
+  input: { readonly timeoutMs: number } & BenchmarkRunnerSdkOptions,
+): Promise<SweepRunner> {
+  const sdkEnvironment = await makeScopedSdkEnvironmentProvider({
+    modules: input.modules,
+    isolateRotationToEgressSubjects: input.executionRotation !== undefined,
+  });
+  const createExecution = (selectors: BenchmarkExecutionSelectors | undefined) =>
+    createBenchmarkExecutionProfile({
+      mode: "browser",
+      timeoutMs: input.timeoutMs,
+      userAgent: DEFAULT_BROWSER_USER_AGENT,
+      selectors,
+    });
+
+  const runSingleAttempt = async (
+    page: FrozenPage,
+    selectors: BenchmarkExecutionSelectors | undefined,
+  ): Promise<AttemptResult> => {
+    const startedAt = performance.now();
+    let plannedExecution: Awaited<ReturnType<typeof resolveBenchmarkExecutionPlan>> | undefined;
+    const execution = createExecution(selectors);
+
+    try {
+      plannedExecution = await resolveBenchmarkExecutionPlan({
+        provideRuntime: sdkEnvironment.provideRuntime,
+        url: page.url,
+        defaultTimeoutMs: input.timeoutMs,
+        defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
+        execution,
+      });
+      const response = await Effect.runPromise(
+        renderPreview({
+          url: page.url,
+          timeoutMs: input.timeoutMs,
+          execution,
+        }).pipe(sdkEnvironment.provide),
+      );
+      const [navigationArtifact, renderedDomArtifact] = response.data.artifacts;
+      const warningSignals = readAccessWallSignalsFromWarnings(response.warnings);
+      const challengeSignals = mergeChallengeSignals(
+        warningSignals,
+        detectChallengeSignals({
+          requestedUrl: page.url,
+          statusCode: response.data.status.code,
+          finalUrl: navigationArtifact.finalUrl,
+          title: renderedDomArtifact.title ?? undefined,
+          text: renderedDomArtifact.textPreview,
+        }),
+      );
+
+      return {
+        statusCode: response.data.status.code,
+        redirected: response.data.status.redirected,
+        challengeDetected: challengeSignals.length > 0,
+        observedChallengeSignals: challengeSignals,
+        durationMs: roundToThree(performance.now() - startedAt),
+        reportedDurationMs: toFinite(response.data.artifacts[2].durationMs),
+        requestCount: response.data.artifacts[2].requestCount,
+        redirectCount: response.data.artifacts[2].redirectCount,
+        blockedRequestCount: response.data.artifacts[2].blockedRequestCount,
+        responseHeadersDurationMs: response.data.artifacts[2].responseHeadersDurationMs,
+        bodyReadDurationMs: response.data.artifacts[2].bodyReadDurationMs,
+        routeRegistrationDurationMs: response.data.artifacts[2].routeRegistrationDurationMs,
+        gotoDurationMs: response.data.artifacts[2].gotoDurationMs,
+        loadStateDurationMs: response.data.artifacts[2].loadStateDurationMs,
+        domReadDurationMs: response.data.artifacts[2].domReadDurationMs,
+        headerReadDurationMs: response.data.artifacts[2].headerReadDurationMs,
+        contentBytes: navigationArtifact.contentLength,
+        titlePresent:
+          typeof renderedDomArtifact.title === "string" && renderedDomArtifact.title.length > 0,
+        finalUrl: navigationArtifact.finalUrl,
+        executionMetadata: benchmarkExecutionMetadataFromExecuted(response.data.execution),
+        warnings: dedupeWarnings([...plannedExecution.warnings, ...response.warnings]),
+      } satisfies AttemptResult;
+    } catch (error) {
+      const errorWarnings = extractAttemptErrorWarnings(error);
+      return {
+        redirected: false,
+        challengeDetected: false,
+        observedChallengeSignals: [],
+        durationMs: roundToThree(performance.now() - startedAt),
+        contentBytes: 0,
+        titlePresent: false,
+        error: formatAttemptError(error),
+        ...(plannedExecution === undefined
+          ? {}
+          : {
+              executionMetadata: plannedExecution.executionMetadata,
+              warnings: dedupeWarnings([...plannedExecution.warnings, ...errorWarnings]),
+            }),
+      } satisfies AttemptResult;
+    }
+  };
 
   return {
     runPage: async (page) => {
-      const startedAt = performance.now();
-      let plannedExecution: Awaited<ReturnType<typeof resolveBenchmarkExecutionPlan>> | undefined;
-
-      try {
-        plannedExecution = await resolveBenchmarkExecutionPlan({
-          provideRuntime: sdkEnvironment.provideRuntime,
-          url: page.url,
-          defaultTimeoutMs: input.timeoutMs,
-          defaultProviderId: DEFAULT_BROWSER_PROVIDER_ID,
-          execution: {
-            mode: "browser",
-            browser: {
-              timeoutMs: input.timeoutMs,
-              userAgent: DEFAULT_BROWSER_USER_AGENT,
-            },
-          },
-        });
-        const response = await Effect.runPromise(
-          renderPreview({
-            url: page.url,
-            timeoutMs: input.timeoutMs,
-            execution: {
-              mode: "browser",
-              browser: {
-                timeoutMs: input.timeoutMs,
-                userAgent: DEFAULT_BROWSER_USER_AGENT,
-              },
-            },
-          }).pipe(sdkEnvironment.provide),
-        );
-        const [navigationArtifact, renderedDomArtifact] = response.data.artifacts;
-        const warningSignals = readAccessWallSignalsFromWarnings(response.warnings);
-        const challengeSignals = mergeChallengeSignals(
-          warningSignals,
-          detectChallengeSignals({
-            requestedUrl: page.url,
-            statusCode: response.data.status.code,
-            finalUrl: navigationArtifact.finalUrl,
-            title: renderedDomArtifact.title ?? undefined,
-            text: renderedDomArtifact.textPreview,
-          }),
-        );
-
-        return {
-          statusCode: response.data.status.code,
-          redirected: response.data.status.redirected,
-          challengeDetected: challengeSignals.length > 0,
-          observedChallengeSignals: challengeSignals,
-          durationMs: roundToThree(performance.now() - startedAt),
-          reportedDurationMs: toFinite(response.data.artifacts[2].durationMs),
-          requestCount: response.data.artifacts[2].requestCount,
-          redirectCount: response.data.artifacts[2].redirectCount,
-          blockedRequestCount: response.data.artifacts[2].blockedRequestCount,
-          responseHeadersDurationMs: response.data.artifacts[2].responseHeadersDurationMs,
-          bodyReadDurationMs: response.data.artifacts[2].bodyReadDurationMs,
-          routeRegistrationDurationMs: response.data.artifacts[2].routeRegistrationDurationMs,
-          gotoDurationMs: response.data.artifacts[2].gotoDurationMs,
-          loadStateDurationMs: response.data.artifacts[2].loadStateDurationMs,
-          domReadDurationMs: response.data.artifacts[2].domReadDurationMs,
-          headerReadDurationMs: response.data.artifacts[2].headerReadDurationMs,
-          contentBytes: navigationArtifact.contentLength,
-          titlePresent:
-            typeof renderedDomArtifact.title === "string" && renderedDomArtifact.title.length > 0,
-          finalUrl: navigationArtifact.finalUrl,
-          executionMetadata: benchmarkExecutionMetadataFromExecuted(response.data.execution),
-          warnings: dedupeWarnings([...plannedExecution.warnings, ...response.warnings]),
-        } satisfies AttemptResult;
-      } catch (error) {
-        const errorWarnings = extractAttemptErrorWarnings(error);
-        return {
-          redirected: false,
-          challengeDetected: false,
-          observedChallengeSignals: [],
-          durationMs: roundToThree(performance.now() - startedAt),
-          contentBytes: 0,
-          titlePresent: false,
-          error: formatAttemptError(error),
-          ...(plannedExecution === undefined
-            ? {}
-            : {
-                executionMetadata: plannedExecution.executionMetadata,
-                warnings: dedupeWarnings([...plannedExecution.warnings, ...errorWarnings]),
-              }),
-        } satisfies AttemptResult;
+      if (
+        input.executionRotation === undefined ||
+        input.executionRotation.variants.length <= 1 ||
+        input.executionRotation.maxAttempts <= 1
+      ) {
+        return runSingleAttempt(page, input.execution);
       }
+
+      return runPageWithExecutionRotation({
+        page,
+        rotation: input.executionRotation,
+        executeVariant: ({ variant }) =>
+          runSingleAttempt(
+            page,
+            mergeBenchmarkExecutionSelectors(input.execution, variant.selectors),
+          ),
+      });
     },
     close: async () => {
       await sdkEnvironment.close();
@@ -2080,12 +2520,252 @@ async function createEffectBrowserRunner(input: {
   };
 }
 
-async function makeScopedSdkEnvironmentProvider() {
+async function createEffectHybridStealthRunner(
+  input: { readonly timeoutMs: number } & BenchmarkRunnerSdkOptions,
+): Promise<SweepRunner> {
+  const sdkEnvironment = await makeScopedSdkEnvironmentProvider({
+    modules: input.modules,
+    isolateRotationToEgressSubjects: input.executionRotation !== undefined,
+  });
+  const createHttpExecution = (selectors: BenchmarkExecutionSelectors | undefined) =>
+    createBenchmarkExecutionProfile({
+      mode: "http",
+      timeoutMs: input.timeoutMs,
+      userAgent: DEFAULT_HTTP_USER_AGENT,
+      selectors,
+    });
+  const createBrowserExecution = (selectors: BenchmarkExecutionSelectors | undefined) =>
+    ({
+      mode: "browser",
+      providerId: "browser-stealth",
+      ...(selectors?.egress === undefined ? {} : { egress: selectors.egress }),
+      ...(selectors?.identity === undefined ? {} : { identity: selectors.identity }),
+      browser: {
+        timeoutMs: Math.max(input.timeoutMs, DEFAULT_SOTA_BROWSER_TIMEOUT_MS),
+        userAgent: DEFAULT_BROWSER_USER_AGENT,
+        waitUntil: "networkidle",
+        waitMs: DEFAULT_SOTA_BROWSER_WAIT_MS,
+        challengeHandling: {
+          solveCloudflare: true,
+        },
+      },
+    }) satisfies AccessExecutionProfile;
+
+  const runSingleAttempt = async (
+    page: FrozenPage,
+    selectors: BenchmarkExecutionSelectors | undefined,
+  ): Promise<AttemptResult> => {
+    const startedAt = performance.now();
+    const httpExecution = createHttpExecution(selectors);
+    const browserExecution = createBrowserExecution(selectors);
+    let httpWarnings: ReadonlyArray<string> = [];
+    let httpReportedDurationMs = 0;
+    let httpRequestCount = 0;
+    let httpRedirectCount = 0;
+    let httpBlockedRequestCount = 0;
+    let httpResponseHeadersDurationMs = 0;
+    let httpBodyReadDurationMs = 0;
+    let plannedBrowserExecution:
+      | Awaited<ReturnType<typeof resolveBenchmarkExecutionPlan>>
+      | undefined;
+
+    try {
+      const plannedHttpExecution = await resolveBenchmarkExecutionPlan({
+        provideRuntime: sdkEnvironment.provideRuntime,
+        url: page.url,
+        defaultTimeoutMs: input.timeoutMs,
+        defaultProviderId: DEFAULT_HTTP_PROVIDER_ID,
+        execution: httpExecution,
+      });
+      const httpResponse = await Effect.runPromise(
+        accessPreview({
+          url: page.url,
+          timeoutMs: input.timeoutMs,
+          execution: httpExecution,
+        }).pipe(sdkEnvironment.provide),
+      );
+      const warningSignals = readAccessWallSignalsFromWarnings(httpResponse.warnings);
+      const challengeSignals = mergeChallengeSignals(
+        warningSignals,
+        detectChallengeSignals({
+          requestedUrl: page.url,
+          statusCode: httpResponse.data.status,
+          finalUrl: httpResponse.data.finalUrl,
+        }),
+      );
+
+      httpWarnings = mergeAttemptWarnings(plannedHttpExecution.warnings, httpResponse.warnings);
+      httpReportedDurationMs = toFinite(httpResponse.data.durationMs);
+      httpRequestCount = httpResponse.data.timings?.requestCount ?? 0;
+      httpRedirectCount = httpResponse.data.timings?.redirectCount ?? 0;
+      httpBlockedRequestCount = httpResponse.data.timings?.blockedRequestCount ?? 0;
+      httpResponseHeadersDurationMs = httpResponse.data.timings?.responseHeadersDurationMs ?? 0;
+      httpBodyReadDurationMs = httpResponse.data.timings?.bodyReadDurationMs ?? 0;
+
+      if (httpResponse.data.status < 400 && challengeSignals.length === 0) {
+        return {
+          statusCode: httpResponse.data.status,
+          redirected: httpResponse.data.finalUrl !== httpResponse.data.url,
+          challengeDetected: false,
+          observedChallengeSignals: [],
+          durationMs: roundToThree(performance.now() - startedAt),
+          reportedDurationMs: roundToThree(httpReportedDurationMs),
+          requestCount: httpResponse.data.timings?.requestCount,
+          redirectCount: httpResponse.data.timings?.redirectCount,
+          blockedRequestCount: httpResponse.data.timings?.blockedRequestCount,
+          responseHeadersDurationMs: httpResponse.data.timings?.responseHeadersDurationMs,
+          bodyReadDurationMs: httpResponse.data.timings?.bodyReadDurationMs,
+          contentBytes: Math.max(0, httpResponse.data.contentLength),
+          titlePresent: false,
+          finalUrl: httpResponse.data.finalUrl,
+          executionMetadata: benchmarkExecutionMetadataFromExecuted(httpResponse.data.execution),
+          warnings: httpWarnings,
+        } satisfies AttemptResult;
+      }
+    } catch (error) {
+      httpWarnings = mergeAttemptWarnings(httpWarnings, extractAttemptErrorWarnings(error));
+    }
+
+    try {
+      plannedBrowserExecution = await resolveBenchmarkExecutionPlan({
+        provideRuntime: sdkEnvironment.provideRuntime,
+        url: page.url,
+        defaultTimeoutMs: Math.max(input.timeoutMs, DEFAULT_SOTA_BROWSER_TIMEOUT_MS),
+        defaultProviderId: DEFAULT_STEALTH_BROWSER_PROVIDER_ID,
+        execution: browserExecution,
+      });
+      const browserResponse = await Effect.runPromise(
+        renderPreview({
+          url: page.url,
+          timeoutMs: Math.max(input.timeoutMs, DEFAULT_SOTA_BROWSER_TIMEOUT_MS),
+          execution: browserExecution,
+        }).pipe(sdkEnvironment.provide),
+      );
+      const [navigationArtifact, renderedDomArtifact] = browserResponse.data.artifacts;
+      const warningSignals = readAccessWallSignalsFromWarnings(browserResponse.warnings);
+      const challengeSignals = mergeChallengeSignals(
+        warningSignals,
+        detectChallengeSignals({
+          requestedUrl: page.url,
+          statusCode: browserResponse.data.status.code,
+          finalUrl: navigationArtifact.finalUrl,
+          title: renderedDomArtifact.title ?? undefined,
+          text: renderedDomArtifact.textPreview,
+        }),
+      );
+      const browserReportedDurationMs = toFinite(browserResponse.data.artifacts[2].durationMs);
+
+      return {
+        statusCode: browserResponse.data.status.code,
+        redirected: browserResponse.data.status.redirected,
+        challengeDetected: challengeSignals.length > 0,
+        observedChallengeSignals: challengeSignals,
+        durationMs: roundToThree(performance.now() - startedAt),
+        reportedDurationMs: roundToThree(httpReportedDurationMs + browserReportedDurationMs),
+        requestCount: httpRequestCount + (browserResponse.data.artifacts[2].requestCount ?? 0),
+        redirectCount: httpRedirectCount + (browserResponse.data.artifacts[2].redirectCount ?? 0),
+        blockedRequestCount:
+          httpBlockedRequestCount + (browserResponse.data.artifacts[2].blockedRequestCount ?? 0),
+        responseHeadersDurationMs:
+          httpResponseHeadersDurationMs +
+          (browserResponse.data.artifacts[2].responseHeadersDurationMs ?? 0),
+        bodyReadDurationMs:
+          httpBodyReadDurationMs + (browserResponse.data.artifacts[2].bodyReadDurationMs ?? 0),
+        routeRegistrationDurationMs: browserResponse.data.artifacts[2].routeRegistrationDurationMs,
+        gotoDurationMs: browserResponse.data.artifacts[2].gotoDurationMs,
+        loadStateDurationMs: browserResponse.data.artifacts[2].loadStateDurationMs,
+        domReadDurationMs: browserResponse.data.artifacts[2].domReadDurationMs,
+        headerReadDurationMs: browserResponse.data.artifacts[2].headerReadDurationMs,
+        contentBytes: navigationArtifact.contentLength,
+        titlePresent:
+          typeof renderedDomArtifact.title === "string" && renderedDomArtifact.title.length > 0,
+        finalUrl: navigationArtifact.finalUrl,
+        executionMetadata: benchmarkExecutionMetadataFromExecuted(browserResponse.data.execution),
+        warnings: mergeAttemptWarnings(
+          httpWarnings,
+          plannedBrowserExecution.warnings,
+          browserResponse.warnings,
+        ),
+      } satisfies AttemptResult;
+    } catch (error) {
+      return {
+        redirected: false,
+        challengeDetected: false,
+        observedChallengeSignals: [],
+        durationMs: roundToThree(performance.now() - startedAt),
+        reportedDurationMs: roundToThree(httpReportedDurationMs),
+        requestCount: httpRequestCount === 0 ? undefined : httpRequestCount,
+        redirectCount: httpRedirectCount === 0 ? undefined : httpRedirectCount,
+        blockedRequestCount: httpBlockedRequestCount === 0 ? undefined : httpBlockedRequestCount,
+        responseHeadersDurationMs:
+          httpResponseHeadersDurationMs === 0 ? undefined : httpResponseHeadersDurationMs,
+        bodyReadDurationMs: httpBodyReadDurationMs === 0 ? undefined : httpBodyReadDurationMs,
+        contentBytes: 0,
+        titlePresent: false,
+        error: formatAttemptError(error),
+        ...(plannedBrowserExecution === undefined
+          ? {
+              warnings: mergeAttemptWarnings(httpWarnings, extractAttemptErrorWarnings(error)),
+            }
+          : {
+              executionMetadata: plannedBrowserExecution.executionMetadata,
+              warnings: mergeAttemptWarnings(
+                httpWarnings,
+                plannedBrowserExecution.warnings,
+                extractAttemptErrorWarnings(error),
+              ),
+            }),
+      } satisfies AttemptResult;
+    }
+  };
+
+  return {
+    runPage: async (page) => {
+      if (
+        input.executionRotation === undefined ||
+        input.executionRotation.variants.length <= 1 ||
+        input.executionRotation.maxAttempts <= 1
+      ) {
+        return runSingleAttempt(page, input.execution);
+      }
+
+      return runPageWithExecutionRotation({
+        page,
+        rotation: input.executionRotation,
+        executeVariant: ({ variant }) =>
+          runSingleAttempt(
+            page,
+            mergeBenchmarkExecutionSelectors(input.execution, variant.selectors),
+          ),
+      });
+    },
+    close: async () => {
+      await sdkEnvironment.close();
+    },
+  };
+}
+
+async function makeScopedSdkEnvironmentProvider(
+  input: {
+    readonly modules?: ReadonlyArray<AccessRuntimeModule> | undefined;
+    readonly isolateRotationToEgressSubjects?: boolean | undefined;
+  } = {},
+) {
   const scope = Effect.runSync(Scope.make());
 
   try {
+    const moduleOverrideLayer = makeAccessModuleRegistryOverrideLayer(input.modules);
+    const benchmarkAccessHealthOverrideLayer = makeBenchmarkAccessHealthOverrideLayer({
+      isolateRotationToEgressSubjects: input.isolateRotationToEgressSubjects,
+    });
+    const runtimeOverrideLayer =
+      moduleOverrideLayer === undefined
+        ? benchmarkAccessHealthOverrideLayer
+        : benchmarkAccessHealthOverrideLayer === undefined
+          ? moduleOverrideLayer
+          : Layer.mergeAll(moduleOverrideLayer, benchmarkAccessHealthOverrideLayer);
     const handle = await Effect.runPromise(
-      makeSdkRuntimeHandle().pipe(Effect.provideService(Scope.Scope, scope)),
+      makeSdkRuntimeHandle(runtimeOverrideLayer).pipe(Effect.provideService(Scope.Scope, scope)),
     );
 
     return {
@@ -2238,11 +2918,17 @@ async function createPatchrightBrowserRunner(input: {
   };
 }
 
-function defaultHttpProfileFactories() {
+function defaultHttpProfileFactories(options: BenchmarkRunnerSdkOptions = {}) {
   return [
     {
       profile: "effect-http" as const,
-      createRunner: createEffectHttpRunner,
+      createRunner: (input: { readonly timeoutMs: number }) =>
+        createEffectHttpRunner({
+          ...input,
+          modules: options.modules,
+          execution: options.execution,
+          executionRotation: options.executionRotation,
+        }),
     },
     {
       profile: "native-fetch" as const,
@@ -2251,11 +2937,27 @@ function defaultHttpProfileFactories() {
   ] as const;
 }
 
-function defaultBrowserProfileFactories() {
+function defaultBrowserProfileFactories(options: BenchmarkRunnerSdkOptions = {}) {
   return [
     {
       profile: "effect-browser" as const,
-      createRunner: createEffectBrowserRunner,
+      createRunner: (input: { readonly timeoutMs: number }) =>
+        createEffectBrowserRunner({
+          ...input,
+          modules: options.modules,
+          execution: options.execution,
+          executionRotation: options.executionRotation,
+        }),
+    },
+    {
+      profile: "effect-hybrid-stealth" as const,
+      createRunner: (input: { readonly timeoutMs: number }) =>
+        createEffectHybridStealthRunner({
+          ...input,
+          modules: options.modules,
+          execution: options.execution,
+          executionRotation: options.executionRotation,
+        }),
     },
     {
       profile: "patchright-browser" as const,
@@ -2805,6 +3507,16 @@ function buildSuiteSummary(input: {
   const browserRecoveredAllocationAttempts = input.browserCorpus.attempts.filter((attempt) =>
     hasRecoveredBrowserAllocationWarning(attempt.warnings),
   );
+  const compositeAttempts = input.browserCorpus.attempts.filter((attempt) =>
+    isCompositeBenchmarkProfile(attempt.profile),
+  );
+  const compositeHttpResolvedAttempts = compositeAttempts.filter(
+    (attempt) => attempt.success && attempt.executionMetadata?.mode === "http",
+  );
+  const compositeBrowserResolvedAttempts = compositeAttempts.filter(
+    (attempt) => attempt.success && attempt.executionMetadata?.mode === "browser",
+  );
+  const compositeFailureAttempts = compositeAttempts.filter((attempt) => !attempt.success);
   const browserRecoveredBrowserAllocationCount = browserRecoveredAllocationAttempts.length;
   const httpPreferredPathOverrideAttempts = input.httpCorpus.attempts.filter((attempt) =>
     hasPreferredPathOverrideWarning(attempt.warnings),
@@ -2885,6 +3597,26 @@ function buildSuiteSummary(input: {
         ...input.browserCorpus.sweeps.map((sweep) => sweep.effectiveThroughputPagesPerMinute),
       ),
     ),
+    ...(compositeAttempts.length === 0
+      ? {}
+      : {
+          compositeAttemptCount: compositeAttempts.length,
+          compositeHttpResolvedCount: compositeHttpResolvedAttempts.length,
+          compositeBrowserResolvedCount: compositeBrowserResolvedAttempts.length,
+          compositeFailureCount: compositeFailureAttempts.length,
+          topCompositeHttpResolvedDomains: buildCountBreakdown(
+            compositeHttpResolvedAttempts.map((attempt) => attempt.domain),
+            5,
+          ),
+          topCompositeBrowserResolvedDomains: buildCountBreakdown(
+            compositeBrowserResolvedAttempts.map((attempt) => attempt.domain),
+            5,
+          ),
+          topCompositeFailureDomains: buildCountBreakdown(
+            compositeFailureAttempts.map((attempt) => attempt.domain),
+            5,
+          ),
+        }),
     topHttpFailureDomains: buildCountBreakdown(
       httpFailures.map((attempt) => attempt.domain),
       5,
@@ -3111,6 +3843,16 @@ function buildSuiteWarnings(input: {
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureDomain = input.summary.topBrowserRemoteFailureDomains?.[0];
   const topBrowserRemoteFailureCategory = input.summary.topBrowserRemoteFailureCategories?.[0];
+  const topCompositeHttpResolvedDomains = input.summary.topCompositeHttpResolvedDomains ?? [];
+  const topCompositeBrowserResolvedDomains = input.summary.topCompositeBrowserResolvedDomains ?? [];
+  const topCompositeFailureDomains = input.summary.topCompositeFailureDomains ?? [];
+  const topCompositeHttpResolvedDomain = getUniqueTopBreakdownEntry(
+    topCompositeHttpResolvedDomains,
+  );
+  const topCompositeBrowserResolvedDomain = getUniqueTopBreakdownEntry(
+    topCompositeBrowserResolvedDomains,
+  );
+  const topCompositeFailureDomain = getUniqueTopBreakdownEntry(topCompositeFailureDomains);
   const formatTopBreakdownKeys = (
     entries: ReadonlyArray<Schema.Schema.Type<typeof BenchmarkReportItemSchema>>,
   ) =>
@@ -3127,6 +3869,30 @@ function buildSuiteWarnings(input: {
     warnings.push(
       `Sampled run: executed ${input.summary.httpAttemptCount + input.summary.browserAttemptCount} attempts over ${input.summary.totalSweepCount} sweeps on a subset of the corpus.`,
     );
+  }
+
+  if ((input.summary.compositeAttemptCount ?? 0) > 0) {
+    warnings.push(
+      `Composite state-of-the-art lane executed ${input.summary.compositeAttemptCount} attempts: ${input.summary.compositeHttpResolvedCount ?? 0} resolved in the HTTP-first stage, ${input.summary.compositeBrowserResolvedCount ?? 0} escalated to browser-stealth, ${input.summary.compositeFailureCount ?? 0} still failed.`,
+    );
+    if (topCompositeHttpResolvedDomain !== undefined && topCompositeHttpResolvedDomain.count > 0) {
+      warnings.push(
+        `Composite HTTP-first resolutions cluster on ${topCompositeHttpResolvedDomain.key} (${topCompositeHttpResolvedDomain.count} attempts).`,
+      );
+    }
+    if (
+      topCompositeBrowserResolvedDomain !== undefined &&
+      topCompositeBrowserResolvedDomain.count > 0
+    ) {
+      warnings.push(
+        `Composite browser escalations cluster on ${topCompositeBrowserResolvedDomain.key} (${topCompositeBrowserResolvedDomain.count} attempts).`,
+      );
+    }
+    if (topCompositeFailureDomain !== undefined && topCompositeFailureDomain.count > 0) {
+      warnings.push(
+        `Composite failures cluster on ${topCompositeFailureDomain.key} (${topCompositeFailureDomain.count} attempts).`,
+      );
+    }
   }
 
   const totalLocalFailureCount =
@@ -3429,6 +4195,9 @@ function buildSuiteRecommendations(input: {
     input.summary.topBrowserPreferredPathOverrideFailureDomains ?? [];
   const topBrowserPreferredPathOverrideFailureKinds =
     input.summary.topBrowserPreferredPathOverrideFailureKinds ?? [];
+  const topCompositeHttpResolvedDomains = input.summary.topCompositeHttpResolvedDomains ?? [];
+  const topCompositeBrowserResolvedDomains = input.summary.topCompositeBrowserResolvedDomains ?? [];
+  const topCompositeFailureDomains = input.summary.topCompositeFailureDomains ?? [];
   const browserRemoteFailureCount = input.summary.browserRemoteFailureCount ?? 0;
   const topBrowserRemoteFailureCategories =
     input.summary.topBrowserRemoteFailureCategories ?? input.summary.topBrowserFailureCategories;
@@ -3461,6 +4230,27 @@ function buildSuiteRecommendations(input: {
     recommendations.push(
       "Review browser failure categories and top failing domains before treating browser fallback as production-ready.",
     );
+  }
+
+  if ((input.summary.compositeAttemptCount ?? 0) > 0) {
+    recommendations.push(
+      "Use the composite HTTP-first versus browser-escalated breakdown before interpreting this lane as a pure browser benchmark.",
+    );
+    if (topCompositeHttpResolvedDomains.length > 0) {
+      recommendations.push(
+        `HTTP-first composite domains to keep cheap first: ${formatTopDomains(topCompositeHttpResolvedDomains)}.`,
+      );
+    }
+    if (topCompositeBrowserResolvedDomains.length > 0) {
+      recommendations.push(
+        `Browser-escalated composite domains to inspect for challenge-heavy behavior first: ${formatTopDomains(topCompositeBrowserResolvedDomains)}.`,
+      );
+    }
+    if (topCompositeFailureDomains.length > 0) {
+      recommendations.push(
+        `Composite failures to triage first: ${formatTopDomains(topCompositeFailureDomains)}.`,
+      );
+    }
   }
 
   const preferredPathOverrideCount = input.summary.preferredPathOverrideCount ?? 0;
@@ -4100,6 +4890,9 @@ export async function runE9BenchmarkSuite(
     readonly shardCount?: number;
     readonly shardIndex?: number;
     readonly adaptiveStop?: boolean;
+    readonly accessModules?: ReadonlyArray<AccessRuntimeModule>;
+    readonly execution?: BenchmarkExecutionSelectors;
+    readonly executionRotation?: BenchmarkExecutionRotation;
   } = {},
   overrides: SuiteOverrides = {},
 ) {
@@ -4162,10 +4955,20 @@ export async function runE9BenchmarkSuite(
   const selectedHttpProfiles = input.httpProfiles ?? preset?.httpProfiles;
   const selectedBrowserProfiles = input.browserProfiles ?? preset?.browserProfiles;
   const httpProfileFactories = (
-    overrides.httpProfileFactories ?? defaultHttpProfileFactories()
+    overrides.httpProfileFactories ??
+    defaultHttpProfileFactories({
+      modules: input.accessModules,
+      execution: input.execution,
+      executionRotation: input.executionRotation,
+    })
   ).filter(({ profile }) => isSelectedHttpProfile(profile, selectedHttpProfiles));
   const browserProfileFactories = (
-    overrides.browserProfileFactories ?? defaultBrowserProfileFactories()
+    overrides.browserProfileFactories ??
+    defaultBrowserProfileFactories({
+      modules: input.accessModules,
+      execution: input.execution,
+      executionRotation: input.executionRotation,
+    })
   ).filter(({ profile }) => isSelectedBrowserProfile(profile, selectedBrowserProfiles));
   const selectedPhaseList = [...selectedPhases.values()];
   const httpSelectedProfiles = httpProfileFactories.map(
@@ -4294,6 +5097,7 @@ export async function runE9BenchmarkSuite(
     { profile: "effect-http", available: true },
     { profile: "native-fetch", available: true },
     { profile: "effect-browser", available: true },
+    { profile: "effect-hybrid-stealth", available: true },
     { profile: "patchright-browser", available: true },
     { profile: "scrapling-parser", available: true },
   ].map((entry) => Schema.decodeUnknownSync(CompetitorAvailabilitySchema)(entry));

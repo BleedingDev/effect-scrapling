@@ -150,7 +150,7 @@ Recommended workflow:
 Template command:
 
 ```bash
-CI=1 bd create "[E4] Remediate: browser performance budget breach" \
+CI=1 br create "[E4] Remediate: browser performance budget breach" \
   --type bug \
   --priority 1 \
   --parent bd-ymb \

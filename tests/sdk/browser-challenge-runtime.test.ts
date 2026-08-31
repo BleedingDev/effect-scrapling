@@ -219,6 +219,115 @@ describe("sdk browser challenge runtime", () => {
     );
   });
 
+  it("tolerates transient execution-context loss while polling the Turnstile locator", async () => {
+    let clickCount = 0;
+    let countAttempts = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () => (clickCount >= 1 ? SOLVED_HTML : EMBEDDED_CHALLENGE_HTML),
+        locator: () => ({
+          count: async () => {
+            countAttempts += 1;
+            if (countAttempts === 1) {
+              throw new Error(
+                "count: Execution context was destroyed, most likely because of a navigation.",
+              );
+            }
+            return 1;
+          },
+          last: () => ({
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          boundingBox: async () => ({
+            x: 100,
+            y: 100,
+            width: 40,
+            height: 40,
+          }),
+        }),
+        mouse: {
+          click: async () => {
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent: EMBEDDED_CHALLENGE_HTML,
+      timeoutMs: 2_000,
+      maxAttempts: 1,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(countAttempts).toBeGreaterThanOrEqual(2);
+    expect(clickCount).toBe(1);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "embedded",
+      resolutionKind: "click",
+      attemptCount: 1,
+    });
+  });
+
+  it("falls back to element-level probes when locator.count is not a usable collection probe", async () => {
+    let clickCount = 0;
+    let countAttempts = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () => (clickCount >= 1 ? SOLVED_HTML : EMBEDDED_CHALLENGE_HTML),
+        locator: () => ({
+          count: async () => {
+            countAttempts += 1;
+            throw new Error("count: value: expected integer, got object");
+          },
+          last: () => ({
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          boundingBox: async () => ({
+            x: 100,
+            y: 100,
+            width: 40,
+            height: 40,
+          }),
+        }),
+        mouse: {
+          click: async () => {
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent: EMBEDDED_CHALLENGE_HTML,
+      timeoutMs: 2_000,
+      maxAttempts: 1,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(countAttempts).toBeGreaterThanOrEqual(1);
+    expect(clickCount).toBe(1);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "embedded",
+      resolutionKind: "click",
+      attemptCount: 1,
+    });
+  });
+
   it("waits for Cloudflare markers that mount after the initial DOM read", async () => {
     let readCount = 0;
     let clickCount = 0;
@@ -524,6 +633,137 @@ describe("sdk browser challenge runtime", () => {
     expect(resolution.warnings).toContain("cloudflare-solver:clearance-observed:managed");
   });
 
+  it("retries managed Turnstile solves when an apparent clear collapses back into the challenge page", async () => {
+    let clickCount = 0;
+    let postClickReadCount = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () => {
+          if (clickCount === 0) {
+            return "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>";
+          }
+
+          postClickReadCount += 1;
+          if (clickCount === 1) {
+            return postClickReadCount === 1
+              ? SOLVED_HTML
+              : "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>";
+          }
+
+          return SOLVED_HTML;
+        },
+        locator: () => ({
+          last: () => ({
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          boundingBox: async () => ({
+            x: 100,
+            y: 100,
+            width: 40,
+            height: 40,
+          }),
+        }),
+        mouse: {
+          click: async () => {
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent:
+        "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>",
+      timeoutMs: 2_000,
+      maxAttempts: 2,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(clickCount).toBe(2);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "managed",
+      resolutionKind: "click",
+      attemptCount: 2,
+    });
+    expect(resolution.warnings).toContain("cloudflare-solver:click-dispatched:managed");
+    expect(resolution.warnings).toContain("cloudflare-solver:clearance-unconfirmed:managed");
+    expect(resolution.warnings).toContain("cloudflare-solver:retrying:managed");
+    expect(resolution.warnings).toContain("cloudflare-solver:clearance-observed:managed");
+  });
+
+  it("waits through managed post-click state churn before dispatching another click", async () => {
+    const originalNow = Date.now;
+    let fakeNow = 0;
+    let clickCount = 0;
+
+    Date.now = () => fakeNow;
+    try {
+      const resolution = await resolveBrowserChallenges({
+        page: makePage({
+          content: async () => {
+            if (clickCount === 0) {
+              return "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>";
+            }
+
+            return fakeNow >= 1_200
+              ? SOLVED_HTML
+              : "<html><head><title>Just a moment...</title></head><body>cType: 'managed' Verifying you are human.</body></html>";
+          },
+          waitForTimeout: async (timeoutMs) => {
+            fakeNow += timeoutMs;
+          },
+          locator: () => ({
+            last: () => ({
+              boundingBox: async () => ({
+                x: 100,
+                y: 100,
+                width: 40,
+                height: 40,
+              }),
+            }),
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          mouse: {
+            click: async () => {
+              clickCount += 1;
+            },
+          },
+        }),
+        pageContent:
+          "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>",
+        timeoutMs: 5_000,
+        maxAttempts: 2,
+        challengeHandling: {
+          solveCloudflare: true,
+        },
+      });
+
+      expect(clickCount).toBe(1);
+      expect(resolution).toMatchObject({
+        detected: true,
+        followUpNavigationRequired: true,
+        challengeType: "managed",
+        resolutionKind: "click",
+        attemptCount: 1,
+      });
+      expect(resolution.warnings).toContain("cloudflare-solver:clearance-observed:managed");
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
   it("classifies missing challenge targets as no-progress instead of clearing optimistically", async () => {
     const resolution = await resolveBrowserChallenges({
       page: makePage({
@@ -681,6 +921,148 @@ describe("sdk browser challenge runtime", () => {
       detected: true,
       followUpNavigationRequired: true,
       challengeType: "embedded",
+      resolutionKind: "click",
+      attemptCount: 1,
+    });
+  });
+
+  it("accepts Turnstile targets that expose a bounding box even when Playwright marks them hidden", async () => {
+    let clickCount = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () => (clickCount >= 1 ? SOLVED_HTML : EMBEDDED_CHALLENGE_HTML),
+        locator: () => ({
+          last: () => ({
+            isVisible: async () => false,
+            boundingBox: async () => ({
+              x: 100,
+              y: 100,
+              width: 40,
+              height: 40,
+            }),
+          }),
+          isVisible: async () => false,
+          boundingBox: async () => ({
+            x: 100,
+            y: 100,
+            width: 40,
+            height: 40,
+          }),
+        }),
+        mouse: {
+          click: async () => {
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent: EMBEDDED_CHALLENGE_HTML,
+      timeoutMs: 1_000,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(clickCount).toBe(1);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "embedded",
+      resolutionKind: "click",
+      attemptCount: 1,
+    });
+  });
+
+  it("accepts challenge iframe targets that expose a bounding box before visibility flips true", async () => {
+    let clickCount = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () =>
+          clickCount >= 1
+            ? SOLVED_HTML
+            : "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>",
+        frame: () => ({
+          frameElement: async () => ({
+            isVisible: async () => false,
+            boundingBox: async () => ({
+              x: 120,
+              y: 120,
+              width: 40,
+              height: 40,
+            }),
+          }),
+        }),
+        mouse: {
+          click: async () => {
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent:
+        "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>",
+      timeoutMs: 1_000,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(clickCount).toBe(1);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "managed",
+      resolutionKind: "click",
+      attemptCount: 1,
+    });
+  });
+
+  it("falls back to DOM rects when managed Turnstile targets time out on boundingBox()", async () => {
+    let clickCount = 0;
+
+    const resolution = await resolveBrowserChallenges({
+      page: makePage({
+        content: async () =>
+          clickCount >= 1
+            ? SOLVED_HTML
+            : "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>",
+        locator: () => ({
+          count: async () => 1,
+          last: () => ({
+            boundingBox: async () => {
+              throw new Error("box: Timeout 30000ms exceeded.");
+            },
+            isVisible: async () => false,
+            evaluate: async () => ({
+              x: 192,
+              y: 304,
+              width: 896,
+              height: 0,
+            }),
+          }),
+          boundingBox: async () => {
+            throw new Error("box: Timeout 30000ms exceeded.");
+          },
+        }),
+        mouse: {
+          click: async () => {
+            clickCount += 1;
+          },
+        },
+      }),
+      pageContent:
+        "<html><head><title>Just a moment...</title></head><body>cType: 'managed'</body></html>",
+      timeoutMs: 1_000,
+      challengeHandling: {
+        solveCloudflare: true,
+      },
+    });
+
+    expect(clickCount).toBe(1);
+    expect(resolution).toMatchObject({
+      detected: true,
+      followUpNavigationRequired: true,
+      challengeType: "managed",
       resolutionKind: "click",
       attemptCount: 1,
     });

@@ -1,7 +1,3 @@
-
-# Dolt database files (added by bd init)
-.dolt/
-*.db
 dist/
 node_modules/
 .nx/
@@ -15,5 +11,19 @@ node_modules/
 # Repo-local bundled native helpers and binaries
 vendor/surfshark-wireguard-assets/bin/
 
-# Beads / Dolt files (added by bd init)
-.beads-credential-key
+# Local/private WireGuard configs, manifests, and runtime state
+/vendor/surfshark-wireguard-assets/
+
+# Agent scratch and runtime state
+/tmp/
+.tmp*/
+**/.tmp-home/
+**/.tmp-cache/
+**/.codex-*/
+**/.bun-*/
+**/.npm-*/
+**/.publint-*/
+.beads.gate.lock
+
+# Generated challenge capture
+/captchas.html

@@ -179,6 +179,10 @@ function browserExecutionFromIdentity(input: {
       DEFAULT_PATCHRIGHT_BROWSER_RUNTIME_PROFILE_ID,
     waitUntil: resolveBrowserProviderWaitUntil(input.provider, browserOptions),
     timeoutMs: browserTimeoutMs,
+    ...(browserOptions?.waitMs === undefined ? {} : { waitMs: browserOptions.waitMs }),
+    ...(browserOptions?.waitSelector === undefined
+      ? {}
+      : { waitSelector: browserOptions.waitSelector }),
     ...(browserUserAgent === undefined ? {} : { userAgent: browserUserAgent }),
     ...(solveCloudflare ? { challengeHandling: { solveCloudflare: true } } : {}),
   };

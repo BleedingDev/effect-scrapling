@@ -53,12 +53,12 @@ Usage:
   effect-scrapling pack inspect --input '<json>'
   effect-scrapling pack validate --input '<json>'
   effect-scrapling pack promote --input '<json>'
-  effect-scrapling access explain --url <url> [--timeout-ms <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--solve-cloudflare[=true|false]]
-  effect-scrapling access preview --url <url> [--timeout-ms <ms>] [--mode <http|browser>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--solve-cloudflare[=true|false]]
-  effect-scrapling render explain --url <url> [--timeout-ms <ms>] [--mode <browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--solve-cloudflare[=true|false]]
-  effect-scrapling render preview --url <url> [--timeout-ms <ms>] [--provider <browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--solve-cloudflare[=true|false]]
-  effect-scrapling extract explain --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--solve-cloudflare[=true|false]]
-  effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>] [--mode <http|browser>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--solve-cloudflare[=true|false]]
+  effect-scrapling access explain --url <url> [--timeout-ms <ms>|--timeout <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>|--network-idle] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--wait <ms>] [--wait-selector "<css>"] [--solve-cloudflare[=true|false]]
+  effect-scrapling access preview --url <url> [--timeout-ms <ms>|--timeout <ms>] [--mode <http|browser>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>|--network-idle] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--wait <ms>] [--wait-selector "<css>"] [--solve-cloudflare[=true|false]]
+  effect-scrapling render explain --url <url> [--timeout-ms <ms>|--timeout <ms>] [--mode <browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>|--network-idle] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--wait <ms>] [--wait-selector "<css>"] [--solve-cloudflare[=true|false]]
+  effect-scrapling render preview --url <url> [--timeout-ms <ms>|--timeout <ms>] [--provider <browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>|--network-idle] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--wait <ms>] [--wait-selector "<css>"] [--solve-cloudflare[=true|false]]
+  effect-scrapling extract explain --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>|--timeout <ms>] [--mode <http|browser>] [--provider <id>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>|--network-idle] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--wait <ms>] [--wait-selector "<css>"] [--solve-cloudflare[=true|false]]
+  effect-scrapling extract run --url <url> [--selector "<css>"] [--attr "<name>"] [--all[=true|false]] [--limit <n>] [--timeout-ms <ms>|--timeout <ms>] [--mode <http|browser>] [--provider <http-basic|http-impersonated|browser-basic|browser-stealth>] [--egress-profile <id>] [--egress-config '<json-object>'] [--identity-profile <id>] [--identity-config '<json-object>'] [--http-user-agent "<ua>"] [--browser-runtime-profile <id>] [--browser-wait-until <load|domcontentloaded|networkidle|commit>|--network-idle] [--browser-timeout-ms <ms>] [--browser-user-agent "<ua>"] [--wait <ms>] [--wait-selector "<css>"] [--solve-cloudflare[=true|false]]
   effect-scrapling crawl compile --input '<json>'
   effect-scrapling workflow run --input '<json>'
   effect-scrapling workflow resume --input '<json>'
@@ -78,6 +78,7 @@ Examples:
   effect-scrapling extract explain --url "https://example.com" --selector "h1"
   effect-scrapling extract run --url "https://example.com" --selector "h1"
   effect-scrapling extract run --url "https://example.com" --selector "a" --attr "href" --all --limit 10 --mode browser --provider browser-basic --browser-wait-until load
+  effect-scrapling extract run --url "https://www.alza.cz/tesla-smart-heater-h300-d7911948.htm" --selector "h1" --mode browser --provider browser-stealth --network-idle --timeout 60000 --wait 2000 --wait-selector "h1" --solve-cloudflare
 `;
 
 function parseArgs(args: string[]): ParsedArgs {
@@ -593,6 +594,7 @@ async function executeCliWithRunner(
         [
           "url",
           "timeout-ms",
+          "timeout",
           "mode",
           "provider",
           "egress-profile",
@@ -602,8 +604,11 @@ async function executeCliWithRunner(
           "http-user-agent",
           "browser-runtime-profile",
           "browser-wait-until",
+          "network-idle",
           "browser-timeout-ms",
           "browser-user-agent",
+          "wait",
+          "wait-selector",
           "solve-cloudflare",
         ],
         ["access", "preview"],
@@ -620,6 +625,7 @@ async function executeCliWithRunner(
         [
           "url",
           "timeout-ms",
+          "timeout",
           "mode",
           "provider",
           "egress-profile",
@@ -629,8 +635,11 @@ async function executeCliWithRunner(
           "http-user-agent",
           "browser-runtime-profile",
           "browser-wait-until",
+          "network-idle",
           "browser-timeout-ms",
           "browser-user-agent",
+          "wait",
+          "wait-selector",
           "solve-cloudflare",
         ],
         ["access", "explain"],
@@ -647,6 +656,7 @@ async function executeCliWithRunner(
         [
           "url",
           "timeout-ms",
+          "timeout",
           "mode",
           "provider",
           "egress-profile",
@@ -655,8 +665,11 @@ async function executeCliWithRunner(
           "identity-config",
           "browser-runtime-profile",
           "browser-wait-until",
+          "network-idle",
           "browser-timeout-ms",
           "browser-user-agent",
+          "wait",
+          "wait-selector",
           "solve-cloudflare",
         ],
         ["render", "preview"],
@@ -673,6 +686,7 @@ async function executeCliWithRunner(
         [
           "url",
           "timeout-ms",
+          "timeout",
           "mode",
           "provider",
           "egress-profile",
@@ -681,8 +695,11 @@ async function executeCliWithRunner(
           "identity-config",
           "browser-runtime-profile",
           "browser-wait-until",
+          "network-idle",
           "browser-timeout-ms",
           "browser-user-agent",
+          "wait",
+          "wait-selector",
           "solve-cloudflare",
         ],
         ["render", "explain"],
@@ -711,6 +728,7 @@ async function executeCliWithRunner(
           "all",
           "limit",
           "timeout-ms",
+          "timeout",
           "mode",
           "provider",
           "egress-profile",
@@ -720,8 +738,11 @@ async function executeCliWithRunner(
           "http-user-agent",
           "browser-runtime-profile",
           "browser-wait-until",
+          "network-idle",
           "browser-timeout-ms",
           "browser-user-agent",
+          "wait",
+          "wait-selector",
           "solve-cloudflare",
         ],
         command === "extract" ? ["extract", "run"] : ["scrape"],
@@ -742,6 +763,7 @@ async function executeCliWithRunner(
           "all",
           "limit",
           "timeout-ms",
+          "timeout",
           "mode",
           "provider",
           "egress-profile",
@@ -751,8 +773,11 @@ async function executeCliWithRunner(
           "http-user-agent",
           "browser-runtime-profile",
           "browser-wait-until",
+          "network-idle",
           "browser-timeout-ms",
           "browser-user-agent",
+          "wait",
+          "wait-selector",
           "solve-cloudflare",
         ],
         ["extract", "explain"],

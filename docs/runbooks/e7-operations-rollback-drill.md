@@ -163,7 +163,6 @@ rsync -a \
   --exclude 'node_modules/' \
   --exclude 'dist/' \
   --exclude 'tmp/' \
-  --exclude '.beads/dolt-monitor.pid.lock' \
   ./ "$TEMP_DIR/repo/"
 cd "$TEMP_DIR/repo"
 bun install --frozen-lockfile

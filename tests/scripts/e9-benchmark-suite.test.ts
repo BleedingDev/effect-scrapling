@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, expect, it } from "@effect-native/bun-test";
 import { mock } from "bun:test";
 import { Effect, Schema } from "effect";
@@ -10,6 +12,7 @@ import {
   formatMixedFailureDomainsForRecommendation,
   mergeE9BenchmarkArtifacts,
   mergeChallengeSignals,
+  runPageWithExecutionRotation,
   runE9BenchmarkSuite,
 } from "../../src/e9-benchmark-suite.ts";
 import { E9HighFrictionCanaryArtifactSchema } from "../../src/e9-high-friction-canary.ts";
@@ -17,8 +20,10 @@ import { E9ScraplingParityArtifactSchema } from "../../src/e9-scrapling-parity.t
 import { makePreferredPathOverrideWarning } from "../../src/sdk/access-health-warning-runtime.ts";
 import { resetBrowserPoolForTests } from "../../src/sdk/browser-pool.ts";
 import {
+  buildWireproxyRotationEntries,
   formatE9BenchmarkSuiteProgressEvent,
   parseOptions,
+  runDefaultE9BenchmarkSuite,
   runE9BenchmarkSuiteCli,
 } from "../../scripts/benchmarks/e9-benchmark-suite.ts";
 
@@ -113,6 +118,925 @@ describe("e9 benchmark suite", () => {
       preset: "scale-study",
       adaptiveStop: false,
     });
+  });
+
+  it("parses the state-of-the-art preset and hybrid stealth browser profile", () => {
+    expect(
+      parseOptions(["--preset", "state-of-the-art", "--browser-profiles", "effect-hybrid-stealth"]),
+    ).toEqual({
+      preset: "state-of-the-art",
+      browserProfiles: ["effect-hybrid-stealth"],
+    });
+  });
+
+  it("parses wireproxy benchmark overrides", () => {
+    expect(
+      parseOptions([
+        "--wireproxy-manifest",
+        "/tmp/wireproxy_pool_manifest.json",
+        "--wireproxy-generated-manifest",
+        "/tmp/surfshark_generated_manifest.json",
+        "--wireproxy-entry",
+        "cz_prague_5368a311",
+        "--wireproxy-transport",
+        "http",
+      ]),
+    ).toEqual({
+      wireproxyManifestPath: "/tmp/wireproxy_pool_manifest.json",
+      wireproxyGeneratedManifestPath: "/tmp/surfshark_generated_manifest.json",
+      wireproxyEntryName: "cz_prague_5368a311",
+      wireproxyTransport: "http",
+    });
+  });
+
+  it("parses bundled wireproxy benchmark overrides", () => {
+    expect(
+      parseOptions([
+        "--wireproxy-bundled",
+        "--wireproxy-entry",
+        "cz_prague_5368a311",
+        "--wireproxy-transport",
+        "socks5",
+      ]),
+    ).toEqual({
+      wireproxyBundled: true,
+      wireproxyEntryName: "cz_prague_5368a311",
+      wireproxyTransport: "socks5",
+    });
+  });
+
+  it("parses bundled wireproxy rotation overrides", () => {
+    expect(
+      parseOptions([
+        "--wireproxy-bundled",
+        "--wireproxy-rotate",
+        "--wireproxy-rotation-fallbacks",
+        "3",
+      ]),
+    ).toEqual({
+      wireproxyBundled: true,
+      wireproxyRotate: true,
+      wireproxyRotationFallbackCount: 3,
+    });
+  });
+
+  it("prefers European exits when building wireproxy rotation entries", () => {
+    expect(
+      buildWireproxyRotationEntries({
+        wireproxyManifest: {
+          wireguardConfigDir: "/tmp/wg",
+          outputDir: "/tmp/wireproxy",
+          poolSize: 3,
+          entries: [
+            {
+              name: "us_new-york_fixture",
+              wireguardConfig: "/tmp/wg/us_new-york_fixture.conf",
+              wireproxyConfig: "/tmp/wireproxy/us_new-york_fixture_wireproxy.conf",
+              socksProxy: "socks5h://127.0.0.1:19082",
+              httpProxy: "http://127.0.0.1:29082",
+              logFile: "/tmp/wireproxy/logs/us_new-york_fixture.log",
+              pidFile: "/tmp/wireproxy/pids/us_new-york_fixture.pid",
+            },
+            {
+              name: "cz_prague_fixture",
+              wireguardConfig: "/tmp/wg/cz_prague_fixture.conf",
+              wireproxyConfig: "/tmp/wireproxy/cz_prague_fixture_wireproxy.conf",
+              socksProxy: "socks5h://127.0.0.1:19080",
+              httpProxy: "http://127.0.0.1:29080",
+              logFile: "/tmp/wireproxy/logs/cz_prague_fixture.log",
+              pidFile: "/tmp/wireproxy/pids/cz_prague_fixture.pid",
+            },
+            {
+              name: "de_berlin_fixture",
+              wireguardConfig: "/tmp/wg/de_berlin_fixture.conf",
+              wireproxyConfig: "/tmp/wireproxy/de_berlin_fixture_wireproxy.conf",
+              socksProxy: "socks5h://127.0.0.1:19081",
+              httpProxy: "http://127.0.0.1:29081",
+              logFile: "/tmp/wireproxy/logs/de_berlin_fixture.log",
+              pidFile: "/tmp/wireproxy/pids/de_berlin_fixture.pid",
+            },
+          ],
+        },
+        generatedManifest: {
+          entries: [
+            {
+              file: "/tmp/wg/us_new-york_fixture.conf",
+              clusterId: "us-cluster",
+              clusterType: "generic",
+              countryCode: "US",
+              location: "New York",
+              connectionName: "us-nyc.prod.surfshark.com",
+              load: 1,
+            },
+            {
+              file: "/tmp/wg/cz_prague_fixture.conf",
+              clusterId: "cz-cluster",
+              clusterType: "generic",
+              countryCode: "CZ",
+              location: "Prague",
+              connectionName: "cz-prg.prod.surfshark.com",
+              load: 5,
+            },
+            {
+              file: "/tmp/wg/de_berlin_fixture.conf",
+              clusterId: "de-cluster",
+              clusterType: "generic",
+              countryCode: "DE",
+              location: "Berlin",
+              connectionName: "de-ber.prod.surfshark.com",
+              load: 3,
+            },
+          ],
+        },
+      }).map((entry) => entry.name),
+    ).toEqual(["cz_prague_fixture", "de_berlin_fixture", "us_new-york_fixture"]);
+  });
+
+  it("parses wireproxy benchmark rotation overrides", () => {
+    expect(
+      parseOptions([
+        "--wireproxy-bundled",
+        "--wireproxy-rotate",
+        "--wireproxy-rotation-fallbacks",
+        "3",
+        "--wireproxy-transport",
+        "http",
+      ]),
+    ).toEqual({
+      wireproxyBundled: true,
+      wireproxyRotate: true,
+      wireproxyRotationFallbackCount: 3,
+      wireproxyTransport: "http",
+    });
+  });
+
+  it("rejects conflicting bundled and explicit wireproxy manifest overrides", async () => {
+    await expect(
+      runDefaultE9BenchmarkSuite({
+        wireproxyBundled: true,
+        wireproxyManifestPath: "/tmp/wireproxy_pool_manifest.json",
+        wireproxyEntryName: "cz_prague_5368a311",
+      }),
+    ).rejects.toThrow(
+      "Bundled Surfshark assets are incompatible with an explicit --wireproxy-manifest override.",
+    );
+    await expect(
+      runDefaultE9BenchmarkSuite({
+        wireproxyBundled: true,
+        wireproxyGeneratedManifestPath: "/tmp/surfshark_generated_manifest.json",
+        wireproxyEntryName: "cz_prague_5368a311",
+      }),
+    ).rejects.toThrow(
+      "Bundled Surfshark assets are incompatible with an explicit --wireproxy-generated-manifest override.",
+    );
+  });
+
+  it("requires an explicit Surfshark exit when any wireproxy manifest source is enabled", async () => {
+    await expect(
+      runDefaultE9BenchmarkSuite({
+        wireproxyBundled: true,
+      }),
+    ).rejects.toThrow(
+      "Benchmark wireproxy override requires --wireproxy-entry to select a concrete Surfshark exit.",
+    );
+    await expect(
+      runDefaultE9BenchmarkSuite({
+        wireproxyManifestPath: "/tmp/wireproxy_pool_manifest.json",
+      }),
+    ).rejects.toThrow(
+      "Benchmark wireproxy override requires --wireproxy-entry to select a concrete Surfshark exit.",
+    );
+  });
+
+  it("requires generated metadata when wireproxy rotation is enabled", async () => {
+    await expect(
+      runDefaultE9BenchmarkSuite({
+        wireproxyManifestPath: "/tmp/wireproxy_pool_manifest.json",
+        wireproxyRotate: true,
+      }),
+    ).rejects.toThrow(
+      "Wireproxy benchmark rotation requires generated Surfshark metadata so Europe-first exits can be prioritized.",
+    );
+  });
+
+  it("rejects wireproxy rotation pools that do not have enough exits for the fallback budget", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "e9-benchmark-wireproxy-rotation-"));
+    const wireproxyManifestPath = join(directory, "wireproxy_pool_manifest.json");
+    const generatedManifestPath = join(directory, "surfshark_generated_manifest.json");
+
+    try {
+      await writeFile(
+        wireproxyManifestPath,
+        `${JSON.stringify({
+          wireguard_config_dir: "/tmp/wg",
+          output_dir: "/tmp/wireproxy",
+          pool_size: 2,
+          entries: [
+            {
+              name: "cz_prague_fixture",
+              wireguard_config: "/tmp/wg/cz_prague_fixture.conf",
+              wireproxy_config: "/tmp/wireproxy/cz_prague_fixture_wireproxy.conf",
+              socks_proxy: "socks5h://127.0.0.1:19080",
+              http_proxy: "http://127.0.0.1:29080",
+              log_file: "/tmp/wireproxy/logs/cz_prague_fixture.log",
+              pid_file: "/tmp/wireproxy/pids/cz_prague_fixture.pid",
+            },
+            {
+              name: "us_new-york_fixture",
+              wireguard_config: "/tmp/wg/us_new-york_fixture.conf",
+              wireproxy_config: "/tmp/wireproxy/us_new-york_fixture_wireproxy.conf",
+              socks_proxy: "socks5h://127.0.0.1:19081",
+              http_proxy: "http://127.0.0.1:29081",
+              log_file: "/tmp/wireproxy/logs/us_new-york_fixture.log",
+              pid_file: "/tmp/wireproxy/pids/us_new-york_fixture.pid",
+            },
+          ],
+        })}\n`,
+        "utf8",
+      );
+      await writeFile(
+        generatedManifestPath,
+        `${JSON.stringify({
+          entries: [
+            {
+              file: "/tmp/wg/cz_prague_fixture.conf",
+              cluster_id: "cz-cluster",
+              cluster_type: "generic",
+              country_code: "CZ",
+              location: "Prague",
+              connection_name: "cz-prg.prod.surfshark.com",
+            },
+            {
+              file: "/tmp/wg/us_new-york_fixture.conf",
+              cluster_id: "us-cluster",
+              cluster_type: "generic",
+              country_code: "US",
+              location: "New York",
+              connection_name: "us-nyc.prod.surfshark.com",
+            },
+          ],
+        })}\n`,
+        "utf8",
+      );
+
+      await expect(
+        runDefaultE9BenchmarkSuite({
+          wireproxyManifestPath,
+          wireproxyGeneratedManifestPath: generatedManifestPath,
+          wireproxyRotate: true,
+          wireproxyRotationFallbackCount: 3,
+        }),
+      ).rejects.toThrow(
+        "Wireproxy benchmark rotation requires at least 4 exits, but only 2 are available in the pool.",
+      );
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it("fails fast before running the benchmark when the wireproxy pool cannot be started", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "e9-benchmark-wireproxy-preflight-"));
+    const wireproxyManifestPath = join(directory, "wireproxy_pool_manifest.json");
+    const generatedManifestPath = join(directory, "surfshark_generated_manifest.json");
+
+    try {
+      await writeFile(
+        wireproxyManifestPath,
+        JSON.stringify({
+          wireguard_config_dir: "/tmp/wg",
+          output_dir: "/tmp/wireproxy",
+          wireproxy_bin: "/definitely/missing/wireproxy",
+          start_script: "/tmp/start_wireproxy_pool.sh",
+          pool_size: 1,
+          entries: [
+            {
+              name: "cz_prague_fixture",
+              wireguard_config: "/tmp/wg/cz_prague_fixture.conf",
+              wireproxy_config: "/tmp/wireproxy/cz_prague_fixture_wireproxy.conf",
+              socks_proxy: "socks5h://127.0.0.1:19080",
+              http_proxy: "http://127.0.0.1:29080",
+              log_file: "/tmp/wireproxy/logs/cz_prague_fixture.log",
+              pid_file: "/tmp/wireproxy/pids/cz_prague_fixture.pid",
+            },
+          ],
+        }),
+      );
+      await writeFile(
+        generatedManifestPath,
+        JSON.stringify({
+          entries: [
+            {
+              file: "/tmp/wg/cz_prague_fixture.conf",
+              cluster_id: "cz-cluster",
+              cluster_type: "generic",
+              country_code: "CZ",
+              location: "Prague",
+              connection_name: "cz-prg.prod.surfshark.com",
+              load: 1,
+            },
+          ],
+        }),
+      );
+
+      await expect(
+        runDefaultE9BenchmarkSuite({
+          wireproxyManifestPath,
+          wireproxyGeneratedManifestPath: generatedManifestPath,
+          wireproxyEntryName: "cz_prague_fixture",
+          wireproxyTransport: "http",
+        }),
+      ).rejects.toThrow("Surfshark wireproxy binary is not executable");
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it("rejects conflicting bundled and explicit wireproxy benchmark manifests", async () => {
+    await expect(
+      runE9BenchmarkSuiteCli([
+        "--wireproxy-bundled",
+        "--wireproxy-manifest",
+        "/tmp/wireproxy_pool_manifest.json",
+        "--wireproxy-entry",
+        "cz_prague_5368a311",
+      ]),
+    ).rejects.toThrow(
+      "Bundled Surfshark assets are incompatible with an explicit --wireproxy-manifest override.",
+    );
+  });
+
+  it("requires a concrete wireproxy entry when benchmark wireproxy override is enabled", async () => {
+    await expect(
+      runE9BenchmarkSuiteCli(["--wireproxy-manifest", "/tmp/wireproxy_pool_manifest.json"]),
+    ).rejects.toThrow(
+      "Benchmark wireproxy override requires --wireproxy-entry to select a concrete Surfshark exit.",
+    );
+  });
+
+  it("rejects combining wireproxy pinning with rotation mode", async () => {
+    await expect(
+      runDefaultE9BenchmarkSuite({
+        wireproxyManifestPath: "/tmp/wireproxy_pool_manifest.json",
+        wireproxyEntryName: "cz_prague_5368a311",
+        wireproxyRotate: true,
+      }),
+    ).rejects.toThrow(
+      "Wireproxy benchmark rotation is incompatible with --wireproxy-entry; either pick one exit or enable rotation across the pool.",
+    );
+  });
+
+  it("orders automatic wireproxy rotation candidates with Europe-first preference", () => {
+    expect(
+      buildWireproxyRotationEntries({
+        wireproxyManifest: {
+          wireguardConfigDir: "/tmp/wg",
+          outputDir: "/tmp/wireproxy",
+          poolSize: 3,
+          entries: [
+            {
+              name: "us_new-york",
+              wireguardConfig: "/tmp/wg/us_new-york.conf",
+              wireproxyConfig: "/tmp/wireproxy/us_new-york.conf",
+              socksProxy: "socks5h://127.0.0.1:19080",
+              httpProxy: "http://127.0.0.1:29080",
+              logFile: "/tmp/wireproxy/logs/us_new-york.log",
+              pidFile: "/tmp/wireproxy/pids/us_new-york.pid",
+            },
+            {
+              name: "de_frankfurt",
+              wireguardConfig: "/tmp/wg/de_frankfurt.conf",
+              wireproxyConfig: "/tmp/wireproxy/de_frankfurt.conf",
+              socksProxy: "socks5h://127.0.0.1:19081",
+              httpProxy: "http://127.0.0.1:29081",
+              logFile: "/tmp/wireproxy/logs/de_frankfurt.log",
+              pidFile: "/tmp/wireproxy/pids/de_frankfurt.pid",
+            },
+            {
+              name: "cz_prague",
+              wireguardConfig: "/tmp/wg/cz_prague.conf",
+              wireproxyConfig: "/tmp/wireproxy/cz_prague.conf",
+              socksProxy: "socks5h://127.0.0.1:19082",
+              httpProxy: "http://127.0.0.1:29082",
+              logFile: "/tmp/wireproxy/logs/cz_prague.log",
+              pidFile: "/tmp/wireproxy/pids/cz_prague.pid",
+            },
+          ],
+        },
+        generatedManifest: {
+          entries: [
+            {
+              file: "/tmp/wg/us_new-york.conf",
+              clusterId: "us-cluster",
+              clusterType: "generic",
+              countryCode: "US",
+              location: "New York",
+              connectionName: "us-nyc.prod.surfshark.com",
+              load: 5,
+            },
+            {
+              file: "/tmp/wg/de_frankfurt.conf",
+              clusterId: "de-cluster",
+              clusterType: "generic",
+              countryCode: "DE",
+              location: "Frankfurt",
+              connectionName: "de-fra.prod.surfshark.com",
+              load: 9,
+            },
+            {
+              file: "/tmp/wg/cz_prague.conf",
+              clusterId: "cz-cluster",
+              clusterType: "generic",
+              countryCode: "CZ",
+              location: "Prague",
+              connectionName: "cz-prg.prod.surfshark.com",
+              load: 12,
+            },
+          ],
+        },
+      }).map((entry) => entry.profileId),
+    ).toEqual([
+      "surfshark-wireguard-cz_prague",
+      "surfshark-wireguard-de_frankfurt",
+      "surfshark-wireguard-us_new-york",
+    ]);
+  });
+
+  it("falls back to the globally ranked pool when no European exits are available", () => {
+    expect(
+      buildWireproxyRotationEntries({
+        wireproxyManifest: {
+          wireguardConfigDir: "/tmp/wg",
+          outputDir: "/tmp/wireproxy",
+          poolSize: 2,
+          entries: [
+            {
+              name: "sg_singapore",
+              wireguardConfig: "/tmp/wg/sg_singapore.conf",
+              wireproxyConfig: "/tmp/wireproxy/sg_singapore.conf",
+              socksProxy: "socks5h://127.0.0.1:19080",
+              httpProxy: "http://127.0.0.1:29080",
+              logFile: "/tmp/wireproxy/logs/sg_singapore.log",
+              pidFile: "/tmp/wireproxy/pids/sg_singapore.pid",
+            },
+            {
+              name: "us_new-york",
+              wireguardConfig: "/tmp/wg/us_new-york.conf",
+              wireproxyConfig: "/tmp/wireproxy/us_new-york.conf",
+              socksProxy: "socks5h://127.0.0.1:19081",
+              httpProxy: "http://127.0.0.1:29081",
+              logFile: "/tmp/wireproxy/logs/us_new-york.log",
+              pidFile: "/tmp/wireproxy/pids/us_new-york.pid",
+            },
+          ],
+        },
+        generatedManifest: {
+          entries: [
+            {
+              file: "/tmp/wg/sg_singapore.conf",
+              clusterId: "sg-cluster",
+              clusterType: "generic",
+              countryCode: "SG",
+              location: "Singapore",
+              connectionName: "sg-sin.prod.surfshark.com",
+              load: 1,
+            },
+            {
+              file: "/tmp/wg/us_new-york.conf",
+              clusterId: "us-cluster",
+              clusterType: "generic",
+              countryCode: "US",
+              location: "New York",
+              connectionName: "us-nyc.prod.surfshark.com",
+              load: 3,
+            },
+          ],
+        },
+      }).map((entry) => entry.profileId),
+    ).toEqual(["surfshark-wireguard-sg_singapore", "surfshark-wireguard-us_new-york"]);
+  });
+
+  it("keeps Europe-preferred exits ahead of non-European fallback variants during rotation", async () => {
+    const attemptedVariants: string[] = [];
+
+    await runPageWithExecutionRotation({
+      page: {
+        siteId: "alza-cz",
+        domain: "alza.cz",
+        kind: "retailer",
+        state: "partial",
+        url: "https://www.alza.cz/test-product",
+        pageType: "product",
+        title: "Test Product",
+        challengeSignals: [],
+      },
+      rotation: {
+        variants: [
+          {
+            key: "wireguard-us",
+            rotationPriority: 1,
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-us_new-york",
+              },
+            },
+          },
+          {
+            key: "wireguard-cz",
+            rotationPriority: 0,
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-cz_prague",
+              },
+            },
+          },
+          {
+            key: "wireguard-de",
+            rotationPriority: 0,
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-de_frankfurt",
+              },
+            },
+          },
+          {
+            key: "wireguard-nl",
+            rotationPriority: 0,
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-nl_amsterdam",
+              },
+            },
+          },
+        ],
+        maxAttempts: 3,
+      },
+      executeVariant: async ({ variant }) => {
+        attemptedVariants.push(variant.key);
+        return {
+          statusCode: 403,
+          redirected: false,
+          challengeDetected: true,
+          observedChallengeSignals: ["access-wall:status-403"],
+          durationMs: 100,
+          contentBytes: 512,
+          titlePresent: false,
+        };
+      },
+    });
+
+    expect(attemptedVariants).toHaveLength(3);
+    expect(attemptedVariants).not.toContain("wireguard-us");
+  });
+
+  it("retries blocked rotated attempts across three additional execution variants", async () => {
+    const attemptedVariants: string[] = [];
+    const result = await runPageWithExecutionRotation({
+      page: {
+        siteId: "alza-cz",
+        domain: "alza.cz",
+        kind: "retailer",
+        state: "partial",
+        url: "https://www.alza.cz/test-product",
+        pageType: "product",
+        title: "Test Product",
+        challengeSignals: [],
+      },
+      rotation: {
+        variants: [
+          {
+            key: "wireguard-cz",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-cz_prague",
+              },
+            },
+          },
+          {
+            key: "wireguard-de",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-de_frankfurt",
+              },
+            },
+          },
+          {
+            key: "wireguard-nl",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-nl_amsterdam",
+              },
+            },
+          },
+          {
+            key: "wireguard-pl",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-pl_warsaw",
+              },
+            },
+          },
+        ],
+        maxAttempts: 4,
+      },
+      executeVariant: async ({ variant }) => {
+        attemptedVariants.push(variant.key);
+        if (attemptedVariants.length < 4) {
+          return {
+            statusCode: 403,
+            redirected: false,
+            challengeDetected: true,
+            observedChallengeSignals: ["access-wall:status-403"],
+            durationMs: 100,
+            contentBytes: 512,
+            titlePresent: false,
+            warnings: [`attempt:${variant.key}`],
+          };
+        }
+
+        return {
+          statusCode: 200,
+          redirected: false,
+          challengeDetected: false,
+          observedChallengeSignals: [],
+          durationMs: 120,
+          contentBytes: 2048,
+          titlePresent: true,
+          warnings: [`attempt:${variant.key}`],
+        };
+      },
+    });
+
+    expect(attemptedVariants).toHaveLength(4);
+    expect(result.statusCode).toBe(200);
+    expect(result.warnings).toContain("wireproxy-rotation:attempt-count:4");
+    expect(result.warnings).toContain(
+      `wireproxy-rotation:retryable-blocked:${attemptedVariants[0]}`,
+    );
+    expect(result.warnings).toContain(
+      `wireproxy-rotation:retryable-blocked:${attemptedVariants[1]}`,
+    );
+    expect(result.warnings).toContain(
+      `wireproxy-rotation:retryable-blocked:${attemptedVariants[2]}`,
+    );
+  });
+
+  it("uses a deterministic URL-hashed execution order and marks exhausted blocked retries", async () => {
+    const rotation = {
+      variants: [
+        {
+          key: "wireguard-cz",
+          selectors: {
+            egress: {
+              profileId: "surfshark-wireguard-cz_prague",
+            },
+          },
+        },
+        {
+          key: "wireguard-de",
+          selectors: {
+            egress: {
+              profileId: "surfshark-wireguard-de_frankfurt",
+            },
+          },
+        },
+        {
+          key: "wireguard-nl",
+          selectors: {
+            egress: {
+              profileId: "surfshark-wireguard-nl_amsterdam",
+            },
+          },
+        },
+        {
+          key: "wireguard-pl",
+          selectors: {
+            egress: {
+              profileId: "surfshark-wireguard-pl_warsaw",
+            },
+          },
+        },
+      ],
+      maxAttempts: 4,
+    } as const;
+
+    const executeRotation = async (url: string) => {
+      const attemptedVariants: string[] = [];
+      const result = await runPageWithExecutionRotation({
+        page: {
+          siteId: "alza-cz",
+          domain: "alza.cz",
+          kind: "retailer",
+          state: "partial",
+          url,
+          pageType: "product",
+          title: "Test Product",
+          challengeSignals: [],
+        },
+        rotation,
+        executeVariant: async ({ variant }) => {
+          attemptedVariants.push(variant.key);
+          return {
+            statusCode: 403,
+            redirected: false,
+            challengeDetected: true,
+            observedChallengeSignals: ["access-wall:status-403"],
+            durationMs: 100,
+            contentBytes: 512,
+            titlePresent: false,
+            warnings: [`attempt:${variant.key}`],
+          };
+        },
+      });
+      return {
+        attemptedVariants,
+        result,
+      };
+    };
+
+    const firstRun = await executeRotation("https://example.com/a");
+    const secondRun = await executeRotation("https://example.com/a");
+    expect(secondRun.attemptedVariants).toEqual(firstRun.attemptedVariants);
+    expect(firstRun.result.warnings).toContain("wireproxy-rotation:exhausted");
+
+    const observedOrders = new Set<string>();
+    for (const url of [
+      "https://example.com/a",
+      "https://example.com/b",
+      "https://example.com/c",
+      "https://example.com/d",
+      "https://example.com/e",
+      "https://example.com/f",
+    ]) {
+      observedOrders.add((await executeRotation(url)).attemptedVariants.join(","));
+    }
+
+    expect(observedOrders.size).toBeGreaterThan(1);
+  });
+
+  it("stops rotation on non-retryable failures without reporting exhausted exits", async () => {
+    const attemptedVariants: string[] = [];
+    const result = await runPageWithExecutionRotation({
+      page: {
+        siteId: "alza-cz",
+        domain: "alza.cz",
+        kind: "retailer",
+        state: "partial",
+        url: "https://www.alza.cz/test-product",
+        pageType: "product",
+        title: "Test Product",
+        challengeSignals: [],
+      },
+      rotation: {
+        variants: [
+          {
+            key: "wireguard-cz",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-cz_prague",
+              },
+            },
+          },
+          {
+            key: "wireguard-de",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-de_frankfurt",
+              },
+            },
+          },
+          {
+            key: "wireguard-nl",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-nl_amsterdam",
+              },
+            },
+          },
+          {
+            key: "wireguard-pl",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-pl_warsaw",
+              },
+            },
+          },
+        ],
+        maxAttempts: 4,
+      },
+      executeVariant: async ({ variant }) => {
+        attemptedVariants.push(variant.key);
+
+        return {
+          statusCode: 500,
+          redirected: false,
+          challengeDetected: false,
+          observedChallengeSignals: [],
+          durationMs: 120,
+          contentBytes: 0,
+          titlePresent: false,
+          warnings: [`attempt:${variant.key}`],
+        };
+      },
+    });
+
+    expect(attemptedVariants).toHaveLength(1);
+    expect(result.warnings).toContain("wireproxy-rotation:attempt-count:1");
+    expect(result.warnings).toContain(
+      `wireproxy-rotation:attempted-variants:${attemptedVariants[0]}`,
+    );
+    expect(result.warnings).not.toContain("wireproxy-rotation:exhausted");
+    expect(result.warnings).toContain(`attempt:${attemptedVariants[0]}`);
+  });
+
+  it("retries remote transport failures across alternate exits", async () => {
+    const attemptedVariants: string[] = [];
+    const result = await runPageWithExecutionRotation({
+      page: {
+        siteId: "alza-cz",
+        domain: "alza.cz",
+        kind: "retailer",
+        state: "partial",
+        url: "https://www.alza.cz/test-transport-failure",
+        pageType: "product",
+        title: "Test Product",
+        challengeSignals: [],
+      },
+      rotation: {
+        variants: [
+          {
+            key: "wireguard-cz",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-cz_prague",
+              },
+            },
+          },
+          {
+            key: "wireguard-de",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-de_frankfurt",
+              },
+            },
+          },
+          {
+            key: "wireguard-nl",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-nl_amsterdam",
+              },
+            },
+          },
+          {
+            key: "wireguard-pl",
+            selectors: {
+              egress: {
+                profileId: "surfshark-wireguard-pl_warsaw",
+              },
+            },
+          },
+        ],
+        maxAttempts: 4,
+      },
+      executeVariant: async ({ variant }) => {
+        attemptedVariants.push(variant.key);
+        if (attemptedVariants.length < 4) {
+          return {
+            redirected: false,
+            challengeDetected: false,
+            observedChallengeSignals: [],
+            durationMs: 120,
+            contentBytes: 0,
+            titlePresent: false,
+            error: "Navigation timeout while waiting for response headers",
+            warnings: [`attempt:${variant.key}`],
+          };
+        }
+
+        return {
+          statusCode: 200,
+          redirected: false,
+          challengeDetected: false,
+          observedChallengeSignals: [],
+          durationMs: 150,
+          contentBytes: 4_096,
+          titlePresent: true,
+          warnings: [`attempt:${variant.key}`],
+        };
+      },
+    });
+
+    expect(attemptedVariants).toHaveLength(4);
+    expect(result.statusCode).toBe(200);
+    expect(result.warnings).toContain(
+      `wireproxy-rotation:retryable-remote-failure:${attemptedVariants[0]}`,
+    );
+    expect(result.warnings).toContain(
+      `wireproxy-rotation:retryable-remote-failure:${attemptedVariants[1]}`,
+    );
+    expect(result.warnings).toContain(
+      `wireproxy-rotation:retryable-remote-failure:${attemptedVariants[2]}`,
+    );
   });
 
   it("builds a schema-valid artifact from deterministic synthetic runners", async () => {
@@ -305,6 +1229,232 @@ describe("e9 benchmark suite", () => {
     expect(decoded.browserCorpus.sweeps).toHaveLength(1);
     expect(decoded.scraplingParity.artifact?.status).toBe("pass");
     expect(decoded.highFrictionCanary.artifact?.status).toBe("pass");
+  });
+
+  it("accepts the state-of-the-art hybrid stealth browser profile in browser sweeps", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-hybrid-stealth"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/p/1",
+            pageType: "product",
+            title: "Alpha Product",
+            challengeSignals: ["challenge"],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-hybrid-stealth",
+            createRunner: async () => ({
+              runPage: async () => ({
+                statusCode: 200,
+                redirected: true,
+                challengeDetected: false,
+                observedChallengeSignals: [],
+                durationMs: 120,
+                contentBytes: 3_072,
+                titlePresent: true,
+                finalUrl: "https://alpha.example/p/1?resolved=1",
+                executionMetadata: {
+                  source: "executed",
+                  providerId: "browser-stealth",
+                  mode: "browser",
+                  egressProfileId: "direct",
+                  egressPluginId: "builtin-direct-egress",
+                  egressRouteKind: "direct",
+                  egressRouteKey: "direct",
+                  egressPoolId: "direct-pool",
+                  egressRoutePolicyId: "direct-route",
+                  identityProfileId: "stealth-default",
+                  identityPluginId: "builtin-stealth-identity",
+                  identityTenantId: "public",
+                  browserRuntimeProfileId: "patchright-stealth",
+                },
+              }),
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.browserCorpus.sweeps).toHaveLength(1);
+    expect(artifact.browserCorpus.sweeps[0]?.profile).toBe("effect-hybrid-stealth");
+    expect(artifact.browserCorpus.attempts[0]?.executionMetadata?.providerId).toBe(
+      "browser-stealth",
+    );
+    expect(artifact.summary?.compositeAttemptCount).toBe(1);
+    expect(artifact.summary?.compositeHttpResolvedCount).toBe(0);
+    expect(artifact.summary?.compositeBrowserResolvedCount).toBe(1);
+    expect(artifact.summary?.compositeFailureCount).toBe(0);
+    expect(
+      artifact.profiles.available.some((profile) => profile.profile === "effect-hybrid-stealth"),
+    ).toBe(true);
+  });
+
+  it("reports composite HTTP-first resolutions separately from browser escalations", async () => {
+    const artifact = await runE9BenchmarkSuite(
+      {
+        generatedAt: "2026-03-09T22:00:00.000Z",
+        phases: ["browser"],
+        browserProfiles: ["effect-hybrid-stealth"],
+        browserConcurrency: [1],
+      },
+      {
+        pages: [
+          {
+            siteId: "site-alpha",
+            domain: "alpha.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://alpha.example/p/1",
+            pageType: "product",
+            title: "Alpha Product",
+            challengeSignals: [],
+          },
+          {
+            siteId: "site-beta",
+            domain: "beta.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://beta.example/p/2",
+            pageType: "product",
+            title: "Beta Product",
+            challengeSignals: ["challenge"],
+          },
+          {
+            siteId: "site-gamma",
+            domain: "gamma.example",
+            kind: "retailer",
+            state: "healthy",
+            url: "https://gamma.example/p/3",
+            pageType: "product",
+            title: "Gamma Product",
+            challengeSignals: ["challenge"],
+          },
+        ],
+        browserProfileFactories: [
+          {
+            profile: "effect-hybrid-stealth",
+            createRunner: async () => ({
+              runPage: async (page) =>
+                page.domain === "alpha.example"
+                  ? {
+                      statusCode: 200,
+                      redirected: false,
+                      challengeDetected: false,
+                      observedChallengeSignals: [],
+                      durationMs: 80,
+                      contentBytes: 2_048,
+                      titlePresent: true,
+                      finalUrl: page.url,
+                      executionMetadata: {
+                        source: "executed",
+                        providerId: "http-basic",
+                        mode: "http",
+                        egressProfileId: "direct",
+                        egressPluginId: "builtin-direct-egress",
+                        egressRouteKind: "direct",
+                        egressRouteKey: "direct",
+                        egressPoolId: "direct-pool",
+                        egressRoutePolicyId: "direct-route",
+                        identityProfileId: "default",
+                        identityPluginId: "builtin-default-identity",
+                        identityTenantId: "public",
+                      },
+                    }
+                  : page.domain === "beta.example"
+                    ? {
+                        statusCode: 200,
+                        redirected: true,
+                        challengeDetected: false,
+                        observedChallengeSignals: [],
+                        durationMs: 160,
+                        contentBytes: 4_096,
+                        titlePresent: true,
+                        finalUrl: `${page.url}?resolved=1`,
+                        executionMetadata: {
+                          source: "executed",
+                          providerId: "browser-stealth",
+                          mode: "browser",
+                          egressProfileId: "direct",
+                          egressPluginId: "builtin-direct-egress",
+                          egressRouteKind: "direct",
+                          egressRouteKey: "direct",
+                          egressPoolId: "direct-pool",
+                          egressRoutePolicyId: "direct-route",
+                          identityProfileId: "stealth-default",
+                          identityPluginId: "builtin-stealth-identity",
+                          identityTenantId: "public",
+                          browserRuntimeProfileId: "patchright-stealth",
+                        },
+                      }
+                    : {
+                        redirected: false,
+                        challengeDetected: false,
+                        observedChallengeSignals: [],
+                        durationMs: 200,
+                        contentBytes: 0,
+                        titlePresent: false,
+                        error: "Browser access failed for gamma",
+                        executionMetadata: {
+                          source: "planned",
+                          providerId: "browser-stealth",
+                          mode: "browser",
+                          egressProfileId: "direct",
+                          egressPluginId: "builtin-direct-egress",
+                          egressRouteKind: "direct",
+                          egressRouteKey: "direct",
+                          egressPoolId: "direct-pool",
+                          egressRoutePolicyId: "direct-route",
+                          identityProfileId: "stealth-default",
+                          identityPluginId: "builtin-stealth-identity",
+                          identityTenantId: "public",
+                          browserRuntimeProfileId: "patchright-stealth",
+                        },
+                      },
+              close: async () => undefined,
+            }),
+          },
+        ],
+      },
+    );
+
+    expect(artifact.summary?.compositeAttemptCount).toBe(3);
+    expect(artifact.summary?.compositeHttpResolvedCount).toBe(1);
+    expect(artifact.summary?.compositeBrowserResolvedCount).toBe(1);
+    expect(artifact.summary?.compositeFailureCount).toBe(1);
+    expect(artifact.summary?.topCompositeHttpResolvedDomains).toEqual([
+      { key: "alpha.example", count: 1 },
+    ]);
+    expect(artifact.summary?.topCompositeBrowserResolvedDomains).toEqual([
+      { key: "beta.example", count: 1 },
+    ]);
+    expect(artifact.summary?.topCompositeFailureDomains).toEqual([
+      { key: "gamma.example", count: 1 },
+    ]);
+    expect(
+      artifact.warnings?.some((warning) =>
+        warning.includes(
+          "resolved in the HTTP-first stage, 1 escalated to browser-stealth, 1 still failed",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      artifact.recommendations?.includes(
+        "Use the composite HTTP-first versus browser-escalated breakdown before interpreting this lane as a pure browser benchmark.",
+      ),
+    ).toBe(true);
   });
 
   it("decodes legacy artifacts that do not yet carry top remote failure categories", async () => {

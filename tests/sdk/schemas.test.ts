@@ -28,6 +28,8 @@ describe("sdk schemas", () => {
           browser: {
             waitUntil: " commit ",
             timeoutMs: "900",
+            waitMs: "2000",
+            waitSelector: " h1 ",
             userAgent: " Browser Agent ",
           },
           fallback: {
@@ -56,6 +58,8 @@ describe("sdk schemas", () => {
         browser: {
           waitUntil: "commit",
           timeoutMs: 900,
+          waitMs: 2000,
+          waitSelector: "h1",
           userAgent: "Browser Agent",
         },
         fallback: {

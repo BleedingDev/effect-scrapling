@@ -225,7 +225,7 @@ Recommended workflow:
 Template command:
 
 ```bash
-CI=1 bd create "[E3] Remediate: access runtime budget breach" \
+CI=1 br create "[E3] Remediate: access runtime budget breach" \
   --type bug \
   --priority 1 \
   --parent bd-afb \

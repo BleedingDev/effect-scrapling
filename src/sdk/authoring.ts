@@ -86,6 +86,8 @@ function normalizeExecutionPayload(payload: JsonObject): JsonObject | undefined 
     assertAllowedKeys('"execution.browser"', rawBrowserPayload, [
       "waitUntil",
       "timeoutMs",
+      "waitMs",
+      "waitSelector",
       "userAgent",
       "challengeHandling",
     ]);
@@ -223,6 +225,28 @@ function parseFlagOrValue(
   return trimmed;
 }
 
+function parseBooleanOption(name: string, value: CliOptionValue | undefined): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") {
+    return true;
+  }
+  if (normalized === "false") {
+    return false;
+  }
+
+  throw new InvalidInputError({
+    message: `Option --${name} must be true or false when provided with a value`,
+  });
+}
+
 function parseJsonObjectOption(
   name: string,
   value: CliOptionValue | undefined,
@@ -265,8 +289,19 @@ function buildCliExecutionPayload(options: CliOptions): JsonObject | undefined {
   const httpUserAgent = parseNonEmptyString("http-user-agent", options["http-user-agent"]);
   const browserWaitUntil = parseNonEmptyString("browser-wait-until", options["browser-wait-until"]);
   const browserTimeoutMs = parseNonEmptyString("browser-timeout-ms", options["browser-timeout-ms"]);
+  const browserWaitMs = parseNonEmptyString("wait", options["wait"]);
+  const browserWaitSelector = parseNonEmptyString("wait-selector", options["wait-selector"]);
   const browserUserAgent = parseNonEmptyString("browser-user-agent", options["browser-user-agent"]);
   const solveCloudflare = parseFlagOrValue("solve-cloudflare", options["solve-cloudflare"]);
+  const networkIdle = parseBooleanOption("network-idle", options["network-idle"]);
+
+  if (networkIdle === true && browserWaitUntil !== undefined && browserWaitUntil !== "networkidle") {
+    throw new InvalidInputError({
+      message: "Conflicting browser wait configuration",
+      details:
+        "Option --network-idle cannot be combined with --browser-wait-until unless it is set to networkidle.",
+    });
+  }
 
   const http: MutableJsonObject = {};
   if (httpUserAgent !== undefined) {
@@ -274,11 +309,17 @@ function buildCliExecutionPayload(options: CliOptions): JsonObject | undefined {
   }
 
   const browser: MutableJsonObject = {};
-  if (browserWaitUntil !== undefined) {
-    browser.waitUntil = browserWaitUntil;
+  if (browserWaitUntil !== undefined || networkIdle === true) {
+    browser.waitUntil = browserWaitUntil ?? "networkidle";
   }
   if (browserTimeoutMs !== undefined) {
     browser.timeoutMs = browserTimeoutMs;
+  }
+  if (browserWaitMs !== undefined) {
+    browser.waitMs = browserWaitMs;
+  }
+  if (browserWaitSelector !== undefined) {
+    browser.waitSelector = browserWaitSelector;
   }
   if (browserUserAgent !== undefined) {
     browser.userAgent = browserUserAgent;
@@ -327,7 +368,9 @@ export function normalizeCliPayload(
 ): JsonObject {
   const execution = buildCliExecutionPayload(options);
   const url = parseNonEmptyString("url", options["url"]);
-  const timeoutMs = parseNonEmptyString("timeout-ms", options["timeout-ms"]);
+  const timeoutMs =
+    parseNonEmptyString("timeout-ms", options["timeout-ms"]) ??
+    parseNonEmptyString("timeout", options["timeout"]);
 
   if (url === undefined) {
     throw new InvalidInputError({

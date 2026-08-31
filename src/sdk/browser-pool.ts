@@ -10,6 +10,91 @@ const DEFAULT_BROWSER_POOL_KEY = "patchright-default";
 const MAX_CONTEXTS_ENV = "EFFECT_SCRAPLING_BROWSER_POOL_MAX_CONTEXTS";
 const MAX_PAGES_ENV = "EFFECT_SCRAPLING_BROWSER_POOL_MAX_PAGES";
 const MAX_QUEUE_ENV = "EFFECT_SCRAPLING_BROWSER_POOL_MAX_QUEUE";
+const PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID = "patchright-stealth";
+
+const DEFAULT_BROWSER_LAUNCH_ARGS = Object.freeze([
+  "--no-pings",
+  "--no-first-run",
+  "--disable-infobars",
+  "--disable-breakpad",
+  "--no-service-autorun",
+  "--homepage=about:blank",
+  "--password-store=basic",
+  "--disable-hang-monitor",
+  "--no-default-browser-check",
+  "--disable-session-crashed-bubble",
+  "--disable-search-engine-choice-screen",
+] as const);
+
+const DEFAULT_BROWSER_IGNORE_ARGS = Object.freeze([
+  "--enable-automation",
+  "--disable-popup-blocking",
+  "--disable-component-update",
+  "--disable-default-apps",
+  "--disable-extensions",
+] as const);
+
+const STEALTH_BROWSER_LAUNCH_ARGS = Object.freeze([
+  ...DEFAULT_BROWSER_LAUNCH_ARGS,
+  "--test-type",
+  "--lang=en-US",
+  "--mute-audio",
+  "--disable-sync",
+  "--hide-scrollbars",
+  "--disable-logging",
+  "--start-maximized",
+  "--enable-async-dns",
+  "--accept-lang=en-US",
+  "--use-mock-keychain",
+  "--disable-translate",
+  "--disable-voice-input",
+  "--window-position=0,0",
+  "--disable-wake-on-wifi",
+  "--ignore-gpu-blocklist",
+  "--enable-tcp-fast-open",
+  "--enable-web-bluetooth",
+  "--disable-cloud-import",
+  "--disable-print-preview",
+  "--disable-dev-shm-usage",
+  "--metrics-recording-only",
+  "--disable-crash-reporter",
+  "--disable-partial-raster",
+  "--disable-gesture-typing",
+  "--disable-checker-imaging",
+  "--disable-prompt-on-repost",
+  "--force-color-profile=srgb",
+  "--font-render-hinting=none",
+  "--aggressive-cache-discard",
+  "--disable-cookie-encryption",
+  "--disable-domain-reliability",
+  "--disable-threaded-animation",
+  "--disable-threaded-scrolling",
+  "--enable-simple-cache-backend",
+  "--disable-background-networking",
+  "--enable-surface-synchronization",
+  "--disable-image-animation-resync",
+  "--disable-renderer-backgrounding",
+  "--disable-ipc-flooding-protection",
+  "--prerender-from-omnibox=disabled",
+  "--safebrowsing-disable-auto-update",
+  "--disable-offer-upload-credit-cards",
+  "--disable-background-timer-throttling",
+  "--disable-new-content-rendering-timeout",
+  "--run-all-compositor-stages-before-draw",
+  "--disable-client-side-phishing-detection",
+  "--disable-backgrounding-occluded-windows",
+  "--disable-layer-tree-host-memory-pressure",
+  "--autoplay-policy=user-gesture-required",
+  "--webrtc-ip-handling-policy=disable_non_proxied_udp",
+  "--force-webrtc-ip-handling-policy",
+  "--fingerprinting-canvas-image-data-noise",
+  "--disable-offer-store-unmasked-wallet-cards",
+  "--disable-blink-features=AutomationControlled",
+  "--disable-component-extensions-with-background-pages",
+  "--enable-features=NetworkService,NetworkServiceInProcess,TrustTokens,TrustTokensAlwaysAllowIssuance",
+  "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
+  "--disable-features=AudioServiceOutOfProcess,TranslateUI,BlinkGenPropertyTrees",
+] as const);
 
 export const RECOVERED_BROWSER_ALLOCATION_WARNING_PREFIX =
   "Recovered browser allocation after retryable protocol error:";
@@ -35,6 +120,12 @@ type PatchrightElementHandle = {
 type PatchrightLocator = {
   readonly boundingBox: () => Promise<PatchrightBoundingBox | null>;
   readonly isVisible?: () => Promise<boolean>;
+  readonly evaluate?: <A>(
+    pageFunction: (element: Element) => A | Promise<A>,
+  ) => Promise<Awaited<A>>;
+  readonly count?: () => Promise<number>;
+  readonly nth?: (index: number) => PatchrightLocator;
+  readonly first?: () => PatchrightLocator;
   readonly last?: () => PatchrightLocator;
 };
 
@@ -46,6 +137,7 @@ export type PatchrightPage = {
   readonly goto: (
     url: string,
     options: {
+      readonly referer?: string;
       readonly waitUntil: "load" | "domcontentloaded" | "networkidle" | "commit";
       readonly timeout: number;
     },
@@ -97,6 +189,20 @@ type PatchrightBrowser = {
     readonly userAgent: string;
     readonly locale?: string;
     readonly timezoneId?: string;
+    readonly colorScheme?: "light" | "dark" | "no-preference";
+    readonly deviceScaleFactor?: number;
+    readonly serviceWorkers?: "allow" | "block";
+    readonly ignoreHTTPSErrors?: boolean;
+    readonly permissions?: ReadonlyArray<string>;
+    readonly screen?: {
+      readonly width: number;
+      readonly height: number;
+    };
+    readonly extraHTTPHeaders?: Readonly<Record<string, string>>;
+    readonly viewport?: {
+      readonly width: number;
+      readonly height: number;
+    };
   }) => Promise<PatchrightBrowserContext>;
   readonly close: () => Promise<void>;
 };
@@ -106,6 +212,9 @@ export type PatchrightModule = {
     readonly launch: (options: {
       readonly headless: boolean;
       readonly proxy?: BrowserLaunchProxyConfig | undefined;
+      readonly args?: ReadonlyArray<string>;
+      readonly ignoreDefaultArgs?: ReadonlyArray<string>;
+      readonly channel?: "chromium" | "chrome";
     }) => Promise<PatchrightBrowser>;
   };
 };
@@ -148,6 +257,7 @@ type BrowserPoolState = BrowserPoolSnapshot & {
 };
 
 type BrowserPoolConfig = BrowserPoolLimits & {
+  readonly runtimeProfileId: string;
   readonly loadPatchright: () => Effect.Effect<PatchrightModule, BrowserError>;
   readonly proxy?: BrowserLaunchProxyConfig | undefined;
 };
@@ -263,6 +373,7 @@ function resolveBrowserPoolConfig(state: BrowserRuntimeState): BrowserPoolConfig
   const configuredMaxQueue = readPositiveIntFromEnvironment(MAX_QUEUE_ENV);
 
   return {
+    runtimeProfileId: DEFAULT_BROWSER_POOL_KEY,
     maxContexts: state.testConfig?.maxContexts ?? configuredMaxContexts ?? DEFAULT_MAX_CONTEXTS,
     maxPages: state.testConfig?.maxPages ?? configuredMaxPages ?? DEFAULT_MAX_PAGES,
     maxQueue: state.testConfig?.maxQueue ?? configuredMaxQueue ?? DEFAULT_MAX_QUEUE,
@@ -325,10 +436,14 @@ function toBrowserRuntimeCacheKey(poolKey: string, proxy?: BrowserLaunchProxyCon
 
 function getBrowserPoolRuntime(
   state: BrowserRuntimeState,
-  poolKey: string = DEFAULT_BROWSER_POOL_KEY,
-  proxy?: BrowserLaunchProxyConfig | undefined,
+  options: {
+    readonly poolKey?: string;
+    readonly runtimeProfileId: string;
+    readonly proxy?: BrowserLaunchProxyConfig | undefined;
+  },
 ): BrowserPoolRuntime {
-  const runtimeCacheKey = toBrowserRuntimeCacheKey(poolKey, proxy);
+  const poolKey = options.poolKey ?? options.runtimeProfileId;
+  const runtimeCacheKey = toBrowserRuntimeCacheKey(poolKey, options.proxy);
   const existingRuntime = state.runtimes.get(runtimeCacheKey);
   if (existingRuntime !== undefined) {
     return existingRuntime;
@@ -336,7 +451,8 @@ function getBrowserPoolRuntime(
 
   const nextRuntime = makeBrowserPoolRuntime({
     ...resolveBrowserPoolConfig(state),
-    ...(proxy === undefined ? {} : { proxy }),
+    runtimeProfileId: options.runtimeProfileId,
+    ...(options.proxy === undefined ? {} : { proxy: options.proxy }),
   });
   state.runtimes.set(runtimeCacheKey, nextRuntime);
   return nextRuntime;
@@ -368,6 +484,73 @@ function closeQuietly(closeable: { readonly close: () => Promise<void> }): Effec
   }).pipe(Effect.ignore);
 }
 
+function resolveBrowserLaunchOptions(input: {
+  readonly runtimeProfileId: string;
+  readonly proxy?: BrowserLaunchProxyConfig | undefined;
+}) {
+  if (input.runtimeProfileId === PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID) {
+    return {
+      headless: true,
+      args: STEALTH_BROWSER_LAUNCH_ARGS,
+      ignoreDefaultArgs: DEFAULT_BROWSER_IGNORE_ARGS,
+      channel: "chrome" as const,
+      ...(input.proxy === undefined ? {} : { proxy: input.proxy }),
+    };
+  }
+
+  return {
+    headless: true,
+    ...(input.proxy === undefined ? {} : { proxy: input.proxy }),
+  };
+}
+
+function resolveBrowserContextOptions(input: {
+  readonly runtimeProfileId: string;
+  readonly userAgent: string;
+  readonly locale?: string;
+  readonly timezoneId?: string;
+}) {
+  if (input.runtimeProfileId === PATCHRIGHT_STEALTH_RUNTIME_PROFILE_ID) {
+    return {
+      userAgent: input.userAgent,
+      ...(input.locale === undefined ? {} : { locale: input.locale }),
+      ...(input.timezoneId === undefined ? {} : { timezoneId: input.timezoneId }),
+      colorScheme: "dark" as const,
+      deviceScaleFactor: 2,
+      serviceWorkers: "allow" as const,
+      ignoreHTTPSErrors: true,
+      permissions: ["geolocation", "notifications"] as const,
+      extraHTTPHeaders: {
+        Referer: "https://www.google.com/",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US;q=1.0",
+        "Sec-Fetch-Dest": "navigate",
+        "Sec-Fetch-Mode": "same-site",
+        "Sec-Fetch-Site": "?1",
+        "Sec-Fetch-User": "document",
+        "Upgrade-Insecure-Requests": "1",
+        "sec-ch-ua": '"Chromium";v="145", "Not:A-Brand";v="99"',
+        "sec-ch-ua-mobile": "?0",
+      },
+      screen: {
+        width: 1920,
+        height: 1080,
+      },
+      viewport: {
+        width: 1920,
+        height: 1080,
+      },
+    };
+  }
+
+  return {
+    userAgent: input.userAgent,
+    ...(input.locale === undefined ? {} : { locale: input.locale }),
+    ...(input.timezoneId === undefined ? {} : { timezoneId: input.timezoneId }),
+  };
+}
+
 function acquireBrowser(pool: BrowserPoolRuntime): Effect.Effect<PatchrightBrowser, BrowserError> {
   return SynchronizedRef.modifyEffect(pool.browserRef, (currentBrowser) =>
     Option.match(currentBrowser, {
@@ -376,10 +559,12 @@ function acquireBrowser(pool: BrowserPoolRuntime): Effect.Effect<PatchrightBrows
           Effect.flatMap((patchright) =>
             Effect.tryPromise({
               try: () =>
-                patchright.chromium.launch({
-                  headless: true,
-                  ...(pool.config.proxy === undefined ? {} : { proxy: pool.config.proxy }),
-                }),
+                patchright.chromium.launch(
+                  resolveBrowserLaunchOptions({
+                    runtimeProfileId: pool.config.runtimeProfileId,
+                    proxy: pool.config.proxy,
+                  }),
+                ),
               catch: (error) =>
                 new BrowserError({
                   message: "Browser mode failed to launch Chromium",
@@ -691,6 +876,7 @@ function releaseAllocationLock(pool: BrowserPoolRuntime): Effect.Effect<void> {
 function createContext(
   pool: BrowserPoolRuntime,
   options: {
+    readonly runtimeProfileId: string;
     readonly userAgent: string;
     readonly locale?: string;
     readonly timezoneId?: string;
@@ -699,7 +885,15 @@ function createContext(
   return acquireBrowser(pool).pipe(
     Effect.flatMap((browser) =>
       Effect.tryPromise({
-        try: () => browser.newContext(options),
+        try: () =>
+          browser.newContext(
+            resolveBrowserContextOptions({
+              runtimeProfileId: options.runtimeProfileId,
+              userAgent: options.userAgent,
+              locale: options.locale,
+              timezoneId: options.timezoneId,
+            }),
+          ),
         catch: (error) =>
           new BrowserError({
             message: "Browser pool failed to allocate a browsing context",
@@ -804,6 +998,7 @@ function closeRetiredBrowsersIfIdle(pool: BrowserPoolRuntime): Effect.Effect<voi
 function allocateBrowserPage(
   pool: BrowserPoolRuntime,
   options: {
+    readonly runtimeProfileId: string;
     readonly userAgent: string;
     readonly locale?: string;
     readonly timezoneId?: string;
@@ -890,17 +1085,18 @@ function withPooledBrowserPageFromState<A, E>(
   BrowserError | E
 > {
   return Effect.gen(function* () {
-    const pool = getBrowserPoolRuntime(
-      state,
-      options.poolKey ?? options.runtimeProfileId,
-      options.proxy,
-    );
+    const pool = getBrowserPoolRuntime(state, {
+      poolKey: options.poolKey,
+      runtimeProfileId: options.runtimeProfileId,
+      proxy: options.proxy,
+    });
 
     return yield* Effect.acquireUseRelease(
       acquireBrowserSlot(pool),
       (acquisition) =>
         Effect.acquireUseRelease(
           allocateBrowserPage(pool, {
+            runtimeProfileId: options.runtimeProfileId,
             userAgent: options.userAgent,
             ...(options.locale === undefined ? {} : { locale: options.locale }),
             ...(options.timezoneId === undefined ? {} : { timezoneId: options.timezoneId }),

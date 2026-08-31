@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
-import { Schema } from "effect";
+import { Effect, Schema } from "effect";
 import {
   joinProgressSegments,
   sanitizeProgressText,
@@ -16,9 +16,22 @@ import {
   mergeE9BenchmarkArtifacts,
   runE9BenchmarkSuite,
 } from "../../src/e9-benchmark-suite.ts";
+import {
+  buildSurfsharkWireGuardModule,
+  ensureSurfsharkWireproxyPoolReady,
+  loadSurfsharkGeneratedManifest,
+  loadSurfsharkWireproxyManifest,
+  resolveBundledSurfsharkWireGuardAssetPaths,
+  surfsharkWireGuardProfileId,
+  type SurfsharkGeneratedManifest,
+  type SurfsharkGeneratedManifestEntry,
+  type SurfsharkWireproxyManifest,
+  type SurfsharkWireproxyManifestEntry,
+} from "../../src/sdk/surfshark-wireguard-runtime.ts";
 
 const NonEmptyStringSchema = Schema.Trim.check(Schema.isNonEmpty());
 const PositiveIntSchema = Schema.Int.check(Schema.isGreaterThan(0));
+const NonNegativeIntSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const ProgressModeSchema = Schema.Literals(["full", "compact"] as const);
 const CliPhaseSchema = Schema.Literals(["http", "browser", "scrapling", "canary"] as const);
 const BenchmarkPresetSchema = Schema.Literals([
@@ -26,9 +39,15 @@ const BenchmarkPresetSchema = Schema.Literals([
   "scale-study",
   "full-corpus",
   "competitor-calibration",
+  "state-of-the-art",
 ] as const);
 const HttpProfileSchema = Schema.Literals(["effect-http", "native-fetch"] as const);
-const BrowserProfileSchema = Schema.Literals(["effect-browser", "patchright-browser"] as const);
+const BrowserProfileSchema = Schema.Literals([
+  "effect-browser",
+  "effect-hybrid-stealth",
+  "patchright-browser",
+] as const);
+const WireproxyTransportSchema = Schema.Literals(["socks5", "http"] as const);
 
 export const E9BenchmarkSuiteCliOptionsSchema = Schema.Struct({
   artifactPath: Schema.optional(NonEmptyStringSchema),
@@ -49,10 +68,53 @@ export const E9BenchmarkSuiteCliOptionsSchema = Schema.Struct({
   shardCount: Schema.optional(PositiveIntSchema),
   shardIndex: Schema.optional(PositiveIntSchema),
   adaptiveStop: Schema.optional(Schema.Boolean),
+  wireproxyManifestPath: Schema.optional(NonEmptyStringSchema),
+  wireproxyGeneratedManifestPath: Schema.optional(NonEmptyStringSchema),
+  wireproxyEntryName: Schema.optional(NonEmptyStringSchema),
+  wireproxyTransport: Schema.optional(WireproxyTransportSchema),
+  wireproxyBundled: Schema.optional(Schema.Boolean),
+  wireproxyRotate: Schema.optional(Schema.Boolean),
+  wireproxyRotationFallbackCount: Schema.optional(NonNegativeIntSchema),
   progressMode: Schema.optional(ProgressModeSchema),
   progressWidth: Schema.optional(PositiveIntSchema),
   forceColor: Schema.optional(Schema.Boolean),
 });
+
+const EUROPEAN_COUNTRY_CODE_PRIORITY = [
+  "CZ",
+  "SK",
+  "PL",
+  "DE",
+  "AT",
+  "NL",
+  "BE",
+  "FR",
+  "IT",
+  "ES",
+  "PT",
+  "DK",
+  "SE",
+  "NO",
+  "FI",
+  "IE",
+  "CH",
+  "GB",
+  "RO",
+  "HU",
+  "SI",
+  "HR",
+  "LT",
+  "LV",
+  "EE",
+  "GR",
+  "BG",
+  "LU",
+  "CY",
+  "MT",
+] as const;
+const EUROPEAN_COUNTRY_CODE_PRIORITY_MAP = new Map<string, number>(
+  EUROPEAN_COUNTRY_CODE_PRIORITY.map((value, index) => [value, index] as const),
+);
 
 function readCauseMessage(cause: unknown, fallback: string) {
   if ((typeof cause === "object" && cause !== null) || typeof cause === "function") {
@@ -148,10 +210,13 @@ export function parseOptions(args: readonly string[]) {
     | "scale-study"
     | "full-corpus"
     | "competitor-calibration"
+    | "state-of-the-art"
     | undefined;
   let phases: readonly ("http" | "browser" | "scrapling" | "canary")[] | undefined;
   let httpProfiles: readonly ("effect-http" | "native-fetch")[] | undefined;
-  let browserProfiles: readonly ("effect-browser" | "patchright-browser")[] | undefined;
+  let browserProfiles:
+    | readonly ("effect-browser" | "effect-hybrid-stealth" | "patchright-browser")[]
+    | undefined;
   let httpConcurrency: readonly number[] | undefined;
   let browserConcurrency: readonly number[] | undefined;
   let httpTimeoutMs: number | undefined;
@@ -161,6 +226,13 @@ export function parseOptions(args: readonly string[]) {
   let shardCount: number | undefined;
   let shardIndex: number | undefined;
   let adaptiveStop: boolean | undefined;
+  let wireproxyManifestPath: string | undefined;
+  let wireproxyGeneratedManifestPath: string | undefined;
+  let wireproxyEntryName: string | undefined;
+  let wireproxyTransport: "socks5" | "http" | undefined;
+  let wireproxyBundled: boolean | undefined;
+  let wireproxyRotate: boolean | undefined;
+  let wireproxyRotationFallbackCount: number | undefined;
   let progressMode: "full" | "compact" | undefined;
   let progressWidth: number | undefined;
   let forceColor: boolean | undefined;
@@ -188,6 +260,35 @@ export function parseOptions(args: readonly string[]) {
         break;
       case "--no-adaptive-stop":
         adaptiveStop = false;
+        break;
+      case "--wireproxy-manifest":
+        wireproxyManifestPath = Schema.decodeUnknownSync(NonEmptyStringSchema)(expectValue());
+        index += 1;
+        break;
+      case "--wireproxy-generated-manifest":
+        wireproxyGeneratedManifestPath =
+          Schema.decodeUnknownSync(NonEmptyStringSchema)(expectValue());
+        index += 1;
+        break;
+      case "--wireproxy-entry":
+        wireproxyEntryName = Schema.decodeUnknownSync(NonEmptyStringSchema)(expectValue());
+        index += 1;
+        break;
+      case "--wireproxy-transport":
+        wireproxyTransport = Schema.decodeUnknownSync(WireproxyTransportSchema)(expectValue());
+        index += 1;
+        break;
+      case "--wireproxy-bundled":
+        wireproxyBundled = true;
+        break;
+      case "--wireproxy-rotate":
+        wireproxyRotate = true;
+        break;
+      case "--wireproxy-rotation-fallbacks":
+        wireproxyRotationFallbackCount = Schema.decodeUnknownSync(NonNegativeIntSchema)(
+          Number(expectValue()),
+        );
+        index += 1;
         break;
       case "--artifact":
         artifactPath = Schema.decodeUnknownSync(NonEmptyStringSchema)(expectValue());
@@ -288,10 +389,99 @@ export function parseOptions(args: readonly string[]) {
     shardCount,
     shardIndex,
     adaptiveStop,
+    wireproxyManifestPath,
+    wireproxyGeneratedManifestPath,
+    wireproxyEntryName,
+    wireproxyTransport,
+    wireproxyBundled,
+    wireproxyRotate,
+    wireproxyRotationFallbackCount,
     progressMode,
     progressWidth,
     forceColor,
   });
+}
+
+function normalizeManifestKey(path: string) {
+  const normalized = path.replaceAll("\\", "/");
+  const file = normalized.split("/").at(-1)?.trim().toLowerCase() ?? normalized;
+  return file.endsWith(".conf") ? file.slice(0, -".conf".length) : file;
+}
+
+function wireproxyManifestKey(entry: SurfsharkWireproxyManifestEntry) {
+  return normalizeManifestKey(entry.wireguardConfig);
+}
+
+function generatedManifestKey(entry: SurfsharkGeneratedManifestEntry) {
+  return normalizeManifestKey(entry.file);
+}
+
+function compareOptionalNumbers(left: number | undefined, right: number | undefined) {
+  if (left === undefined && right === undefined) {
+    return 0;
+  }
+  if (left === undefined) {
+    return 1;
+  }
+  if (right === undefined) {
+    return -1;
+  }
+  return left - right;
+}
+
+function wireproxyCountryPriority(countryCode: string | undefined) {
+  if (countryCode === undefined) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return (
+    EUROPEAN_COUNTRY_CODE_PRIORITY_MAP.get(countryCode.toUpperCase()) ?? Number.POSITIVE_INFINITY
+  );
+}
+
+export function buildWireproxyRotationEntries(input: {
+  readonly wireproxyManifest: SurfsharkWireproxyManifest;
+  readonly generatedManifest?: SurfsharkGeneratedManifest | undefined;
+}) {
+  const generatedByKey = new Map(
+    (input.generatedManifest?.entries ?? []).map(
+      (entry) => [generatedManifestKey(entry), entry] as const,
+    ),
+  );
+
+  return input.wireproxyManifest.entries
+    .map((entry) => {
+      const metadata = generatedByKey.get(wireproxyManifestKey(entry));
+      const countryPriority = wireproxyCountryPriority(metadata?.countryCode);
+      return {
+        name: entry.name,
+        profileId: surfsharkWireGuardProfileId(entry.name),
+        countryCode: metadata?.countryCode?.toUpperCase(),
+        load: metadata?.load,
+        rotationPriority: Number.isFinite(countryPriority) ? 0 : 1,
+        regionalPriority: countryPriority,
+      };
+    })
+    .sort((left, right) => {
+      if (left.rotationPriority !== right.rotationPriority) {
+        return left.rotationPriority - right.rotationPriority;
+      }
+
+      if (left.regionalPriority !== right.regionalPriority) {
+        return left.regionalPriority - right.regionalPriority;
+      }
+
+      const loadOrder = compareOptionalNumbers(left.load, right.load);
+      if (loadOrder !== 0) {
+        return loadOrder;
+      }
+
+      if ((left.countryCode ?? "") !== (right.countryCode ?? "")) {
+        return (left.countryCode ?? "").localeCompare(right.countryCode ?? "");
+      }
+
+      return left.name.localeCompare(right.name);
+    });
 }
 
 async function persistArtifact(artifactPath: string, artifact: unknown) {
@@ -1085,10 +1275,13 @@ export async function runDefaultE9BenchmarkSuite(
       | "scale-study"
       | "full-corpus"
       | "competitor-calibration"
+      | "state-of-the-art"
       | undefined;
     readonly phases?: ReadonlyArray<"http" | "browser" | "scrapling" | "canary"> | undefined;
     readonly httpProfiles?: ReadonlyArray<"effect-http" | "native-fetch"> | undefined;
-    readonly browserProfiles?: ReadonlyArray<"effect-browser" | "patchright-browser"> | undefined;
+    readonly browserProfiles?:
+      | ReadonlyArray<"effect-browser" | "effect-hybrid-stealth" | "patchright-browser">
+      | undefined;
     readonly httpConcurrency?: ReadonlyArray<number> | undefined;
     readonly browserConcurrency?: ReadonlyArray<number> | undefined;
     readonly httpTimeoutMs?: number | undefined;
@@ -1098,6 +1291,13 @@ export async function runDefaultE9BenchmarkSuite(
     readonly shardCount?: number | undefined;
     readonly shardIndex?: number | undefined;
     readonly adaptiveStop?: boolean | undefined;
+    readonly wireproxyManifestPath?: string | undefined;
+    readonly wireproxyGeneratedManifestPath?: string | undefined;
+    readonly wireproxyEntryName?: string | undefined;
+    readonly wireproxyTransport?: "socks5" | "http" | undefined;
+    readonly wireproxyBundled?: boolean | undefined;
+    readonly wireproxyRotate?: boolean | undefined;
+    readonly wireproxyRotationFallbackCount?: number | undefined;
     readonly progressMode?: "full" | "compact" | undefined;
     readonly progressWidth?: number | undefined;
     readonly forceColor?: boolean | undefined;
@@ -1106,6 +1306,117 @@ export async function runDefaultE9BenchmarkSuite(
     readonly onProgress?: (event: E9BenchmarkSuiteProgressEvent) => void;
   } = {},
 ) {
+  const selectedWireproxyEntryName = options.wireproxyEntryName;
+  if (options.wireproxyBundled === true && options.wireproxyManifestPath !== undefined) {
+    throw new Error(
+      "Bundled Surfshark assets are incompatible with an explicit --wireproxy-manifest override.",
+    );
+  }
+  if (options.wireproxyBundled === true && options.wireproxyGeneratedManifestPath !== undefined) {
+    throw new Error(
+      "Bundled Surfshark assets are incompatible with an explicit --wireproxy-generated-manifest override.",
+    );
+  }
+  const bundledWireproxyAssets =
+    options.wireproxyBundled === true ? resolveBundledSurfsharkWireGuardAssetPaths() : undefined;
+  const effectiveWireproxyManifestPath =
+    options.wireproxyManifestPath ?? bundledWireproxyAssets?.wireproxyManifestPath;
+  const effectiveWireproxyGeneratedManifestPath =
+    options.wireproxyGeneratedManifestPath ?? bundledWireproxyAssets?.generatedManifestPath;
+  const wireproxyRotate = options.wireproxyRotate === true;
+
+  if (wireproxyRotate && selectedWireproxyEntryName !== undefined) {
+    throw new Error(
+      "Wireproxy benchmark rotation is incompatible with --wireproxy-entry; either pick one exit or enable rotation across the pool.",
+    );
+  }
+  if (wireproxyRotate && effectiveWireproxyManifestPath === undefined) {
+    throw new Error(
+      "Wireproxy benchmark rotation requires a wireproxy manifest or --wireproxy-bundled.",
+    );
+  }
+  if (wireproxyRotate && effectiveWireproxyGeneratedManifestPath === undefined) {
+    throw new Error(
+      "Wireproxy benchmark rotation requires generated Surfshark metadata so Europe-first exits can be prioritized.",
+    );
+  }
+  if (
+    effectiveWireproxyManifestPath !== undefined &&
+    !wireproxyRotate &&
+    selectedWireproxyEntryName === undefined
+  ) {
+    throw new Error(
+      "Benchmark wireproxy override requires --wireproxy-entry to select a concrete Surfshark exit.",
+    );
+  }
+  const wireproxyManifest =
+    effectiveWireproxyManifestPath === undefined
+      ? undefined
+      : await loadSurfsharkWireproxyManifest(effectiveWireproxyManifestPath).pipe(
+          Effect.runPromise,
+        );
+  const wireproxyGeneratedManifest =
+    effectiveWireproxyGeneratedManifestPath === undefined
+      ? undefined
+      : await loadSurfsharkGeneratedManifest(effectiveWireproxyGeneratedManifestPath).pipe(
+          Effect.runPromise,
+        );
+  const wireproxyRotationEntries =
+    wireproxyRotate && wireproxyManifest !== undefined
+      ? buildWireproxyRotationEntries({
+          wireproxyManifest,
+          generatedManifest: wireproxyGeneratedManifest,
+        })
+      : undefined;
+  const requiredRotationAttemptCount = 1 + (options.wireproxyRotationFallbackCount ?? 3);
+  if (
+    wireproxyRotationEntries !== undefined &&
+    wireproxyRotationEntries.length < requiredRotationAttemptCount
+  ) {
+    throw new Error(
+      `Wireproxy benchmark rotation requires at least ${requiredRotationAttemptCount} exits, but only ${wireproxyRotationEntries.length} are available in the pool.`,
+    );
+  }
+  if (wireproxyManifest !== undefined) {
+    await ensureSurfsharkWireproxyPoolReady({
+      wireproxyManifest,
+      transport: options.wireproxyTransport ?? "http",
+      ...(wireproxyRotationEntries !== undefined
+        ? {
+            entryNames: wireproxyRotationEntries.map((entry) => entry.name),
+            minimumReachableEntryCount: requiredRotationAttemptCount,
+          }
+        : selectedWireproxyEntryName === undefined
+          ? {}
+          : { entryNames: [selectedWireproxyEntryName] }),
+    }).pipe(Effect.runPromise);
+  }
+  const wireproxyModule =
+    wireproxyManifest === undefined
+      ? undefined
+      : await buildSurfsharkWireGuardModule({
+          wireproxyManifest,
+          ...(wireproxyGeneratedManifest === undefined
+            ? {}
+            : { generatedManifest: wireproxyGeneratedManifest }),
+          ...(wireproxyRotationEntries !== undefined
+            ? { includeEntryNames: wireproxyRotationEntries.map((entry) => entry.name) }
+            : wireproxyRotate || selectedWireproxyEntryName === undefined
+              ? {}
+              : { includeEntryNames: [selectedWireproxyEntryName] }),
+          transport: options.wireproxyTransport ?? "http",
+        }).pipe(Effect.runPromise);
+  const wireproxyProfileId =
+    selectedWireproxyEntryName === undefined
+      ? undefined
+      : surfsharkWireGuardProfileId(selectedWireproxyEntryName);
+  const wireproxyRotation =
+    wireproxyRotationEntries !== undefined
+      ? {
+          entries: wireproxyRotationEntries,
+          fallbackCount: options.wireproxyRotationFallbackCount ?? 3,
+        }
+      : undefined;
   const artifact =
     options.mergeArtifactPaths === undefined
       ? await runE9BenchmarkSuite(
@@ -1138,6 +1449,32 @@ export async function runDefaultE9BenchmarkSuite(
             ...(options.shardCount === undefined ? {} : { shardCount: options.shardCount }),
             ...(options.shardIndex === undefined ? {} : { shardIndex: options.shardIndex }),
             ...(options.adaptiveStop === undefined ? {} : { adaptiveStop: options.adaptiveStop }),
+            ...(wireproxyModule === undefined ? {} : { accessModules: [wireproxyModule] }),
+            ...(wireproxyRotation === undefined
+              ? {}
+              : {
+                  executionRotation: {
+                    variants: wireproxyRotation.entries.map((entry) => ({
+                      key: entry.name,
+                      rotationPriority: entry.rotationPriority,
+                      selectors: {
+                        egress: {
+                          profileId: entry.profileId,
+                        },
+                      },
+                    })),
+                    maxAttempts: Math.max(1, wireproxyRotation.fallbackCount + 1),
+                  },
+                }),
+            ...(wireproxyProfileId === undefined
+              ? {}
+              : {
+                  execution: {
+                    egress: {
+                      profileId: wireproxyProfileId,
+                    },
+                  },
+                }),
           },
           dependencies.onProgress === undefined ? {} : { onProgress: dependencies.onProgress },
         )

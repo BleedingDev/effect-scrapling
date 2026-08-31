@@ -1272,6 +1272,32 @@ describe("sdk browser pool", () => {
             userAgent: "Agent C",
             locale: "de-DE",
             timezoneId: "Europe/Berlin",
+            colorScheme: "dark",
+            deviceScaleFactor: 2,
+            serviceWorkers: "allow",
+            ignoreHTTPSErrors: true,
+            permissions: ["geolocation", "notifications"],
+            extraHTTPHeaders: {
+              Accept:
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+              "Accept-Language": "en-US;q=1.0",
+              Referer: "https://www.google.com/",
+              "Sec-Fetch-Dest": "navigate",
+              "Sec-Fetch-Mode": "same-site",
+              "Sec-Fetch-Site": "?1",
+              "Sec-Fetch-User": "document",
+              "Upgrade-Insecure-Requests": "1",
+              "sec-ch-ua": '"Chromium";v="145", "Not:A-Brand";v="99"',
+              "sec-ch-ua-mobile": "?0",
+            },
+            screen: {
+              width: 1920,
+              height: 1080,
+            },
+            viewport: {
+              width: 1920,
+              height: 1080,
+            },
           },
         ]);
 
